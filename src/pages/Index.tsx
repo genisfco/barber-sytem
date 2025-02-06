@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
-import { Calendar, DollarSign, Users, Clock } from "lucide-react";
+import { Calendar, DollarSign, Users, Clock, Scissors } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
   const stats = [
