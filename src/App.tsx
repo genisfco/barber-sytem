@@ -6,6 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import Index from "./pages/Index";
+import Agendamentos from "./pages/Agendamentos";
+import Clientes from "./pages/Clientes";
+import Barbeiros from "./pages/Barbeiros";
+import Financeiro from "./pages/Financeiro";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +27,10 @@ const App = () => (
             <main>
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/agendamentos" element={<Agendamentos />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/barbeiros" element={<Barbeiros />} />
+                <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
