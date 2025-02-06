@@ -19,7 +19,7 @@ const Agendamentos = () => {
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[300px,1fr] gap-6">
+      <div className="grid md:grid-cols-[100px,1fr] gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Calendário</CardTitle>
