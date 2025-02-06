@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
 
 const Agendamentos = () => {
-  const date = new Date();
+  const [date, setDate] = useState<Date>(new Date());
+  const [openForm, setOpenForm] = useState(false);
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-display text-barber-dark">Agendamentos</h1>
-        <Button>
+        <Button onClick={() => setOpenForm(true)}>
           <Plus className="mr-2" />
           Novo Agendamento
         </Button>
@@ -25,6 +28,7 @@ const Agendamentos = () => {
             <Calendar
               mode="single"
               selected={date}
+              onSelect={setDate}
               className="rounded-md border"
             />
           </CardContent>
@@ -41,6 +45,8 @@ const Agendamentos = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AgendamentoForm open={openForm} onOpenChange={setOpenForm} />
     </div>
   );
 };
