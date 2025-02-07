@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, FileText, Calendar } from "lucide-react";
 import { FinanceiroForm } from "@/components/forms/FinanceiroForm";
+import { Link } from "react-router-dom";
 
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
@@ -52,6 +53,21 @@ const Financeiro = () => {
             <div className="text-2xl font-semibold">R$ 0,00</div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="flex gap-4">
+        <Link to="/relatorio-mensal">
+          <Button variant="outline">
+            <Calendar className="mr-2" />
+            Relatório Mensal
+          </Button>
+        </Link>
+        <Link to="/relatorio-anual">
+          <Button variant="outline">
+            <FileText className="mr-2" />
+            Relatório Anual
+          </Button>
+        </Link>
       </div>
 
       <Card>
