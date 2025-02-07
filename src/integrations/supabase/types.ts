@@ -12,7 +12,9 @@ export type Database = {
       appointments: {
         Row: {
           barber: string
+          barber_id: string | null
           client_email: string
+          client_id: string | null
           client_name: string
           client_phone: string
           created_at: string | null
@@ -25,7 +27,9 @@ export type Database = {
         }
         Insert: {
           barber: string
+          barber_id?: string | null
           client_email: string
+          client_id?: string | null
           client_name: string
           client_phone: string
           created_at?: string | null
@@ -38,7 +42,9 @@ export type Database = {
         }
         Update: {
           barber?: string
+          barber_id?: string | null
           client_email?: string
+          client_id?: string | null
           client_name?: string
           client_phone?: string
           created_at?: string | null
@@ -47,6 +53,120 @@ export type Database = {
           service?: string
           status?: string
           time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      barbers: {
+        Row: {
+          commission_rate: number
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string
+          specialty: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          commission_rate: number
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          phone: string
+          specialty?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          specialty?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          date: string
+          description: string
+          id?: string
+          notes?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          type?: string
           updated_at?: string | null
         }
         Relationships: []
