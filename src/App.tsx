@@ -1,3 +1,4 @@
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,6 +11,8 @@ import Agendamentos from "./pages/Agendamentos";
 import Clientes from "./pages/Clientes";
 import Barbeiros from "./pages/Barbeiros";
 import Financeiro from "./pages/Financeiro";
+import RelatorioMensal from "./pages/RelatorioMensal";
+import RelatorioAnual from "./pages/RelatorioAnual";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +34,8 @@ const App = () => (
                 <Route path="/clientes" element={<Clientes />} />
                 <Route path="/barbeiros" element={<Barbeiros />} />
                 <Route path="/financeiro" element={<Financeiro />} />
+                <Route path="/relatorio-mensal" element={<RelatorioMensal />} />
+                <Route path="/relatorio-anual" element={<RelatorioAnual />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
