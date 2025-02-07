@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Calendar } from "lucide-react";
-import { FinanceiroForm } from "@/components/forms/FinanceiroForm";
+import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
 import { Link } from "react-router-dom";
 
 const Financeiro = () => {
