@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -95,6 +96,9 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
           <DialogTitle>
             {tipo === "receita" ? "Nova Receita" : "Nova Despesa"}
           </DialogTitle>
+          <DialogDescription>
+            Preencha os campos abaixo para cadastrar uma nova {tipo === "receita" ? "receita" : "despesa"}.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -230,3 +234,4 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
     </Dialog>
   );
 }
+
