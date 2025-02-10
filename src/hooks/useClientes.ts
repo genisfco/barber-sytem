@@ -57,9 +57,78 @@ export function useClientes() {
     },
   });
 
+  const updateCliente = useMutation({
+    mutationFn: async (cliente: Cliente) => {
+      const { data, error } = await supabase
+        .from("clients")
+        .update({
+          name: cliente.name,
+          email: cliente.email,
+          phone: cliente.phone,
+          notes: cliente.notes,
+        })
+        .eq("id", cliente.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Erro ao atualizar cliente:", error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      toast({
+        title: "Cliente atualizado com sucesso!",
+        description: "As informações do cliente foram atualizadas.",
+      });
+    },
+    onError: (error) => {
+      console.error("Erro na mutação:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar cliente",
+        description: "Ocorreu um erro ao tentar atualizar o cliente. Tente novamente.",
+      });
+    },
+  });
+
+  const deleteCliente = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error("Erro ao excluir cliente:", error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      toast({
+        title: "Cliente excluído com sucesso!",
+        description: "O cliente foi removido da sua lista.",
+      });
+    },
+    onError: (error) => {
+      console.error("Erro na mutação:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir cliente",
+        description: "Ocorreu um erro ao tentar excluir o cliente. Tente novamente.",
+      });
+    },
+  });
+
   return {
     clientes,
     isLoading,
     createCliente,
+    updateCliente,
+    deleteCliente,
   };
 }

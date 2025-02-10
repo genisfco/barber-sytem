@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2 } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
@@ -21,13 +31,40 @@ type ClienteFormData = Omit<Cliente, "id" | "created_at" | "updated_at">;
 const Clientes = () => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { register, handleSubmit, reset } = useForm<ClienteFormData>();
-  const { clientes, isLoading, createCliente } = useClientes();
+  const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { register, handleSubmit, reset, setValue } = useForm<ClienteFormData>();
+  const { clientes, isLoading, createCliente, updateCliente, deleteCliente } = useClientes();
 
   const onSubmit = async (data: ClienteFormData) => {
-    await createCliente.mutateAsync(data);
+    if (selectedClient) {
+      await updateCliente.mutateAsync({ ...data, id: selectedClient.id });
+    } else {
+      await createCliente.mutateAsync(data);
+    }
     setOpen(false);
+    setSelectedClient(null);
     reset();
+  };
+
+  const handleEdit = (cliente: Cliente) => {
+    setSelectedClient(cliente);
+    setValue("name", cliente.name);
+    setValue("email", cliente.email);
+    setValue("phone", cliente.phone);
+    setValue("notes", cliente.notes || "");
+    setOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteCliente.mutateAsync(id);
+    setDeleteDialogOpen(false);
+    setSelectedClient(null);
+  };
+
+  const handleOpenDeleteDialog = (cliente: Cliente) => {
+    setSelectedClient(cliente);
+    setDeleteDialogOpen(true);
   };
 
   const filteredClientes = clientes?.filter((cliente) =>
@@ -40,7 +77,13 @@ const Clientes = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-display text-barber-dark">Clientes</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(newOpen) => {
+          if (!newOpen) {
+            setSelectedClient(null);
+            reset();
+          }
+          setOpen(newOpen);
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2" />
@@ -49,7 +92,9 @@ const Clientes = () => {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              <DialogTitle>
+                {selectedClient ? "Editar Cliente" : "Cadastrar Novo Cliente"}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
@@ -89,18 +134,25 @@ const Clientes = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    setSelectedClient(null);
+                    reset();
+                  }}
                 >
                   <X className="mr-2 h-4 w-4" />
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createCliente.isPending}>
-                  {createCliente.isPending ? (
+                <Button 
+                  type="submit" 
+                  disabled={createCliente.isPending || updateCliente.isPending}
+                >
+                  {(createCliente.isPending || updateCliente.isPending) ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Plus className="mr-2 h-4 w-4" />
                   )}
-                  Cadastrar
+                  {selectedClient ? "Salvar" : "Cadastrar"}
                 </Button>
               </div>
             </form>
@@ -150,12 +202,57 @@ const Clientes = () => {
                       </div>
                     )}
                   </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(cliente)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleOpenDeleteDialog(cliente)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cliente {selectedClient?.name}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setSelectedClient(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedClient && handleDelete(selectedClient.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCliente.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
