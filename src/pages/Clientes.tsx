@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, X, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,29 +13,28 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { useToast } from "@/hooks/use-toast";
+import { useClientes } from "@/hooks/useClientes";
+import type { Cliente } from "@/types/cliente";
 
-interface ClienteFormData {
-  nome: string;
-  email: string;
-  telefone: string;
-  observacoes: string;
-}
+type ClienteFormData = Omit<Cliente, "id" | "created_at" | "updated_at">;
 
 const Clientes = () => {
   const [open, setOpen] = useState(false);
-  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
   const { register, handleSubmit, reset } = useForm<ClienteFormData>();
+  const { clientes, isLoading, createCliente } = useClientes();
 
-  const onSubmit = (data: ClienteFormData) => {
-    console.log(data);
-    toast({
-      title: "Cliente cadastrado com sucesso!",
-      description: `${data.nome} foi adicionado à sua lista de clientes.`,
-    });
+  const onSubmit = async (data: ClienteFormData) => {
+    await createCliente.mutateAsync(data);
     setOpen(false);
     reset();
   };
+
+  const filteredClientes = clientes?.filter((cliente) =>
+    cliente.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.phone.includes(searchTerm)
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -53,11 +53,11 @@ const Clientes = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nome">Nome completo</Label>
+                <Label htmlFor="name">Nome completo</Label>
                 <Input
-                  id="nome"
+                  id="name"
                   placeholder="Digite o nome do cliente"
-                  {...register("nome")}
+                  {...register("name")}
                 />
               </div>
               <div className="space-y-2">
@@ -70,19 +70,19 @@ const Clientes = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone</Label>
+                <Label htmlFor="phone">Telefone</Label>
                 <Input
-                  id="telefone"
+                  id="phone"
                   placeholder="Digite o telefone do cliente"
-                  {...register("telefone")}
+                  {...register("phone")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="observacoes">Observações</Label>
+                <Label htmlFor="notes">Observações</Label>
                 <Input
-                  id="observacoes"
+                  id="notes"
                   placeholder="Adicione observações sobre o cliente"
-                  {...register("observacoes")}
+                  {...register("notes")}
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -94,8 +94,12 @@ const Clientes = () => {
                   <X className="mr-2 h-4 w-4" />
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button type="submit" disabled={createCliente.isPending}>
+                  {createCliente.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
                   Cadastrar
                 </Button>
               </div>
@@ -114,12 +118,42 @@ const Clientes = () => {
             <input
               type="search"
               placeholder="Buscar cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
             />
           </div>
-          <div className="mt-6 text-muted-foreground">
-            Nenhum cliente cadastrado.
-          </div>
+          
+          {isLoading ? (
+            <div className="mt-6 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredClientes?.length === 0 ? (
+            <div className="mt-6 text-muted-foreground">
+              Nenhum cliente encontrado.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {filteredClientes?.map((cliente) => (
+                <div
+                  key={cliente.id}
+                  className="flex items-center justify-between p-4 rounded-lg border"
+                >
+                  <div>
+                    <h3 className="font-medium">{cliente.name}</h3>
+                    <div className="text-sm text-muted-foreground">
+                      {cliente.email} • {cliente.phone}
+                    </div>
+                    {cliente.notes && (
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {cliente.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
