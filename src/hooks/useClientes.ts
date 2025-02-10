@@ -11,14 +11,19 @@ export function useClientes() {
   const { data: clientes, isLoading } = useQuery({
     queryKey: ["clientes"],
     queryFn: async () => {
-      console.log("Buscando clientes...");
+      console.log("Iniciando busca de clientes...");
       const { data, error } = await supabase
         .from("clients")
         .select("*")
         .order("name");
 
       if (error) {
-        console.error("Erro detalhado ao buscar clientes:", error);
+        console.error("Erro detalhado ao buscar clientes:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
@@ -29,7 +34,14 @@ export function useClientes() {
 
   const createCliente = useMutation({
     mutationFn: async (cliente: Omit<Cliente, "id">) => {
-      console.log("Tentando criar cliente:", cliente);
+      console.log("Iniciando criação do cliente com dados:", cliente);
+      
+      const session = await supabase.auth.getSession();
+      console.log("Status da sessão:", {
+        hasSession: !!session.data.session,
+        accessToken: session.data.session?.access_token ? "Presente" : "Ausente"
+      });
+
       const { data, error } = await supabase
         .from("clients")
         .insert(cliente)
@@ -37,7 +49,13 @@ export function useClientes() {
         .single();
 
       if (error) {
-        console.error("Erro detalhado ao criar cliente:", error);
+        console.error("Erro detalhado ao criar cliente:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          cliente: cliente
+        });
         throw error;
       }
 
@@ -51,19 +69,19 @@ export function useClientes() {
         description: "O cliente foi adicionado à sua lista.",
       });
     },
-    onError: (error) => {
-      console.error("Erro detalhado na mutação:", error);
+    onError: (error: any) => {
+      console.error("Erro completo na mutação:", error);
       toast({
         variant: "destructive",
         title: "Erro ao cadastrar cliente",
-        description: "Ocorreu um erro ao tentar cadastrar o cliente. Tente novamente.",
+        description: error.message || "Ocorreu um erro ao tentar cadastrar o cliente. Tente novamente.",
       });
     },
   });
 
   const updateCliente = useMutation({
     mutationFn: async (cliente: Cliente) => {
-      console.log("Tentando atualizar cliente:", cliente);
+      console.log("Iniciando atualização do cliente:", cliente);
       const { data, error } = await supabase
         .from("clients")
         .update({
@@ -77,7 +95,12 @@ export function useClientes() {
         .single();
 
       if (error) {
-        console.error("Erro detalhado ao atualizar cliente:", error);
+        console.error("Erro detalhado ao atualizar cliente:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
@@ -91,26 +114,31 @@ export function useClientes() {
         description: "As informações do cliente foram atualizadas.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Erro detalhado na mutação de atualização:", error);
       toast({
         variant: "destructive",
         title: "Erro ao atualizar cliente",
-        description: "Ocorreu um erro ao tentar atualizar o cliente. Tente novamente.",
+        description: error.message || "Ocorreu um erro ao tentar atualizar o cliente. Tente novamente.",
       });
     },
   });
 
   const deleteCliente = useMutation({
     mutationFn: async (id: string) => {
-      console.log("Tentando excluir cliente:", id);
+      console.log("Iniciando exclusão do cliente:", id);
       const { error } = await supabase
         .from("clients")
         .delete()
         .eq("id", id);
 
       if (error) {
-        console.error("Erro detalhado ao excluir cliente:", error);
+        console.error("Erro detalhado ao excluir cliente:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
@@ -123,12 +151,12 @@ export function useClientes() {
         description: "O cliente foi removido da sua lista.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Erro detalhado na mutação de exclusão:", error);
       toast({
         variant: "destructive",
         title: "Erro ao excluir cliente",
-        description: "Ocorreu um erro ao tentar excluir o cliente. Tente novamente.",
+        description: error.message || "Ocorreu um erro ao tentar excluir o cliente. Tente novamente.",
       });
     },
   });
