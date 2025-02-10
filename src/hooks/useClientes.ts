@@ -11,22 +11,25 @@ export function useClientes() {
   const { data: clientes, isLoading } = useQuery({
     queryKey: ["clientes"],
     queryFn: async () => {
+      console.log("Buscando clientes...");
       const { data, error } = await supabase
         .from("clients")
         .select("*")
         .order("name");
 
       if (error) {
-        console.error("Erro ao buscar clientes:", error);
+        console.error("Erro detalhado ao buscar clientes:", error);
         throw error;
       }
 
+      console.log("Clientes encontrados:", data);
       return data as Cliente[];
     },
   });
 
   const createCliente = useMutation({
     mutationFn: async (cliente: Omit<Cliente, "id">) => {
+      console.log("Tentando criar cliente:", cliente);
       const { data, error } = await supabase
         .from("clients")
         .insert(cliente)
@@ -34,10 +37,11 @@ export function useClientes() {
         .single();
 
       if (error) {
-        console.error("Erro ao criar cliente:", error);
+        console.error("Erro detalhado ao criar cliente:", error);
         throw error;
       }
 
+      console.log("Cliente criado com sucesso:", data);
       return data;
     },
     onSuccess: () => {
@@ -48,7 +52,7 @@ export function useClientes() {
       });
     },
     onError: (error) => {
-      console.error("Erro na mutação:", error);
+      console.error("Erro detalhado na mutação:", error);
       toast({
         variant: "destructive",
         title: "Erro ao cadastrar cliente",
@@ -59,6 +63,7 @@ export function useClientes() {
 
   const updateCliente = useMutation({
     mutationFn: async (cliente: Cliente) => {
+      console.log("Tentando atualizar cliente:", cliente);
       const { data, error } = await supabase
         .from("clients")
         .update({
@@ -72,10 +77,11 @@ export function useClientes() {
         .single();
 
       if (error) {
-        console.error("Erro ao atualizar cliente:", error);
+        console.error("Erro detalhado ao atualizar cliente:", error);
         throw error;
       }
 
+      console.log("Cliente atualizado com sucesso:", data);
       return data;
     },
     onSuccess: () => {
@@ -86,7 +92,7 @@ export function useClientes() {
       });
     },
     onError: (error) => {
-      console.error("Erro na mutação:", error);
+      console.error("Erro detalhado na mutação de atualização:", error);
       toast({
         variant: "destructive",
         title: "Erro ao atualizar cliente",
@@ -97,15 +103,18 @@ export function useClientes() {
 
   const deleteCliente = useMutation({
     mutationFn: async (id: string) => {
+      console.log("Tentando excluir cliente:", id);
       const { error } = await supabase
         .from("clients")
         .delete()
         .eq("id", id);
 
       if (error) {
-        console.error("Erro ao excluir cliente:", error);
+        console.error("Erro detalhado ao excluir cliente:", error);
         throw error;
       }
+
+      console.log("Cliente excluído com sucesso");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientes"] });
@@ -115,7 +124,7 @@ export function useClientes() {
       });
     },
     onError: (error) => {
-      console.error("Erro na mutação:", error);
+      console.error("Erro detalhado na mutação de exclusão:", error);
       toast({
         variant: "destructive",
         title: "Erro ao excluir cliente",
