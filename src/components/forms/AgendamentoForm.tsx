@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +26,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { useClientes } from "@/hooks/useClientes";
+import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useAgendamentos } from "@/hooks/useAgendamentos";
 
 const formSchema = z.object({
   clienteId: z.string({
@@ -71,17 +74,6 @@ const horarios = [
   "18:00",
 ];
 
-// Dados mockados para exemplo
-const clientes = [
-  { id: "1", nome: "João Silva" },
-  { id: "2", nome: "Maria Santos" },
-];
-
-const barbeiros = [
-  { id: "1", nome: "Carlos Oliveira" },
-  { id: "2", nome: "Pedro Costa" },
-];
-
 interface AgendamentoFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -89,14 +81,35 @@ interface AgendamentoFormProps {
 
 export function AgendamentoForm({ open, onOpenChange }: AgendamentoFormProps) {
   const [date, setDate] = useState<Date>();
+  const { clientes } = useClientes();
+  const { barbeiros } = useBarbeiros();
+  const { createAgendamento } = useAgendamentos();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast.success("Agendamento realizado com sucesso!");
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    const cliente = clientes?.find((c) => c.id === values.clienteId);
+    const barbeiro = barbeiros?.find((b) => b.id === values.barbeiroId);
+    const servico = servicos.find((s) => s.id === values.servico);
+
+    if (!cliente || !barbeiro || !servico) {
+      return;
+    }
+
+    await createAgendamento.mutateAsync({
+      date: values.data.toISOString().split('T')[0],
+      time: values.horario,
+      client_id: cliente.id,
+      client_name: cliente.name,
+      client_email: cliente.email,
+      client_phone: cliente.phone,
+      barber_id: barbeiro.id,
+      barber: barbeiro.name,
+      service: servico.nome,
+    });
+
     onOpenChange(false);
     form.reset();
   }
@@ -122,9 +135,9 @@ export function AgendamentoForm({ open, onOpenChange }: AgendamentoFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {clientes.map((cliente) => (
+                      {clientes?.map((cliente) => (
                         <SelectItem key={cliente.id} value={cliente.id}>
-                          {cliente.nome}
+                          {cliente.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -147,9 +160,9 @@ export function AgendamentoForm({ open, onOpenChange }: AgendamentoFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {barbeiros.map((barbeiro) => (
+                      {barbeiros?.map((barbeiro) => (
                         <SelectItem key={barbeiro.id} value={barbeiro.id}>
-                          {barbeiro.nome}
+                          {barbeiro.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
