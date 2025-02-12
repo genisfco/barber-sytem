@@ -51,6 +51,18 @@ const Barbeiros = () => {
   const { barbeiros, isLoading, createBarbeiro, updateBarbeiro, deleteBarbeiro } = useBarbeiros();
   const { register, handleSubmit, reset, setValue } = useForm<BarbeiroFormData>();
 
+  const handleOpenNewDialog = () => {
+    setEditingBarbeiro(null);
+    reset({
+      name: "",
+      email: "",
+      phone: "",
+      specialty: "",
+      commission_rate: "",
+    });
+    setOpen(true);
+  };
+
   const handleOpenEditDialog = (barbeiro: any) => {
     setEditingBarbeiro(barbeiro);
     setValue("name", barbeiro.name);
@@ -111,80 +123,79 @@ const Barbeiros = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-display text-barber-dark">Barbeiros</h1>
-        <Dialog open={open} onOpenChange={handleDialogClose}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2" />
-              Novo Barbeiro
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingBarbeiro ? "Editar Barbeiro" : "Cadastrar Novo Barbeiro"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome completo</Label>
-                <Input
-                  id="name"
-                  placeholder="Digite o nome do barbeiro"
-                  {...register("name")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Digite o e-mail do barbeiro"
-                  {...register("email")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  placeholder="Digite o telefone do barbeiro"
-                  {...register("phone")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="specialty">Especialidade</Label>
-                <Input
-                  id="specialty"
-                  placeholder="Digite a especialidade do barbeiro"
-                  {...register("specialty")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="commission_rate">Comissão (%)</Label>
-                <Input
-                  id="commission_rate"
-                  type="number"
-                  placeholder="Digite a porcentagem de comissão"
-                  {...register("commission_rate")}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDialogClose}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {editingBarbeiro ? "Atualizar" : "Cadastrar"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleOpenNewDialog}>
+          <Plus className="mr-2" />
+          Novo Barbeiro
+        </Button>
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingBarbeiro ? "Editar Barbeiro" : "Cadastrar Novo Barbeiro"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome completo</Label>
+              <Input
+                id="name"
+                placeholder="Digite o nome do barbeiro"
+                {...register("name")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Digite o e-mail do barbeiro"
+                {...register("email")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                placeholder="Digite o telefone do barbeiro"
+                {...register("phone")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="specialty">Especialidade</Label>
+              <Input
+                id="specialty"
+                placeholder="Digite a especialidade do barbeiro"
+                {...register("specialty")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="commission_rate">Comissão (%)</Label>
+              <Input
+                id="commission_rate"
+                type="number"
+                placeholder="Digite a porcentagem de comissão"
+                {...register("commission_rate")}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDialogClose}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancelar
+              </Button>
+              <Button type="submit">
+                <Plus className="mr-2 h-4 w-4" />
+                {editingBarbeiro ? "Atualizar" : "Cadastrar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
