@@ -5,10 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Plus, FileText, Calendar } from "lucide-react";
 import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
 import { Link } from "react-router-dom";
+import { useTransacoes } from "@/hooks/useTransacoes";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
   const [openReceita, setOpenReceita] = useState(false);
+  const { transacoes, isLoading, totais } = useTransacoes();
+
+  const formatMoney = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -32,7 +51,9 @@ const Financeiro = () => {
             <CardTitle className="text-green-600">Receitas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">R$ 0,00</div>
+            <div className="text-2xl font-semibold">
+              {formatMoney(totais.receitas)}
+            </div>
           </CardContent>
         </Card>
 
@@ -41,7 +62,9 @@ const Financeiro = () => {
             <CardTitle className="text-red-600">Despesas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">R$ 0,00</div>
+            <div className="text-2xl font-semibold">
+              {formatMoney(totais.despesas)}
+            </div>
           </CardContent>
         </Card>
 
@@ -50,7 +73,9 @@ const Financeiro = () => {
             <CardTitle>Saldo</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">R$ 0,00</div>
+            <div className="text-2xl font-semibold">
+              {formatMoney(totais.saldo)}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -75,9 +100,46 @@ const Financeiro = () => {
           <CardTitle>Histórico de Transações</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-muted-foreground">
-            Nenhuma transação registrada.
-          </div>
+          {isLoading ? (
+            <div>Carregando...</div>
+          ) : !transacoes?.length ? (
+            <div className="text-muted-foreground">
+              Nenhuma transação registrada.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transacoes.map((transacao) => (
+                  <TableRow key={transacao.id}>
+                    <TableCell>
+                      {format(new Date(transacao.date), "dd/MM/yyyy", {
+                        locale: ptBR,
+                      })}
+                    </TableCell>
+                    <TableCell>{transacao.description}</TableCell>
+                    <TableCell>{transacao.category}</TableCell>
+                    <TableCell
+                      className={`text-right ${
+                        transacao.type === "receita"
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {formatMoney(transacao.amount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

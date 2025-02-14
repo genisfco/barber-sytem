@@ -15,19 +15,34 @@ import { Form } from "@/components/ui/form";
 
 import { FormFields } from "./FormFields";
 import { formSchema, type FinanceiroFormProps, type FormValues } from "./types";
+import { useTransacoes } from "@/hooks/useTransacoes";
 
 export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps) {
+  const { createTransacao } = useTransacoes();
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
 
-  function onSubmit(values: FormValues) {
-    console.log(values);
-    toast.success(
-      `${tipo === "receita" ? "Receita" : "Despesa"} cadastrada com sucesso!`
-    );
-    onOpenChange(false);
-    form.reset();
+  async function onSubmit(values: FormValues) {
+    try {
+      await createTransacao.mutateAsync({
+        type: tipo,
+        amount: Number(values.valor),
+        description: values.descricao,
+        category: values.categoria,
+        date: values.data.toISOString().split('T')[0],
+        notes: values.observacao,
+      });
+
+      toast.success(
+        `${tipo === "receita" ? "Receita" : "Despesa"} cadastrada com sucesso!`
+      );
+      onOpenChange(false);
+      form.reset();
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   return (
@@ -61,4 +76,3 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
     </Dialog>
   );
 }
-
