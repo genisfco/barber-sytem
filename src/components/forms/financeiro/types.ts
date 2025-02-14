@@ -20,4 +20,3 @@ export type FinanceiroFormProps = {
   onOpenChange: (open: boolean) => void;
   tipo: "receita" | "despesa";
 };
-

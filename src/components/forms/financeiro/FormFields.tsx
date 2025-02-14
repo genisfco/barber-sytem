@@ -160,4 +160,3 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
     </>
   );
 }
-

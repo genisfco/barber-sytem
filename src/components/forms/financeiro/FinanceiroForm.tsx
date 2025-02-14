@@ -22,6 +22,9 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      data: new Date(),
+    },
   });
 
   async function onSubmit(values: FormValues) {
