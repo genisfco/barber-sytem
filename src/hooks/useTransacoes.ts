@@ -2,7 +2,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { addHours } from "date-fns";
 
 export type Transacao = {
   id: string;
@@ -21,6 +20,7 @@ export function useTransacoes() {
   const { data: transacoes, isLoading } = useQuery({
     queryKey: ["transacoes"],
     queryFn: async () => {
+      console.log("Buscando transações...");
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
@@ -31,22 +31,18 @@ export function useTransacoes() {
         throw error;
       }
 
+      console.log("Transações retornadas:", data);
       return data as Transacao[];
     },
   });
 
   const createTransacao = useMutation({
     mutationFn: async (transacao: Omit<Transacao, "id" | "created_at">) => {
-      // Ajusta a data para o fuso horário local
-      const localDate = addHours(new Date(transacao.date), 3);
-      const adjustedTransacao = {
-        ...transacao,
-        date: localDate.toISOString().split('T')[0],
-      };
-
+      console.log("Dados a serem salvos:", transacao);
+      
       const { data, error } = await supabase
         .from("transactions")
-        .insert(adjustedTransacao)
+        .insert(transacao)
         .select()
         .single();
 
@@ -55,6 +51,7 @@ export function useTransacoes() {
         throw error;
       }
 
+      console.log("Transação salva:", data);
       return data;
     },
     onSuccess: () => {
