@@ -11,11 +11,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useState } from "react";
+import { AgendamentoForm } from "../forms/AgendamentoForm";
 
 interface Agendamento {
   id: string;
+  date: string;
   time: string;
+  client_id: string;
   client_name: string;
+  client_email: string;
+  client_phone: string;
+  barber_id: string;
   barber: string;
   service: string;
   status: string;
@@ -28,6 +35,8 @@ interface AgendamentosTableProps {
 
 export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTableProps) {
   const { updateAgendamento } = useAgendamentos(new Date());
+  const [openEditForm, setOpenEditForm] = useState(false);
+  const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
 
   const agendamentosDoDia = agendamentos?.sort((a, b) => 
     a.time.localeCompare(b.time)
@@ -47,72 +56,85 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
     });
   };
 
+  const handleEditar = (agendamento: Agendamento) => {
+    setAgendamentoParaEditar(agendamento);
+    setOpenEditForm(true);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Agendamentos do Dia</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-center py-4">Carregando...</div>
-        ) : agendamentosDoDia?.length === 0 ? (
-          <div className="text-muted-foreground">
-            Nenhum agendamento para hoje.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Horário</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Barbeiro</TableHead>
-                <TableHead>Serviço</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agendamentosDoDia?.map((agendamento) => (
-                <TableRow key={agendamento.id}>
-                  <TableCell>{agendamento.time}</TableCell>
-                  <TableCell>{agendamento.client_name}</TableCell>
-                  <TableCell>{agendamento.barber}</TableCell>
-                  <TableCell>{agendamento.service}</TableCell>
-                  <TableCell>{agendamento.status}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleConfirmar(agendamento.id)}
-                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleCancelar(agendamento.id)}
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {}} // Será implementado posteriormente
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Agendamentos do Dia</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-4">Carregando...</div>
+          ) : agendamentosDoDia?.length === 0 ? (
+            <div className="text-muted-foreground">
+              Nenhum agendamento para hoje.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Horário</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Barbeiro</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {agendamentosDoDia?.map((agendamento) => (
+                  <TableRow key={agendamento.id}>
+                    <TableCell>{agendamento.time}</TableCell>
+                    <TableCell>{agendamento.client_name}</TableCell>
+                    <TableCell>{agendamento.barber}</TableCell>
+                    <TableCell>{agendamento.service}</TableCell>
+                    <TableCell>{agendamento.status}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleConfirmar(agendamento.id)}
+                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleCancelar(agendamento.id)}
+                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditar(agendamento)}
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <AgendamentoForm 
+        open={openEditForm} 
+        onOpenChange={setOpenEditForm}
+        agendamentoParaEditar={agendamentoParaEditar}
+      />
+    </>
   );
 }
