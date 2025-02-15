@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, endOfMonth } from "date-fns";
 
 export type RelatorioData = {
   receitas: number;
@@ -26,8 +26,14 @@ export function useRelatorios() {
       queryFn: async () => {
         console.log("Buscando relatório mensal...", { mes, ano });
         
+        // Cria uma data do primeiro dia do mês
         const startDate = `${ano}-${mes.padStart(2, "0")}-01`;
-        const endDate = `${ano}-${mes.padStart(2, "0")}-31`;
+        
+        // Calcula o último dia do mês usando endOfMonth
+        const lastDay = endOfMonth(new Date(Number(ano), Number(mes) - 1));
+        const endDate = format(lastDay, "yyyy-MM-dd");
+
+        console.log("Período da busca:", { startDate, endDate });
 
         const { data, error } = await supabase
           .from("transactions")
