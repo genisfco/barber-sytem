@@ -48,7 +48,7 @@ const Financeiro = () => {
       <div className="grid md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-green-600">Receitas</CardTitle>
+            <CardTitle className="text-green-600">Receitas Hoje</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
@@ -59,7 +59,7 @@ const Financeiro = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-red-600">Despesas</CardTitle>
+            <CardTitle className="text-red-600">Despesas Hoje</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
@@ -70,7 +70,7 @@ const Financeiro = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Saldo</CardTitle>
+            <CardTitle>Saldo Hoje</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
