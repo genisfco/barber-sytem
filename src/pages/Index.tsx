@@ -1,24 +1,48 @@
+
 import { Card } from "@/components/ui/card";
 import { Calendar, DollarSign, Users, Clock, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useTransacoes } from "@/hooks/useTransacoes";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Index = () => {
+  const today = new Date();
+  const { agendamentos } = useAgendamentos(today);
+  const { totais } = useTransacoes();
+
+  const agendamentosHoje = agendamentos?.filter(
+    (agendamento) => agendamento.date === format(today, "yyyy-MM-dd")
+  );
+
+  const proximosAgendamentos = agendamentosHoje
+    ?.sort((a, b) => a.time.localeCompare(b.time))
+    ?.slice(0, 3);
+
+  const formatMoney = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
   const stats = [
     {
       title: "Agendamentos Hoje",
-      value: "12",
+      value: agendamentosHoje?.length.toString() || "0",
       icon: Calendar,
       color: "text-blue-500",
     },
     {
       title: "Clientes Atendidos",
-      value: "48",
+      value: agendamentosHoje?.filter(a => a.status === "concluído")?.length.toString() || "0",
       icon: Users,
       color: "text-green-500",
     },
     {
       title: "Faturamento Diário",
-      value: "R$ 1.250",
+      value: formatMoney(totais.saldo),
       icon: DollarSign,
       color: "text-barber-gold",
     },
@@ -52,20 +76,31 @@ const Index = () => {
         <Card className="p-6">
           <h2 className="font-display text-xl mb-4">Próximos Agendamentos</h2>
           <div className="space-y-4">
-            {[1, 2, 3].map((_, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-barber-brown text-white flex items-center justify-center">
-                    {String.fromCharCode(65 + i)}
-                  </div>
-                  <div>
-                    <p className="font-medium">Cliente {i + 1}</p>
-                    <p className="text-sm text-muted-foreground">Corte + Barba</p>
-                  </div>
-                </div>
-                <p className="text-sm font-medium">14:3{i}</p>
+            {!proximosAgendamentos?.length ? (
+              <div className="text-muted-foreground">
+                Nenhum agendamento para hoje.
               </div>
-            ))}
+            ) : (
+              proximosAgendamentos.map((agendamento) => (
+                <div
+                  key={agendamento.id}
+                  className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full bg-barber-brown text-white flex items-center justify-center">
+                      {agendamento.client_name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-medium">{agendamento.client_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {agendamento.service}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium">{agendamento.time}</p>
+                </div>
+              ))
+            )}
           </div>
         </Card>
 
