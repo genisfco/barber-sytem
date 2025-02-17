@@ -36,7 +36,7 @@ const Index = () => {
     },
     {
       title: "Clientes Atendidos",
-      value: agendamentosHoje?.filter(a => a.status === "concluído")?.length.toString() || "0",
+      value: agendamentosHoje?.filter(a => a.status === "confirmado")?.length.toString() || "0",
       icon: Users,
       color: "text-green-500",
     },
