@@ -1,4 +1,3 @@
-
 export const servicos = [
   { id: "corte", nome: "Corte de Cabelo", valor: 45 },
   { id: "barba", nome: "Barba", valor: 35 },
@@ -23,4 +22,7 @@ export const horarios = [
   "17:00",
   "17:30",
   "18:00",
+  "18:30",
+  "19:00",
+  "19:30"  
 ] as const;
