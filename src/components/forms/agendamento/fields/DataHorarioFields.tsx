@@ -1,4 +1,3 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,13 +27,24 @@ export function DataHorarioFields({ form, date, setDate }: DataHorarioFieldsProp
       return true;
     }
 
-    // Se for hoje, só permite horários futuros
+    // Se for hoje, verifica o horário atual + 30 minutos
     const [horaAgendamento, minutoAgendamento] = horario.split(':').map(Number);
     const horaAtual = hoje.getHours();
     const minutoAtual = hoje.getMinutes();
 
-    if (horaAgendamento < horaAtual) return false;
-    if (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual) return false;
+    // Calcula o horário atual + 30 minutos
+    let horaComparacao = horaAtual;
+    let minutoComparacao = minutoAtual + 30;
+    
+    // Ajusta caso os minutos ultrapassem 60
+    if (minutoComparacao >= 60) {
+      horaComparacao += 1;
+      minutoComparacao -= 60;
+    }
+
+    // Compara os horários
+    if (horaAgendamento < horaComparacao) return false;
+    if (horaAgendamento === horaComparacao && minutoAgendamento < minutoComparacao) return false;
 
     return true;
   };
@@ -86,7 +96,7 @@ export function DataHorarioFields({ form, date, setDate }: DataHorarioFieldsProp
                   <SelectValue placeholder="Selecione o horário" />
                 </SelectTrigger>
               </FormControl>
-              <SelectContent>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 {horarios.map((horario) => (
                   <SelectItem 
                     key={horario} 

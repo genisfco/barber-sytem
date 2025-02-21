@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -120,7 +119,7 @@ const Financeiro = () => {
                 {transacoes.map((transacao) => (
                   <TableRow key={transacao.id}>
                     <TableCell>
-                      {format(new Date(transacao.date), "dd/MM/yyyy", {
+                      {format(new Date(`${transacao.date}T00:00:00`), "dd/MM/yyyy", {
                         locale: ptBR,
                       })}
                     </TableCell>

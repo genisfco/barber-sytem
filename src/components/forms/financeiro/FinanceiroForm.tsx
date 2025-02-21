@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -29,12 +28,15 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
 
   async function onSubmit(values: FormValues) {
     try {
+      const data = new Date(values.data);
+      data.setHours(0, 0, 0, 0);
+
       await createTransacao.mutateAsync({
         type: tipo,
         amount: Number(values.valor),
         description: values.descricao,
         category: values.categoria,
-        date: values.data.toISOString().split('T')[0],
+        date: data.toISOString().split('T')[0],
         notes: values.observacao,
       });
 
