@@ -21,11 +21,11 @@ export function ClienteField({ form }: ClienteFieldProps) {
           <FormLabel>Cliente</FormLabel>
           <Select onValueChange={field.onChange} defaultValue={field.value}>
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className="truncate">
                 <SelectValue placeholder="Selecione o cliente" />
               </SelectTrigger>
             </FormControl>
-            <SelectContent>
+            <SelectContent className="max-h-[200px]">
               {clientes?.map((cliente) => (
                 <SelectItem key={cliente.id} value={cliente.id}>
                   {cliente.name}

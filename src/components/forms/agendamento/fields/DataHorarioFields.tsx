@@ -1,3 +1,4 @@
+
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -58,7 +59,7 @@ export function DataHorarioFields({ form, date, setDate }: DataHorarioFieldsProp
   };
 
   return (
-    <>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <FormField
         control={form.control}
         name="data"
@@ -77,7 +78,7 @@ export function DataHorarioFields({ form, date, setDate }: DataHorarioFieldsProp
                 }
               }}
               disabled={isDateDisabled}
-              className="rounded-md border"
+              className="rounded-md border w-full max-w-[300px] mx-auto md:mx-0"
             />
             <FormMessage />
           </FormItem>
@@ -88,30 +89,32 @@ export function DataHorarioFields({ form, date, setDate }: DataHorarioFieldsProp
         control={form.control}
         name="horario"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="flex flex-col h-full">
             <FormLabel>Horário</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o horário" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent className="max-h-[300px] overflow-y-auto">
-                {horarios.map((horario) => (
-                  <SelectItem 
-                    key={horario} 
-                    value={horario}
-                    disabled={!isHorarioDisponivel(horario)}
-                  >
-                    {horario}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex-1 flex items-center">
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o horário" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-[300px] overflow-y-auto">
+                  {horarios.map((horario) => (
+                    <SelectItem 
+                      key={horario} 
+                      value={horario}
+                      disabled={!isHorarioDisponivel(horario)}
+                    >
+                      {horario}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <FormMessage />
           </FormItem>
         )}
       />
-    </>
+    </div>
   );
 }

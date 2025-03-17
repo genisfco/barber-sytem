@@ -9,8 +9,21 @@ import { AgendamentosTable } from "@/components/agendamentos/AgendamentosTable";
 const Agendamentos = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [openForm, setOpenForm] = useState(false);
+  const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>(undefined);
   
   const { agendamentos, isLoading } = useAgendamentos(date);
+
+  const handleEditAgendamento = (agendamento: any) => {
+    setAgendamentoParaEditar(agendamento);
+    setOpenForm(true);
+  };
+
+  const handleCloseForm = (open: boolean) => {
+    setOpenForm(open);
+    if (!open) {
+      setAgendamentoParaEditar(undefined);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -24,10 +37,15 @@ const Agendamentos = () => {
         <AgendamentosTable 
           agendamentos={agendamentos}
           isLoading={isLoading}
+          onEditAgendamento={handleEditAgendamento}
         />
       </div>
 
-      <AgendamentoForm open={openForm} onOpenChange={setOpenForm} />
+      <AgendamentoForm 
+        open={openForm} 
+        onOpenChange={handleCloseForm} 
+        agendamentoParaEditar={agendamentoParaEditar}
+      />
     </div>
   );
 };

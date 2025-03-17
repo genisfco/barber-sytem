@@ -21,11 +21,11 @@ export function BarbeiroField({ form }: BarbeiroFieldProps) {
           <FormLabel>Barbeiro</FormLabel>
           <Select onValueChange={field.onChange} defaultValue={field.value}>
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className="truncate">
                 <SelectValue placeholder="Selecione o barbeiro" />
               </SelectTrigger>
             </FormControl>
-            <SelectContent>
+            <SelectContent className="max-h-[200px]">
               {barbeiros?.map((barbeiro) => (
                 <SelectItem key={barbeiro.id} value={barbeiro.id}>
                   {barbeiro.name}

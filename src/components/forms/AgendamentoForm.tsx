@@ -101,20 +101,22 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[650px] p-4 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-center">
             {agendamentoParaEditar ? "Editar Agendamento" : "Novo Agendamento"}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <ClienteField form={form} />
-            <BarbeiroField form={form} />
-            <ServicoField form={form} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ClienteField form={form} />
+              <BarbeiroField form={form} />
+              <ServicoField form={form} />
+            </div>
             <DataHorarioFields form={form} date={date} setDate={setDate} />
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end space-x-2 pt-2">
               <Button
                 type="button"
                 variant="outline"

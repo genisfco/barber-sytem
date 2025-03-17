@@ -19,7 +19,7 @@ export function ServicoField({ form }: ServicoFieldProps) {
           <FormLabel>Serviço</FormLabel>
           <Select onValueChange={field.onChange} defaultValue={field.value}>
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className="truncate">
                 <SelectValue placeholder="Selecione o serviço" />
               </SelectTrigger>
             </FormControl>
