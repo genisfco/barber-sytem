@@ -37,7 +37,6 @@ const Agendamentos = () => {
         <AgendamentosTable 
           agendamentos={agendamentos}
           isLoading={isLoading}
-          onEditAgendamento={handleEditAgendamento}
         />
       </div>
 

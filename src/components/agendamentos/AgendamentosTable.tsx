@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, X, Pencil } from "lucide-react";
+import { Check, X, Pencil, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useState } from "react";
@@ -53,6 +53,13 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
     await updateAgendamento.mutateAsync({
       id,
       status: "cancelado"
+    });
+  };
+
+  const handleAtendido = async (id: string) => {
+    await updateAgendamento.mutateAsync({
+      id,
+      status: "atendido"
     });
   };
 
@@ -111,6 +118,15 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
                           className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleAtendido(agendamento.id)}
+                          className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                          title="Marcar como atendido"
+                        >
+                          <Scissors className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
