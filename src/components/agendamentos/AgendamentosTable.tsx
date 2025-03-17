@@ -108,34 +108,39 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
                           size="icon"
                           onClick={() => handleConfirmar(agendamento.id)}
                           className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                          title="Confirmar horário"
                         >
                           <Check className="h-4 w-4" />
                         </Button>
+                        
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleCancelar(agendamento.id)}
                           className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                          title="Cancelar agendamento"
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditar(agendamento)}
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                          title="Editar agendamento"
+                        >
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleAtendido(agendamento.id)}
                           className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
-                          title="Marcar como atendido"
+                          title="Cliente atendido"
                         >
                           <Scissors className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditar(agendamento)}
-                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        </Button>   
                       </div>
                     </TableCell>
                   </TableRow>
