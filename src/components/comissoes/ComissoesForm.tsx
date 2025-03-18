@@ -120,6 +120,7 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
                       onSelect={field.onChange}
                       locale={ptBR}
                       initialFocus
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -160,6 +161,7 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
                       onSelect={field.onChange}
                       locale={ptBR}
                       initialFocus
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
