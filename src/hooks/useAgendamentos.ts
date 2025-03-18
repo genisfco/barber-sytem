@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -91,21 +90,58 @@ export function useAgendamentos(date?: Date) {
 
   const updateAgendamento = useMutation({
     mutationFn: async (agendamento: Partial<Agendamento> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('appointments')
-        .update(agendamento)
-        .eq('id', agendamento.id)
-        .select()
-        .single();
+      try {
+        // 1. Primeiro, verificamos o status atual do agendamento
+        const { data: currentAppointment, error: fetchError } = await supabase
+          .from('appointments')
+          .select('status')
+          .eq('id', agendamento.id)
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (fetchError) throw fetchError;
+
+        // 2. Se o status atual era "atendido" e está sendo alterado para outro status
+        if (currentAppointment.status === 'atendido' && agendamento.status !== 'atendido') {
+          // Remove os lançamentos financeiros
+          const { error: deleteTransactionsError } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('notes', `Referente ao agendamento ID: ${agendamento.id}`);
+
+          if (deleteTransactionsError) throw deleteTransactionsError;
+
+          // Remove o registro de comissão
+          const { error: deleteCommissionError } = await supabase
+            .from('barber_commissions')
+            .delete()
+            .eq('appointment_id', agendamento.id);
+
+          if (deleteCommissionError) throw deleteCommissionError;
+        }
+
+        // 3. Atualiza o agendamento
+        const { data, error } = await supabase
+          .from('appointments')
+          .update(agendamento)
+          .eq('id', agendamento.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        console.error("Erro ao atualizar agendamento:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['transacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['transacoes-hoje'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes'] });
       toast({
         title: "Agendamento atualizado com sucesso!",
-        description: "As informações foram atualizadas.",
+        description: "As informações foram atualizadas e os registros financeiros foram ajustados.",
       });
     },
     onError: (error: any) => {
