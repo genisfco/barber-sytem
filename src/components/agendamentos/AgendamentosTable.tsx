@@ -34,7 +34,7 @@ interface AgendamentosTableProps {
 }
 
 export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTableProps) {
-  const { updateAgendamento } = useAgendamentos(new Date());
+  const { updateAgendamento, marcarComoAtendido } = useAgendamentos(new Date());
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
 
@@ -56,11 +56,8 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
     });
   };
 
-  const handleAtendido = async (id: string) => {
-    await updateAgendamento.mutateAsync({
-      id,
-      status: "atendido"
-    });
+  const handleAtendido = async (agendamento: Agendamento) => {
+    await marcarComoAtendido.mutateAsync(agendamento);
   };
 
   const handleEditar = (agendamento: Agendamento) => {
@@ -135,7 +132,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleAtendido(agendamento.id)}
+                          onClick={() => handleAtendido(agendamento)}
                           className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
                           title="Cliente atendido"
                         >
