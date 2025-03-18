@@ -116,6 +116,65 @@ export function useAgendamentos(date?: Date) {
     },
   });
 
+  const marcarComoAtendido = useMutation({
+    mutationFn: async (appointment: Agendamento) => {
+      // 1. Primeiro atualizamos o status do agendamento
+      const { data: updatedAppointment, error: updateError } = await supabase
+        .from('appointments')
+        .update({ status: 'atendido' })
+        .eq('id', appointment.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // 2. Buscamos as informações do barbeiro para obter a taxa de comissão
+      const { data: barber, error: barberError } = await supabase
+        .from('barbers')
+        .select('commission_rate')
+        .eq('id', appointment.barber_id)
+        .single();
+
+      if (barberError) throw barberError;
+
+      // 3. Definimos um valor de serviço padrão (depois pode ser configurável)
+      const serviceAmount = 35; // Valor padrão de serviço
+      const commissionRate = barber.commission_rate;
+      const commissionAmount = serviceAmount * (commissionRate / 100);
+
+      // 4. Registramos a comissão
+      const { error: commissionError } = await supabase
+        .from('barber_commissions')
+        .insert({
+          barber_id: appointment.barber_id,
+          appointment_id: appointment.id,
+          service_amount: serviceAmount,
+          commission_amount: commissionAmount,
+          commission_rate: commissionRate,
+          date: appointment.date,
+          status: 'pendente'
+        });
+
+      if (commissionError) throw commissionError;
+
+      return updatedAppointment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      toast({
+        title: "Atendimento concluído!",
+        description: "O agendamento foi marcado como atendido e a comissão foi registrada.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao marcar como atendido",
+        description: error.message || "Ocorreu um erro ao tentar atualizar o status. Tente novamente.",
+      });
+    },
+  });
+
   const deleteAgendamento = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -146,6 +205,7 @@ export function useAgendamentos(date?: Date) {
     isLoading,
     createAgendamento,
     updateAgendamento,
+    marcarComoAtendido,
     deleteAgendamento,
   };
 }

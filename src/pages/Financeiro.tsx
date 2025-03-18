@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Calendar } from "lucide-react";
+import { Plus, FileText, Calendar, Scissors } from "lucide-react";
 import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
 import { Link } from "react-router-dom";
 import { useTransacoes } from "@/hooks/useTransacoes";
@@ -15,10 +16,12 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ComissoesDialog } from "@/components/comissoes/ComissoesDialog";
 
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
   const [openReceita, setOpenReceita] = useState(false);
+  const [openComissoes, setOpenComissoes] = useState(false);
   const { transacoes, isLoading, totais } = useTransacoes();
 
   const formatMoney = (value: number) => {
@@ -79,19 +82,31 @@ const Financeiro = () => {
         </Card>
       </div>
 
-      <div className="flex gap-4">
-        <Link to="/relatorio-mensal">
-          <Button variant="outline">
-            <Calendar className="mr-2" />
-            Relatório Mensal
+      <div className="flex justify-between">
+        <div className="flex gap-4">
+          <Link to="/relatorio-mensal">
+            <Button variant="outline">
+              <Calendar className="mr-2" />
+              Relatório Mensal
+            </Button>
+          </Link>
+          <Link to="/relatorio-anual">
+            <Button variant="outline">
+              <FileText className="mr-2" />
+              Relatório Anual
+            </Button>
+          </Link>
+        </div>
+        <div>
+          <Button 
+            variant="outline" 
+            onClick={() => setOpenComissoes(true)}
+            className="bg-barber-gold text-white hover:bg-barber-gold/90 hover:text-white"
+          >
+            <Scissors className="mr-2" />
+            Comissões
           </Button>
-        </Link>
-        <Link to="/relatorio-anual">
-          <Button variant="outline">
-            <FileText className="mr-2" />
-            Relatório Anual
-          </Button>
-        </Link>
+        </div>
       </div>
 
       <Card>
@@ -151,6 +166,10 @@ const Financeiro = () => {
         open={openReceita}
         onOpenChange={setOpenReceita}
         tipo="receita"
+      />
+      <ComissoesDialog 
+        open={openComissoes}
+        onOpenChange={setOpenComissoes}
       />
     </div>
   );

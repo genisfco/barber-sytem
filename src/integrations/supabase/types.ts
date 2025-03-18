@@ -72,6 +72,60 @@ export type Database = {
           },
         ]
       }
+      barber_commissions: {
+        Row: {
+          appointment_id: string
+          barber_id: string
+          commission_amount: number
+          commission_rate: number
+          created_at: string | null
+          date: string
+          id: string
+          service_amount: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          appointment_id: string
+          barber_id: string
+          commission_amount: number
+          commission_rate: number
+          created_at?: string | null
+          date: string
+          id?: string
+          service_amount: number
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          barber_id?: string
+          commission_amount?: number
+          commission_rate?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          service_amount?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barber_commissions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "barber_commissions_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       barbers: {
         Row: {
           commission_rate: number
