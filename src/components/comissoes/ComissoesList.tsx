@@ -51,7 +51,7 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
         <div className="text-lg font-semibold">
           Total de comissões: {formatMoney(totalComissao)}
         </div>
-        <Button onClick={() => pagarComissao.mutate(barbeiroId)}>
+        <Button onClick={() => pagarComissao.mutate({ id: barbeiroId })}>
           Marcar todas como pagas
         </Button>
       </div>
@@ -87,7 +87,7 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
                     variant="outline"
                     size="sm"
                     className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700"
-                    onClick={() => pagarComissao.mutate(comissao.id, { single: true })}
+                    onClick={() => pagarComissao.mutate({ id: comissao.id, isSingle: true })}
                   >
                     Pendente
                   </Button>

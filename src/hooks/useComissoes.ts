@@ -18,6 +18,12 @@ export interface Comissao {
   status: 'pendente' | 'pago';
 }
 
+// Define a type for the mutate function parameters
+type PayComissaoParams = {
+  id: string;
+  isSingle?: boolean;
+}
+
 export function useComissoes(
   barbeiroId: string,
   dataInicio: Date,
@@ -77,36 +83,36 @@ export function useComissoes(
 
   // Mutation para marcar comissão como paga
   const pagarComissao = useMutation({
-    mutationFn: async (id: string, options?: { single?: boolean }) => {
-      if (options?.single) {
+    mutationFn: async (params: PayComissaoParams) => {
+      if (params.isSingle) {
         // Pagar uma comissão específica
         const { error } = await supabase
           .from("barber_commissions")
           .update({ status: "pago" })
-          .eq("id", id);
+          .eq("id", params.id);
 
         if (error) throw error;
-        return id;
+        return params.id;
       } else {
         // Pagar todas as comissões do barbeiro no período
         const { error } = await supabase
           .from("barber_commissions")
           .update({ status: "pago" })
-          .eq("barber_id", id)
+          .eq("barber_id", params.id)
           .eq("status", "pendente")
           .gte("date", dataInicioFormatada)
           .lte("date", dataFimFormatada);
 
         if (error) throw error;
-        return id;
+        return params.id;
       }
     },
-    onSuccess: (_, variables, options) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["comissoes", barbeiroId, dataInicioFormatada, dataFimFormatada],
       });
       
-      if (options?.single) {
+      if (variables.isSingle) {
         toast.success("Comissão marcada como paga");
       } else {
         toast.success("Todas as comissões marcadas como pagas");
