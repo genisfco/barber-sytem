@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,16 +8,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, List } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DetalhesDialog } from "@/components/financeiro/DetalhesDialog";
 
 const RelatorioAnual = () => {
   const [ano, setAno] = useState<string>("");
   const { getRelatorioAnual } = useRelatorios();
   const { data: relatorio, isLoading } = getRelatorioAnual(ano);
+  const [openDetalhesReceitas, setOpenDetalhesReceitas] = useState(false);
+  const [openDetalhesDespesas, setOpenDetalhesDespesas] = useState(false);
 
   const anoAtual = new Date().getFullYear();
   const anos = Array.from(
@@ -31,6 +33,16 @@ const RelatorioAnual = () => {
       style: "currency",
       currency: "BRL",
     });
+  };
+
+  const agruparPorCategoria = (transacoes: any[], tipo: 'receita' | 'despesa') => {
+    return transacoes
+      .filter(t => t.type === tipo)
+      .reduce((acc, curr) => {
+        const categoria = curr.category;
+        acc[categoria] = (acc[categoria] || 0) + Number(curr.amount);
+        return acc;
+      }, {} as Record<string, number>);
   };
 
   return (
@@ -62,7 +74,18 @@ const RelatorioAnual = () => {
       <div className="grid md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-green-600">Receitas do Ano</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-green-600">Receitas do Ano</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpenDetalhesReceitas(true)}
+                className="h-8 w-8"
+                title="Detalhar Receitas"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
@@ -73,7 +96,18 @@ const RelatorioAnual = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-red-600">Despesas do Ano</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-red-600">Despesas do Ano</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpenDetalhesDespesas(true)}
+                className="h-8 w-8"
+                title="Detalhar Despesas"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
@@ -136,6 +170,26 @@ const RelatorioAnual = () => {
           )}
         </CardContent>
       </Card>
+
+      <DetalhesDialog
+        open={openDetalhesReceitas}
+        onOpenChange={setOpenDetalhesReceitas}
+        titulo="Detalhes das Receitas"
+        dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'receita')).map(([categoria, valor]) => ({
+          categoria,
+          valor: Number(valor)
+        }))}
+      />
+
+      <DetalhesDialog
+        open={openDetalhesDespesas}
+        onOpenChange={setOpenDetalhesDespesas}
+        titulo="Detalhes das Despesas"
+        dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'despesa')).map(([categoria, valor]) => ({
+          categoria,
+          valor: Number(valor)
+        }))}
+      />
     </div>
   );
 };
