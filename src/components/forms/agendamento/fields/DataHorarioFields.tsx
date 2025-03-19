@@ -1,4 +1,3 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,41 +10,57 @@ interface DataHorarioFieldsProps {
   form: UseFormReturn<FormValues>;
   date: Date | undefined;
   setDate: Dispatch<SetStateAction<Date | undefined>>;
+  agendamentos: any[]; // Assuming the type for agendamentos
 }
 
-export function DataHorarioFields({ form, date, setDate }: DataHorarioFieldsProps) {
+export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHorarioFieldsProps) {
   // Função para verificar se um horário está disponível para agendamento
   const isHorarioDisponivel = (horario: string) => {
-    if (!date) return true;
+    // Se não houver data selecionada, não está disponível
+    if (!date) return false;
 
     const hoje = new Date();
-    const dataAgendamento = new Date(date);
-    
-    // Se for uma data futura, todos os horários estão disponíveis
-    if (dataAgendamento.getDate() !== hoje.getDate() || 
-        dataAgendamento.getMonth() !== hoje.getMonth() || 
-        dataAgendamento.getFullYear() !== hoje.getFullYear()) {
-      return true;
-    }
+    hoje.setHours(0, 0, 0, 0);
+    const dataSelecionada = new Date(date);
+    dataSelecionada.setHours(0, 0, 0, 0);
 
-    // Se for hoje, verifica o horário atual + 30 minutos
+    // Se for hoje, só permite horários futuros 
     const [horaAgendamento, minutoAgendamento] = horario.split(':').map(Number);
     const horaAtual = hoje.getHours();
     const minutoAtual = hoje.getMinutes();
 
-    // Calcula o horário atual + 30 minutos
-    let horaComparacao = horaAtual;
-    let minutoComparacao = minutoAtual + 30;
-    
-    // Ajusta caso os minutos ultrapassem 60
-    if (minutoComparacao >= 60) {
-      horaComparacao += 1;
-      minutoComparacao -= 60;
-    }
+    if (horaAgendamento < horaAtual) return false;
+    if (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual) return false;
 
-    // Compara os horários
-    if (horaAgendamento < horaComparacao) return false;
-    if (horaAgendamento === horaComparacao && minutoAgendamento < minutoComparacao) return false;
+    // Verifica se o horário já está agendado para o barbeiro selecionado
+    const horarioJaAgendado = agendamentos?.some(agendamento => {
+      const dataAgendamento = new Date(agendamento.date);
+      dataAgendamento.setHours(0, 0, 0, 0);
+      
+      return (
+        dataAgendamento.getTime() === dataSelecionada.getTime() &&
+        agendamento.time === horario &&
+        agendamento.barber_id === form.getValues('barbeiroId') &&
+        agendamento.status !== 'cancelado'
+      );
+    });
+
+    if (horarioJaAgendado) return false;
+
+    // Verifica se o cliente já tem um agendamento para o mesmo horário
+    const clienteJaAgendado = agendamentos?.some(agendamento => {
+      const dataAgendamento = new Date(agendamento.date);
+      dataAgendamento.setHours(0, 0, 0, 0);
+      
+      return (
+        dataAgendamento.getTime() === dataSelecionada.getTime() &&
+        agendamento.time === horario &&
+        agendamento.client_id === form.getValues('clienteId') &&
+        agendamento.status !== 'cancelado'
+      );
+    });
+
+    if (clienteJaAgendado) return false;
 
     return true;
   };

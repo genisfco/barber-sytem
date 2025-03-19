@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,12 +12,14 @@ import {
 import { useClientes } from "@/hooks/useClientes";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
-import { formSchema, FormValues } from "./agendamento/schema";
+import { FormValues, createFormSchema } from "./agendamento/schema";
 import { servicos } from "./agendamento/constants";
 import { ClienteField } from "./agendamento/fields/ClienteField";
 import { BarbeiroField } from "./agendamento/fields/BarbeiroField";
 import { ServicoField } from "./agendamento/fields/ServicoField";
 import { DataHorarioFields } from "./agendamento/fields/DataHorarioFields";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Agendamento {
   id: string;
@@ -44,9 +45,10 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
   const { clientes } = useClientes();
   const { barbeiros } = useBarbeiros();
   const { createAgendamento, updateAgendamento } = useAgendamentos(new Date());
+  const { agendamentos } = useAgendamentos(date);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(createFormSchema(agendamentos)),
   });
 
   // Preenche o formulário quando recebe um agendamento para editar
@@ -74,6 +76,44 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
       return;
     }
 
+    // Verifica se o cliente já tem um agendamento para o mesmo horário
+    const agendamentoExistente = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('client_id', cliente.id)
+      .eq('date', values.data.toISOString().split('T')[0])
+      .eq('time', values.horario)
+      .in('status', ['confirmado', 'pendente'])
+      .single();
+
+    if (agendamentoExistente.data) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao agendar",
+        description: "Este cliente já possui um agendamento para este horário.",
+      });
+      return;
+    }
+
+    // Verifica se o barbeiro já tem um agendamento para o mesmo horário
+    const barbeiroAgendado = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('barber_id', barbeiro.id)
+      .eq('date', values.data.toISOString().split('T')[0])
+      .eq('time', values.horario)
+      .in('status', ['confirmado', 'pendente'])
+      .single();
+
+    if (barbeiroAgendado.data) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao agendar",
+        description: "Este barbeiro já possui um agendamento para este horário.",
+      });
+      return;
+    }
+
     const dadosAgendamento = {
       date: values.data.toISOString().split('T')[0],
       time: values.horario,
@@ -84,6 +124,7 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
       barber_id: barbeiro.id,
       barber: barbeiro.name,
       service: servico.nome,
+      status: 'pendente' // Adiciona status inicial
     };
 
     if (agendamentoParaEditar) {
@@ -114,7 +155,12 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
               <BarbeiroField form={form} />
               <ServicoField form={form} />
             </div>
-            <DataHorarioFields form={form} date={date} setDate={setDate} />
+            <DataHorarioFields 
+              form={form} 
+              date={date} 
+              setDate={setDate} 
+              agendamentos={agendamentos} 
+            />
 
             <div className="flex justify-end space-x-2 pt-2">
               <Button
