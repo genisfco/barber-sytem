@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -71,7 +70,7 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
           {comissoes.map((comissao) => (
             <TableRow key={comissao.id}>
               <TableCell>
-                {format(new Date(comissao.date), "dd/MM/yyyy", { locale: ptBR })}
+                {format(new Date(comissao.date + 'T00:00:00'), "dd/MM/yyyy", { locale: ptBR })}
               </TableCell>
               <TableCell>{comissao.service}</TableCell>
               <TableCell>{comissao.client_name}</TableCell>
