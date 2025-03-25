@@ -8,10 +8,10 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const menuItems = [
-    { icon: Home, label: "Dashboard", path: "/" },
+    { icon: Home, label: "Dash Principal", path: "/" },
     { icon: Calendar, label: "Agendamentos", path: "/agendamentos" },
     { icon: Users, label: "Clientes", path: "/clientes" },
-    { icon: Scissors, label: "Barbeiros", path: "/barbeiros" },
+    { icon: Scissors, label: "Barbeiros e Serviços", path: "/barbeiros" },
     { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
   ];
 
@@ -21,7 +21,7 @@ export function Sidebar() {
       collapsed ? "w-20" : "w-64"
     )}>
       <div className="p-4 flex justify-between items-center">
-        {!collapsed && <h2 className="font-display text-xl text-barber-gold">BarberPro</h2>}
+        {!collapsed && <h2 className="font-display text-xl text-barber-gold">Barbearia do Jotta</h2>}
         <Button 
           variant="ghost" 
           size="icon"

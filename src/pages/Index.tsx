@@ -48,7 +48,7 @@ const Index = () => {
     },
     {
       title: "Tempo Médio",
-      value: "45min",
+      value: "30min",
       icon: Clock,
       color: "text-purple-500",
     },

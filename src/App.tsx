@@ -12,7 +12,7 @@ import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Agendamentos from "./pages/Agendamentos";
 import Clientes from "./pages/Clientes";
-import Barbeiros from "./pages/Barbeiros";
+import Barbeiros from "./pages/BarbeirosServicos";
 import Financeiro from "./pages/Financeiro";
 import RelatorioMensal from "./pages/RelatorioMensal";
 import RelatorioAnual from "./pages/RelatorioAnual";
