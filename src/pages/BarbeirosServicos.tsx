@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
-import { useServicos } from "../hooks/useServicos";
+import { useServicos } from "@/hooks/useServicos";
 import {
   Table,
   TableBody,
