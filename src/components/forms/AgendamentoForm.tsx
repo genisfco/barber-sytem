@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { useClientes } from "@/hooks/useClientes";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useServicos } from "@/hooks/useServicos";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { FormValues, createFormSchema } from "./agendamento/schema";
-import { servicos } from "./agendamento/constants";
 import { ClienteField } from "./agendamento/fields/ClienteField";
 import { BarbeiroField } from "./agendamento/fields/BarbeiroField";
 import { ServicoField } from "./agendamento/fields/ServicoField";
@@ -31,6 +31,7 @@ interface Agendamento {
   client_phone: string;
   barber_id: string;
   barber: string;
+  service_id: string;
   service: string;
 }
 
@@ -44,6 +45,7 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
   const [date, setDate] = useState<Date>();
   const { clientes } = useClientes();
   const { barbeiros } = useBarbeiros();
+  const { servicos } = useServicos();
   const { createAgendamento, updateAgendamento } = useAgendamentos(new Date());
   const { agendamentos } = useAgendamentos(date);
 
@@ -60,7 +62,7 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
       form.reset({
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
-        servico: servicos.find(s => s.nome === agendamentoParaEditar.service)?.id || "",
+        servicoId: agendamentoParaEditar.service_id,
         data: data,
         horario: agendamentoParaEditar.time,
       });
@@ -70,7 +72,7 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
   async function onSubmit(values: FormValues) {
     const cliente = clientes?.find((c) => c.id === values.clienteId);
     const barbeiro = barbeiros?.find((b) => b.id === values.barbeiroId);
-    const servico = servicos.find((s) => s.id === values.servico);
+    const servico = servicos?.find((s) => s.id === values.servicoId);
 
     if (!cliente || !barbeiro || !servico) {
       return;
@@ -123,8 +125,9 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
       client_phone: cliente.phone,
       barber_id: barbeiro.id,
       barber: barbeiro.name,
-      service: servico.nome,
-      status: 'pendente' // Adiciona status inicial
+      service_id: servico.id,
+      service: servico.name,
+      status: 'pendente'
     };
 
     if (agendamentoParaEditar) {

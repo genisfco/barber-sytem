@@ -1,13 +1,3 @@
-export const servicos = [
-  { id: "corte", nome: "Corte de Cabelo", valor: 45 },
-  { id: "barba", nome: "Barba", valor: 35 },
-  { id: "corte-barba", nome: "Corte + Barba", valor: 70 },
-  { id: "pigmentacao-cabelo", nome: "Pigmentação de Cabelo", valor: 100 },
-  { id: "pigmentacao-cabelo-barba", nome: "Pigmentação de Cabelo + Barba", valor: 135 },  
-  { id: "pigmentacao-cabelo-barba-corte", nome: "Pigmentação de Cabelo + Barba + Corte", valor: 170 },
-  { id: "barboterapia", nome: "Barboterapia", valor: 80 },
-] as const;
-
 export const horarios = [
   "09:00",
   "09:30",

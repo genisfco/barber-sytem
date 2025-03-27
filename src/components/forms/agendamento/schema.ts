@@ -11,7 +11,7 @@ interface Agendamento {
 interface FormData {
   clienteId?: string;
   barbeiroId?: string;
-  servico?: string;
+  servicoId?: string;
   data?: Date;
   horario?: string;
 }
@@ -23,7 +23,7 @@ export const createFormSchema = (agendamentos: Agendamento[] = []) => z.object({
   barbeiroId: z.string({
     required_error: "Selecione o barbeiro",
   }),
-  servico: z.string({
+  servicoId: z.string({
     required_error: "Selecione o serviço",
   }),
   data: z.date({
@@ -68,14 +68,22 @@ function isHorarioDisponivel(data: FormData, agendamentos: Agendamento[]): boole
   const dataSelecionada = new Date(data.data || new Date());
   dataSelecionada.setHours(0, 0, 0, 0);
 
+  // Se for o dia atual, verifica se o horário já passou
   if (dataSelecionada.getTime() === hoje.getTime()) {
     const [horaAgendamento, minutoAgendamento] = data.horario?.split(':').map(Number) || [0, 0];
     const horaAtual = hoje.getHours();
     const minutoAtual = hoje.getMinutes();
 
+    // Verifica se o horário já passou
     if (horaAgendamento < horaAtual) return false;
     if (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual) return false;
+
+    // Verifica se o horário está dentro do horário de funcionamento (8h às 20h)
+    if (horaAgendamento < 8 || horaAgendamento >= 20) return false;
   }
+
+  // Verifica se a data é anterior ao dia atual
+  if (dataSelecionada.getTime() < hoje.getTime()) return false;
 
   return true;
 }
