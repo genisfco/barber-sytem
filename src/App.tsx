@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./contexts/AuthContext";
 import { Sidebar } from "./components/layout/Sidebar";
-import { Header } from "./components/layout/Header";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Agendamentos from "./pages/Agendamentos";
@@ -34,7 +33,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     <div className="flex min-h-screen w-full">
       <Sidebar />
       <div className="flex-1">
-        <Header />
         <main>{children}</main>
       </div>
     </div>

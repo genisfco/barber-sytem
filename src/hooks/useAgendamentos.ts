@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { servicos } from "@/components/forms/agendamento/constants";
+import { useServicos } from "@/hooks/useServicos";
 
 interface Agendamento {
   id: string;
@@ -34,6 +34,7 @@ interface CreateAgendamentoData {
 export function useAgendamentos(date?: Date) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { servicos } = useServicos();
 
   const formattedDate = date?.toISOString().split('T')[0];
 
@@ -176,8 +177,8 @@ export function useAgendamentos(date?: Date) {
         if (barberError) throw barberError;
 
         // 3. Encontrar o valor do serviço na lista de serviços
-        const servicoInfo = servicos.find(s => s.nome === appointment.service);
-        const serviceAmount = servicoInfo?.valor || 35; // Usa valor padrão se não encontrar
+        const servicoInfo = servicos?.find(s => s.name === appointment.service);
+        const serviceAmount = servicoInfo?.price || 35; // Usa valor padrão se não encontrar
         
         const commissionRate = barber.commission_rate;
         const commissionAmount = serviceAmount * (commissionRate / 100);

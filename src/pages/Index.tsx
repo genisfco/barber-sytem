@@ -1,10 +1,9 @@
-
 import { Card } from "@/components/ui/card";
 import { Calendar, DollarSign, Users, Clock, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useTransacoes } from "@/hooks/useTransacoes";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const Index = () => {
@@ -32,39 +31,41 @@ const Index = () => {
       title: "Agendamentos Hoje",
       value: agendamentosHoje?.length.toString() || "0",
       icon: Calendar,
-      color: "text-blue-500",
+      color: "text-primary",
     },
     {
       title: "Clientes Atendidos",
       value: agendamentosHoje?.filter(a => a.status === "atendido")?.length.toString() || "0",
       icon: Users,
-      color: "text-green-500",
+      color: "text-primary",
     },
     {
       title: "Faturamento Diário",
       value: formatMoney(totais.saldo),
       icon: DollarSign,
-      color: "text-barber-gold",
+      color: "text-primary",
     },
     {
       title: "Tempo Médio",
       value: "30min",
       icon: Clock,
-      color: "text-purple-500",
+      color: "text-primary",
     },
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
+      <h1 className="text-3xl font-display mb-8">Dashboard</h1>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="p-6">
+          <Card key={stat.title} className="p-6 bg-secondary border-none">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{stat.title}</p>
                 <h3 className="text-2xl font-semibold mt-1">{stat.value}</h3>
               </div>
-              <div className={cn("p-3 rounded-full bg-gray-100", stat.color)}>
+              <div className={cn("p-3 rounded-full bg-primary/10", stat.color)}>
                 <stat.icon className="h-6 w-6" />
               </div>
             </div>
@@ -73,7 +74,7 @@ const Index = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
+        <Card className="p-6 bg-secondary border-none">
           <h2 className="font-display text-xl mb-4">Próximos Agendamentos</h2>
           <div className="space-y-4">
             {!proximosAgendamentos?.length ? (
@@ -84,10 +85,10 @@ const Index = () => {
               proximosAgendamentos.map((agendamento) => (
                 <div
                   key={agendamento.id}
-                  className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                  className="flex items-center justify-between p-4 bg-background/50 rounded-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-barber-brown text-white flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                       {agendamento.client_name[0].toUpperCase()}
                     </div>
                     <div>
@@ -104,13 +105,13 @@ const Index = () => {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-6 bg-secondary border-none">
           <h2 className="font-display text-xl mb-4">Status dos Barbeiros</h2>
           <div className="space-y-4">
             {[1, 2, 3].map((_, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+              <div key={i} className="flex items-center justify-between p-4 bg-background/50 rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-barber-gold text-white flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                     <Scissors className="h-5 w-5" />
                   </div>
                   <div>

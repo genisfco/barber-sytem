@@ -20,6 +20,8 @@ import { ServicoField } from "./agendamento/fields/ServicoField";
 import { DataHorarioFields } from "./agendamento/fields/DataHorarioFields";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { format } from "date-fns";
 
 interface Agendamento {
   id: string;
@@ -38,27 +40,43 @@ interface Agendamento {
 interface AgendamentoFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  agendamentoParaEditar?: Agendamento;
+  agendamentoParaEditar?: any;
+  horarioInicial?: string;
+  barbeiroInicial?: string;
+  dataInicial?: Date;
 }
 
-export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: AgendamentoFormProps) {
-  const [date, setDate] = useState<Date>();
+export function AgendamentoForm({
+  open,
+  onOpenChange,
+  agendamentoParaEditar,
+  horarioInicial,
+  barbeiroInicial,
+  dataInicial,
+}: AgendamentoFormProps) {
+  const { toast } = useToast();
+  const { createAgendamento, updateAgendamento } = useAgendamentos();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { clientes } = useClientes();
   const { barbeiros } = useBarbeiros();
   const { servicos } = useServicos();
-  const { createAgendamento, updateAgendamento } = useAgendamentos(new Date());
-  const { agendamentos } = useAgendamentos(date);
+  const { agendamentos } = useAgendamentos(dataInicial);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(createFormSchema(agendamentos)),
+    defaultValues: {
+      clienteId: "",
+      barbeiroId: barbeiroInicial || "",
+      servicoId: "",
+      data: dataInicial ? format(dataInicial, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      horario: horarioInicial || "",
+    },
   });
 
   // Preenche o formulário quando recebe um agendamento para editar
   useEffect(() => {
     if (agendamentoParaEditar) {
       const data = new Date(agendamentoParaEditar.date);
-      setDate(data);
-      
       form.reset({
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
@@ -160,8 +178,8 @@ export function AgendamentoForm({ open, onOpenChange, agendamentoParaEditar }: A
             </div>
             <DataHorarioFields 
               form={form} 
-              date={date} 
-              setDate={setDate} 
+              date={dataInicial} 
+              setDate={(date) => form.setValue('data', date)} 
               agendamentos={agendamentos} 
             />
 
