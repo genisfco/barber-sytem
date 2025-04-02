@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,6 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
 
   // Função para verificar se um horário está ocupado para um barbeiro específico
   const isHorarioOcupado = (barbeiroId: string, horario: string) => {
-    console.log('Verificando horário:', { barbeiroId, horario, agendamentos });
     return agendamentos?.some(
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
