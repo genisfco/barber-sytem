@@ -3,9 +3,11 @@ import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { AgendamentosHeader } from "@/components/agendamentos/AgendamentosHeader";
 import { AgendamentoCalendar } from "@/components/agendamentos/AgendamentoCalendar";
 import { AgendamentoGrid } from "@/components/agendamentos/AgendamentoGrid";
+import { AgendamentosTable } from "@/components/agendamentos/AgendamentosTable";
 
 const Agendamentos = () => {
   const [date, setDate] = useState<Date>(new Date());
+  const { agendamentos, isLoading } = useAgendamentos(date);
   
   return (
     <div className="p-6 space-y-6">
@@ -18,6 +20,11 @@ const Agendamentos = () => {
         />
         <AgendamentoGrid date={date} />
       </div>
+
+      <AgendamentosTable 
+        agendamentos={agendamentos} 
+        isLoading={isLoading} 
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export function AgendamentoForm({
       clienteId: "",
       barbeiroId: barbeiroInicial || "",
       servicoId: "",
-      data: dataInicial ? format(dataInicial, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      data: dataInicial || new Date(),
       horario: horarioInicial || "",
     },
   });
@@ -178,8 +178,8 @@ export function AgendamentoForm({
             </div>
             <DataHorarioFields 
               form={form} 
-              date={dataInicial} 
-              setDate={(date) => form.setValue('data', date)} 
+              date={form.watch('data')} 
+              setDate={(date: Date | undefined) => form.setValue('data', date as Date)} 
               agendamentos={agendamentos} 
             />
 

@@ -31,7 +31,7 @@ interface CreateAgendamentoData {
   service: string;
 }
 
-export function useAgendamentos(date?: Date) {
+export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { servicos } = useServicos();
@@ -39,9 +39,9 @@ export function useAgendamentos(date?: Date) {
   const formattedDate = date?.toISOString().split('T')[0];
 
   const { data: agendamentos, isLoading } = useQuery({
-    queryKey: ['agendamentos', formattedDate],
+    queryKey: ['agendamentos', formattedDate, barbeiro_id],
     queryFn: async () => {
-      console.log("Buscando agendamentos para:", formattedDate);
+      console.log("Buscando agendamentos para:", formattedDate, "barbeiro:", barbeiro_id);
       const query = supabase
         .from('appointments')
         .select('*')
@@ -49,6 +49,10 @@ export function useAgendamentos(date?: Date) {
 
       if (formattedDate) {
         query.eq('date', formattedDate);
+      }
+
+      if (barbeiro_id) {
+        query.eq('barber_id', barbeiro_id);
       }
 
       const { data, error } = await query;
