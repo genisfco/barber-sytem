@@ -62,8 +62,11 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         throw error;
       }
 
+      console.log("Agendamentos encontrados:", data);
       return data as Agendamento[];
     },
+    refetchInterval: 5000, // Refetch a cada 5 segundos
+    refetchOnWindowFocus: true, // Refetch quando a janela receber foco
   });
 
   const createAgendamento = useMutation({
@@ -77,8 +80,11 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+    onSuccess: (_, variables) => {
+      // Invalida todas as queries de agendamentos relacionadas
+      queryClient.invalidateQueries({ 
+        queryKey: ['agendamentos']
+      });
       toast({
         title: "Agendamento realizado com sucesso!",
         description: "O horário foi reservado.",
@@ -139,8 +145,11 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+    onSuccess: (_, variables) => {
+      // Invalida todas as queries de agendamentos relacionadas
+      queryClient.invalidateQueries({ 
+        queryKey: ['agendamentos']
+      });
       queryClient.invalidateQueries({ queryKey: ['transacoes'] });
       queryClient.invalidateQueries({ queryKey: ['transacoes-hoje'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes'] });
@@ -236,8 +245,11 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+    onSuccess: (_, variables) => {
+      // Invalida todas as queries de agendamentos relacionadas
+      queryClient.invalidateQueries({ 
+        queryKey: ['agendamentos']
+      });
       queryClient.invalidateQueries({ queryKey: ['transacoes'] });
       queryClient.invalidateQueries({ queryKey: ['transacoes-hoje'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes'] });

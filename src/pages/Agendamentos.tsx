@@ -18,7 +18,11 @@ const Agendamentos = () => {
           date={date} 
           onDateSelect={(date) => date && setDate(date)} 
         />
-        <AgendamentoGrid date={date} />
+        <AgendamentoGrid 
+          date={date} 
+          agendamentos={agendamentos}
+          isLoading={isLoading}
+        />
       </div>
 
       <AgendamentosTable 

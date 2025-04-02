@@ -11,9 +11,11 @@ import { ptBR } from "date-fns/locale";
 
 interface AgendamentoGridProps {
   date: Date;
+  agendamentos: any[] | undefined;
+  isLoading: boolean;
 }
 
-export function AgendamentoGrid({ date }: AgendamentoGridProps) {
+export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGridProps) {
   const { barbeiros } = useBarbeiros();
   const [selectedBarbeiro, setSelectedBarbeiro] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
@@ -41,20 +43,27 @@ export function AgendamentoGrid({ date }: AgendamentoGridProps) {
     return false;
   };
 
-  // Busca todos os agendamentos de uma vez
-  const { agendamentos } = useAgendamentos(date);
-
   // Função para verificar se um horário está ocupado para um barbeiro específico
   const isHorarioOcupado = (barbeiroId: string, horario: string) => {
+    console.log('Verificando horário:', { barbeiroId, horario, agendamentos });
     return agendamentos?.some(
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
         agendamento.time === horario &&
         (agendamento.status === "pendente" || 
          agendamento.status === "atendido" || 
-         agendamento.status === "confirmado")
+         agendamento.status === "confirmado" ||
+         agendamento.status === "ocupado")
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p>Carregando horários...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
