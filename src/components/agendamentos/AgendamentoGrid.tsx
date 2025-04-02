@@ -45,7 +45,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   };
 
   // Função para verificar se um horário está ocupado para um barbeiro específico
-  const isHorarioOcupado = (barbeiroId: string, horario: string) => {
+  const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
     return agendamentos?.some(
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
@@ -82,9 +82,9 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-2">
                 {horarios.map((horario) => {
-                  const ocupado = isHorarioOcupado(barbeiro.id, horario);
+                  const horarioindisponivel = isHorarioIndisponivel(barbeiro.id, horario);
                   const passado = isHorarioPassado(horario);
-                  const indisponivel = ocupado || passado;
+                  const indisponivel = horarioindisponivel || passado;
 
                   return (
                     <div
