@@ -22,6 +22,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
 
+ 
   const handleHorarioClick = (barbeiroId: string, horario: string) => {
     setSelectedBarbeiro(barbeiroId);
     setSelectedHorario(horario);
@@ -49,13 +50,14 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
     return agendamentos?.some(
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
-        agendamento.time === horario &&
+        agendamento.time.slice(0, 5) === horario && // REMOVENDO OS SEGS, PARA USAR APENAS HH:mm
         (agendamento.status === "pendente" || 
          agendamento.status === "atendido" || 
          agendamento.status === "confirmado" ||
          agendamento.status === "ocupado")
     );
   };
+  
 
   if (isLoading) {
     return (
@@ -82,19 +84,19 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-2">
                 {horarios.map((horario) => {
-                  const horarioindisponivel = isHorarioIndisponivel(barbeiro.id, horario);
-                  const passado = isHorarioPassado(horario);
-                  const indisponivel = horarioindisponivel || passado;
+                  const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
+                  const horario_passado = isHorarioPassado(horario);
+                  const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
 
                   return (
                     <div
                       key={`${barbeiro.id}-${horario}`}
                       className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
-                        indisponivel
+                        hora_agenda_indisponivel
                           ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
                           : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
                       }`}
-                      onClick={() => !indisponivel && handleHorarioClick(barbeiro.id, horario)}
+                      onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
                     >
                       {horario}
                     </div>
