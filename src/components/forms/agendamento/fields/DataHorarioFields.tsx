@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../schema";
-import { horarios } from "../constants";
+import { horarios } from "../../../../constants/horarios";
 import { Dispatch, SetStateAction } from "react";
 
 interface DataHorarioFieldsProps {

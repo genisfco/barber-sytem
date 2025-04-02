@@ -1,14 +1,15 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
-import { horarios } from "@/components/forms/agendamento/constants";
+import { horarios } from "@/constants/horarios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
+import { IndisponivelForm } from "@/components/forms/BarberIndisponivelForm";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Calendar } from "lucide-react";
 
 interface AgendamentoGridProps {
   date: Date;
@@ -21,12 +22,18 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const [selectedBarbeiro, setSelectedBarbeiro] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
+  const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
+  const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
 
- 
   const handleHorarioClick = (barbeiroId: string, horario: string) => {
     setSelectedBarbeiro(barbeiroId);
     setSelectedHorario(horario);
     setOpenForm(true);
+  };
+
+  const handleIndisponivelClick = (barbeiroId: string, barbeiroName: string) => {
+    setSelectedBarbeiroIndisponivel({ id: barbeiroId, name: barbeiroName });
+    setOpenIndisponivelForm(true);
   };
 
   const isHorarioPassado = (horario: string) => {
@@ -54,10 +61,10 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
         (agendamento.status === "pendente" || 
          agendamento.status === "atendido" || 
          agendamento.status === "confirmado" ||
-         agendamento.status === "ocupado")
+         agendamento.status === "ocupado" ||
+         agendamento.status === "indisponivel")
     );
   };
-  
 
   if (isLoading) {
     return (
@@ -79,7 +86,17 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
         {barbeiros?.map((barbeiro) => (
           <Card key={barbeiro.id} className="overflow-hidden bg-white border shadow-sm">
             <CardHeader className="bg-primary text-primary-foreground">
-              <CardTitle className="text-lg">{barbeiro.name}</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg">{barbeiro.name}</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-primary-foreground hover:text-primary-foreground/80"
+                  onClick={() => handleIndisponivelClick(barbeiro.id, barbeiro.name)}
+                >
+                  <Calendar className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-2">
@@ -120,6 +137,21 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             barbeiroInicial={selectedBarbeiro || ""}
             dataInicial={date}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openIndisponivelForm} onOpenChange={setOpenIndisponivelForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Registrar Indisponibilidade</DialogTitle>
+          </DialogHeader>
+          {selectedBarbeiroIndisponivel && (
+            <IndisponivelForm
+              barbeiroId={selectedBarbeiroIndisponivel.id}
+              barbeiroName={selectedBarbeiroIndisponivel.name}
+              onOpenChange={setOpenIndisponivelForm}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

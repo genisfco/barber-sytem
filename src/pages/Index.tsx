@@ -36,7 +36,7 @@ const Index = () => {
       const [hours, minutes] = agendamento.time.split(':');
       const agendamentoTime = new Date();
       agendamentoTime.setHours(parseInt(hours), parseInt(minutes), 0);
-      return agendamentoTime > today;
+      return agendamentoTime > today && !["indisponivel", "liberado"].includes(agendamento.status);
     })
     ?.sort((a, b) => a.time.localeCompare(b.time))
     ?.slice(0, 5);

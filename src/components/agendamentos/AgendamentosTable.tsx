@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -38,9 +37,11 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
 
-  const agendamentosDoDia = agendamentos?.sort((a, b) => 
-    a.time.localeCompare(b.time)
-  );
+  const agendamentosDoDia = agendamentos
+    ?.filter(agendamento => !["indisponivel", "liberado"].includes(agendamento.status))
+    ?.sort((a, b) => 
+      a.time.localeCompare(b.time)
+    );
 
   const handleConfirmar = async (id: string) => {
     await updateAgendamento.mutateAsync({

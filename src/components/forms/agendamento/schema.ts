@@ -47,7 +47,7 @@ function isHorarioDisponivel(data: FormData, agendamentos: Agendamento[]): boole
     agendamento.date === dataFormatada &&
     agendamento.time === data.horario &&
     agendamento.barber_id === data.barbeiroId &&
-    ['confirmado', 'pendente'].includes(agendamento.status)
+    ['confirmado', 'pendente', 'indisponivel'].includes(agendamento.status)
   );
 
   if (barbeiroAgendado) return false;
@@ -78,8 +78,8 @@ function isHorarioDisponivel(data: FormData, agendamentos: Agendamento[]): boole
     if (horaAgendamento < horaAtual) return false;
     if (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual) return false;
 
-    // Verifica se o horário está dentro do horário de funcionamento (8h às 20h)
-    if (horaAgendamento < 8 || horaAgendamento >= 20) return false;
+    // Verifica se o horário está dentro do horário de funcionamento (8h às 22h)
+    if (horaAgendamento < 8 || horaAgendamento >= 22) return false;
   }
 
   // Verifica se a data é anterior ao dia atual
