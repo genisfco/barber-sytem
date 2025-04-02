@@ -139,6 +139,17 @@ const Index = () => {
     }
   };
 
+  const getDiaSemana = (date: Date) => {
+    const dia = format(date, "EEEE", { locale: ptBR }).toUpperCase();
+    return dia.includes("SEGUNDA") ? "SEG" :
+           dia.includes("TERÇA") ? "TER" :
+           dia.includes("QUARTA") ? "QUA" :
+           dia.includes("QUINTA") ? "QUI" :
+           dia.includes("SEXTA") ? "SEX" :
+           dia.includes("SÁBADO") ? "SAB" :
+           "DOM";
+  };
+
   const stats = [
     {
       title: "Agendamentos Hoje",
@@ -159,11 +170,11 @@ const Index = () => {
       color: "text-primary",
     },
     {
-      title: "Data e Hora",
+      
       value: format(dataHoraAtual, "HH:mm:ss"),
       icon: Clock,
       color: "text-primary",
-      subtitle: format(dataHoraAtual, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      subtitle: `${getDiaSemana(dataHoraAtual)}, ${format(dataHoraAtual, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
     },
   ];
 
@@ -173,11 +184,14 @@ const Index = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="p-6 bg-secondary border-none">
+          <Card key={stat.title || stat.value} className="p-6 bg-secondary border-none">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{stat.title}</p>
-                <h3 className="text-2xl font-semibold mt-1">{stat.value}</h3>
+                {stat.title && <p className="text-sm text-muted-foreground">{stat.title}</p>}
+                <h3 className={cn(
+                  "text-2xl font-semibold mt-1",
+                  !stat.title && "text-right"
+                )}>{stat.value}</h3>
                 {stat.subtitle && (
                   <p className="text-sm text-muted-foreground mt-1">{stat.subtitle}</p>
                 )}
