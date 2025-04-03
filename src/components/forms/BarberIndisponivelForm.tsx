@@ -35,7 +35,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
   const form = useForm<IndisponivelFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      data: new Date(),
+      data: undefined,
     },
   });
 
@@ -85,7 +85,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
           name="data"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Data</FormLabel>
+              <FormLabel>Selecione a Data</FormLabel>
               <Calendar
                 mode="single"
                 selected={field.value}
