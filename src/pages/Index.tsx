@@ -22,7 +22,7 @@ const Index = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setDataHoraAtual(new Date());
-    }, 1000);
+    }, 60000);
 
     return () => clearInterval(timer);
   }, []);
@@ -31,12 +31,35 @@ const Index = () => {
     (agendamento) => agendamento.date === format(today, "yyyy-MM-dd")
   );
 
+  // Função auxiliar para obter o horário atual de agendamento (00 ou 30)
+  const getHorarioAtualAgenda = () => {
+    const agora = new Date();
+    const horaAtual = agora.getHours();
+    const minutoAtual = agora.getMinutes();
+    const intervaloAtual = minutoAtual < 30 ? '00' : '30';
+    return `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
+  };
+
   const proximosAgendamentos = agendamentosHoje
     ?.filter(agendamento => {
+      // Incluir agendamentos do horário atual e futuros
+      const horarioAtualAgenda = getHorarioAtualAgenda();
+      
+      // Não mostrar agendamentos indisponíveis ou liberados
+      if (["indisponivel", "liberado"].includes(agendamento.status)) {
+        return false;
+      }
+      
+      // Incluir se for do horário atual
+      if (agendamento.time.startsWith(horarioAtualAgenda)) {
+        return true;
+      }
+      
+      // Ou se for um horário futuro
       const [hours, minutes] = agendamento.time.split(':');
       const agendamentoTime = new Date();
       agendamentoTime.setHours(parseInt(hours), parseInt(minutes), 0);
-      return agendamentoTime > today && !["indisponivel", "liberado"].includes(agendamento.status);
+      return agendamentoTime > today;
     })
     ?.sort((a, b) => a.time.localeCompare(b.time))
     ?.slice(0, 5);
@@ -107,36 +130,89 @@ const Index = () => {
 
   const getBarbeiroStatus = (barbeiroId: string) => {
     const agora = new Date();
+    
+    // Determinar o intervalo atual de 30 minutos
     const horaAtual = agora.getHours();
     const minutoAtual = agora.getMinutes();
-    const horaAtualFormatada = `${horaAtual.toString().padStart(2, '0')}:${minutoAtual.toString().padStart(2, '0')}`;
-
-    const proximoHorario = new Date(agora);
-    proximoHorario.setMinutes(proximoHorario.getMinutes() + 30);
-    const proximaHora = proximoHorario.getHours();
-    const proximoMinuto = proximoHorario.getMinutes();
-    const proximaHoraFormatada = `${proximaHora.toString().padStart(2, '0')}:${proximoMinuto.toString().padStart(2, '0')}`;
-
+    
+    // Determinar o horário de agendamento atual (arredondando para 00 ou 30 mais próximo)
+    // Se minutos < 30, estamos no intervalo XX:00, senão estamos no intervalo XX:30
+    const intervaloAtual = minutoAtual < 30 ? '00' : '30';
+    const horarioAtualAgenda = `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
+    
+    // Calcular próximo horário de agenda
+    const proximaHora = minutoAtual < 30 ? horaAtual : (horaAtual + 1) % 24;
+    const proximoIntervalo = minutoAtual < 30 ? '30' : '00';
+    const proximoHorarioAgenda = `${proximaHora.toString().padStart(2, '0')}:${proximoIntervalo}`;
+    
+    // Filtrar todos os agendamentos do barbeiro para hoje
     const agendamentosBarbeiro = agendamentosHoje?.filter(
-      a => a.barber_id === barbeiroId && 
-      (a.status === 'confirmado' || a.status === 'atendido')
+      a => a.barber_id === barbeiroId
+    ) || [];
+    
+    // Para debug
+    console.log(`Barbeiro ${barbeiroId} - hora atual agenda: ${horarioAtualAgenda}, agendamentos:`, 
+                agendamentosBarbeiro.map(a => `${a.time.substring(0, 5)} (${a.status})`));
+    
+    // Encontrar o agendamento atual
+    const agendamentoAtual = agendamentosBarbeiro.find(
+      a => a.time.startsWith(horarioAtualAgenda)
     );
-
-    const emAtendimento = agendamentosBarbeiro?.some(
-      a => a.time === horaAtualFormatada && a.status === 'atendido'
+    
+    // Encontrar próximo agendamento
+    let agendamentoProximo = agendamentosBarbeiro.find(
+      a => a.time.startsWith(proximoHorarioAgenda)
     );
-
-    const proximoCliente = agendamentosBarbeiro?.some(
-      a => a.time === proximaHoraFormatada && a.status === 'confirmado'
-    );
-
-    if (emAtendimento) {
-      return { status: 'Em atendimento', cor: 'text-yellow-600' };
-    } else if (proximoCliente) {
-      return { status: 'Aguardando cliente', cor: 'text-blue-600' };
-    } else {
-      return { status: 'Disponível', cor: 'text-green-600' };
+    
+    // Se não encontrar, procure outros horários futuros
+    if (!agendamentoProximo) {
+      const horariosAgendados = agendamentosBarbeiro
+        .filter(a => {
+          // Extrair apenas hora e minuto para comparação
+          const horarioAgendamento = a.time.substring(0, 5);
+          
+          // Verificar se é um horário futuro
+          if (minutoAtual < 30) {
+            // Se estamos no intervalo XX:00-XX:29
+            return (horarioAgendamento > horarioAtualAgenda);
+          } else {
+            // Se estamos no intervalo XX:30-XX:59
+            return (horarioAgendamento > horarioAtualAgenda);
+          }
+        })
+        .sort((a, b) => a.time.localeCompare(b.time));
+      
+      if (horariosAgendados.length > 0) {
+        agendamentoProximo = horariosAgendados[0];
+      }
     }
+    
+    // Determinar status atual
+    const statusAtual = !agendamentoAtual 
+      ? { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }
+      : agendamentoAtual.status === 'pendente'
+        ? { texto: 'Aguardando confirmação', cor: 'text-orange-600', bgCor: 'bg-orange-500' }
+        : agendamentoAtual.status === 'confirmado'
+          ? { texto: 'Em atendimento', cor: 'text-yellow-600', bgCor: 'bg-yellow-500' }
+          : agendamentoAtual.status === 'atendido'
+            ? { texto: 'Cliente atendido', cor: 'text-purple-600', bgCor: 'bg-purple-500' }
+            : { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }; // cancelado ou outros status
+    
+    // Determinar próximo status
+    const proximoStatus = !agendamentoProximo
+      ? { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }
+      : agendamentoProximo.status === 'pendente'
+        ? { texto: 'Aguardando confirmação', cor: 'text-orange-600', bgCor: 'bg-orange-500' }
+        : agendamentoProximo.status === 'confirmado'
+          ? { texto: 'Aguardando cliente', cor: 'text-blue-600', bgCor: 'bg-blue-500' }
+          : { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }; // cancelado ou outros status
+    
+    return {
+      horarioAtual: horarioAtualAgenda,
+      statusAtual,
+      proximoHorario: agendamentoProximo ? agendamentoProximo.time.substring(0, 5) : proximoHorarioAgenda,
+      proximoStatus
+    };
   };
 
   const getDiaSemana = (date: Date) => {
@@ -153,7 +229,9 @@ const Index = () => {
   const stats = [
     {
       title: "Agendamentos Hoje",
-      value: agendamentosHoje?.length.toString() || "0",
+      value: agendamentosHoje?.filter(a => 
+        ["pendente", "confirmado", "atendido", "cancelado"].includes(a.status)
+      )?.length.toString() || "0",
       icon: Calendar,
       color: "text-primary",
     },
@@ -170,8 +248,7 @@ const Index = () => {
       color: "text-primary",
     },
     {
-      
-      value: format(dataHoraAtual, "HH:mm:ss"),
+      value: format(dataHoraAtual, "HH:mm"),
       icon: Clock,
       color: "text-primary",
       subtitle: `${getDiaSemana(dataHoraAtual)}, ${format(dataHoraAtual, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
@@ -206,7 +283,7 @@ const Index = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6 bg-secondary border-none">
-          <h2 className="font-display text-xl mb-4">Próximos Agendamentos</h2>
+          <h2 className="font-display text-xl mb-4">Lista de Agendamentos</h2>
           <div className="space-y-4">
             {!proximosAgendamentos?.length ? (
               <div className="text-muted-foreground">
@@ -284,7 +361,14 @@ const Index = () => {
         </Card>
 
         <Card className="p-6 bg-secondary border-none">
-          <h2 className="font-display text-xl mb-4">Status dos Barbeiros</h2>
+          <h2 className="font-display text-xl mb-4">Status de Atendimentos</h2>
+          <div className="flex justify-between mb-2 px-4">
+            <div className="flex-1"></div>
+            <div className="flex gap-6">
+              <div className="text-sm text-muted-foreground">Horário atual</div>
+              <div className="text-sm text-muted-foreground">Próximo horário</div>
+            </div>
+          </div>
           <div className="space-y-4">
             {barbeiros?.map((barbeiro) => {
               const status = getBarbeiroStatus(barbeiro.id);
@@ -296,17 +380,31 @@ const Index = () => {
                     </div>
                     <div>
                       <p className="font-medium">{barbeiro.name}</p>
-                      <p className={cn("text-sm font-medium", status.cor)}>
-                        {status.status}
-                      </p>
                     </div>
                   </div>
-                  <div className={cn(
-                    "h-3 w-3 rounded-full",
-                    status.cor === 'text-yellow-600' ? "bg-yellow-500" : 
-                    status.cor === 'text-blue-600' ? "bg-blue-500" : 
-                    "bg-green-500"
-                  )} />
+                  <div className="flex gap-6">
+                    {/* Status atual */}
+                    <div className="flex flex-col items-end">
+                      <p className="text-sm font-medium">{status.horarioAtual}</p>
+                      <div className="flex items-center gap-2">
+                        <p className={cn("text-sm font-medium", status.statusAtual.cor)}>
+                          {status.statusAtual.texto}
+                        </p>
+                        <div className={cn("h-3 w-3 rounded-full", status.statusAtual.bgCor)} />
+                      </div>
+                    </div>
+                    
+                    {/* Próximo status */}
+                    <div className="flex flex-col items-end">
+                      <p className="text-sm font-medium">{status.proximoHorario}</p>
+                      <div className="flex items-center gap-2">
+                        <p className={cn("text-sm font-medium", status.proximoStatus.cor)}>
+                          {status.proximoStatus.texto}
+                        </p>
+                        <div className={cn("h-3 w-3 rounded-full", status.proximoStatus.bgCor)} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
