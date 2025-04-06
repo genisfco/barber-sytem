@@ -47,7 +47,7 @@ function isHorarioDisponivel(data: FormData, agendamentos: Agendamento[]): boole
     agendamento.date === dataFormatada &&
     agendamento.time === data.horario &&
     agendamento.barber_id === data.barbeiroId &&
-    ['confirmado', 'pendente', 'indisponivel'].includes(agendamento.status)
+    ['confirmado', 'pendente'].includes(agendamento.status)
   );
 
   if (barbeiroAgendado) return false;

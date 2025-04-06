@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useIndisponibilidades } from "@/hooks/useIndisponibilidades";
 import { horarios } from "@/constants/horarios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
@@ -19,11 +20,16 @@ interface AgendamentoGridProps {
 
 export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGridProps) {
   const { barbeiros } = useBarbeiros();
+  const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
+  const { indisponibilidades } = useIndisponibilidades();
   const [selectedBarbeiro, setSelectedBarbeiro] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
   const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
+
+  // Formatamos a data para o padrão yyyy-MM-dd
+  const dataFormatada = format(date, "yyyy-MM-dd");
 
   const handleHorarioClick = (barbeiroId: string, horario: string) => {
     setSelectedBarbeiro(barbeiroId);
@@ -54,6 +60,15 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
 
   // Função para verificar se um horário está ocupado para um barbeiro específico
   const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
+    // Primeiro verificamos se o barbeiro está indisponível para o dia inteiro
+    const barbeiroBloqueadoNoDia = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada);
+    
+    // Se o barbeiro está indisponível para o dia todo, retorna true imediatamente
+    if (barbeiroBloqueadoNoDia) {
+      return true;
+    }
+    
+    // Caso contrário, verificamos se o horário específico está ocupado com algum agendamento
     return agendamentos?.some(
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
@@ -61,8 +76,8 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
         (agendamento.status === "pendente" || 
          agendamento.status === "atendido" || 
          agendamento.status === "confirmado" ||
-         agendamento.status === "ocupado" ||
-         agendamento.status === "indisponivel")
+         agendamento.status === "ocupado")
+        // Removemos a verificação de "indisponivel" aqui, pois agora está na outra tabela
     );
   };
 

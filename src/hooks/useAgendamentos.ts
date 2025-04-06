@@ -38,6 +38,23 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
   const formattedDate = date?.toISOString().split('T')[0];
 
+  // Buscar indisponibilidades
+  const { data: indisponibilidades } = useQuery({
+    queryKey: ['indisponibilidades'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('barber_unavailability')
+        .select('*');
+
+      if (error) {
+        console.error("Erro ao buscar indisponibilidades:", error);
+        throw error;
+      }
+
+      return data || [];
+    }
+  });
+
   const { data: agendamentos, isLoading } = useQuery({
     queryKey: ['agendamentos', formattedDate, barbeiro_id],
     queryFn: async () => {
@@ -292,12 +309,26 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
     },
   });
 
+  // Função para verificar se um barbeiro está disponível em uma data específica
+  const verificarDisponibilidadeBarbeiro = (barbeiroId: string, data: string) => {
+    // Verificar apenas na nova tabela de indisponibilidades
+    const indisponivelNaData = indisponibilidades?.some(
+      indisponibilidade => 
+        indisponibilidade.barber_id === barbeiroId && 
+        indisponibilidade.date === data
+    );
+    
+    // Retorna false se estiver indisponível, true se estiver disponível
+    return !indisponivelNaData;
+  };
+
   return {
     agendamentos,
     isLoading,
     createAgendamento,
     updateAgendamento,
-    marcarComoAtendido,
     deleteAgendamento,
+    marcarComoAtendido,
+    verificarDisponibilidadeBarbeiro,
   };
 }

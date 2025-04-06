@@ -169,6 +169,41 @@ export type Database = {
         }
         Relationships: []
       }
+      barber_unavailability: {
+        Row: {
+          id: string
+          barber_id: string
+          barber_name: string
+          date: string
+          motivo: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          barber_id: string
+          barber_name: string
+          date: string
+          motivo?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          barber_id?: string
+          barber_name?: string
+          date?: string
+          motivo?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barber_unavailability_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       clients: {
         Row: {
           created_at: string | null

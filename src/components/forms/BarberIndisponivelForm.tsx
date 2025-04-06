@@ -15,12 +15,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { useIndisponibilidades } from "@/hooks/useIndisponibilidades";
-import { useAgendamentos } from "@/hooks/useAgendamentos";
 
 const formSchema = z.object({
   data: z.date({
     required_error: "Selecione a data",
   }),
+  motivo: z.string().optional(),
 });
 
 type IndisponivelFormValues = z.infer<typeof formSchema>;
@@ -39,29 +39,29 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
     },
   });
 
-  const { registrarIndisponibilidade, removerIndisponibilidade } = useIndisponibilidades();
-  const { agendamentos } = useAgendamentos();
+  const { 
+    registrarIndisponibilidade, 
+    removerIndisponibilidade, 
+    verificarIndisponibilidade 
+  } = useIndisponibilidades();
 
   const onSubmit = async (data: IndisponivelFormValues) => {
-    const formattedDate = format(data.data, "yyyy-MM-dd");
+    // Verificar se o barbeiro já está indisponível na data selecionada
+    const estaIndisponivel = verificarIndisponibilidade(barbeiroId, data.data);
     
-    // Verifica se já existe indisponibilidade para esta data
-    const jaIndisponivel = agendamentos?.some(
-      (agendamento) =>
-        agendamento.barber_id === barbeiroId &&
-        agendamento.date === formattedDate &&
-        agendamento.status === "indisponivel"
-    );
-
-    if (jaIndisponivel) {
-      // Se já existe, remove a indisponibilidade
-      await removerIndisponibilidade.mutateAsync({ barbeiroId, data: data.data });
+    if (estaIndisponivel) {
+      // Se já está indisponível, remove a indisponibilidade
+      await removerIndisponibilidade.mutateAsync({ 
+        barbeiroId, 
+        data: data.data 
+      });
     } else {
-      // Se não existe, registra a indisponibilidade
+      // Se não está indisponível, registra a indisponibilidade
       await registrarIndisponibilidade.mutateAsync({
         barbeiroId,
         barbeiroName,
         data: data.data,
+        motivo: data.motivo // Campo opcional para motivo
       });
     }
 
@@ -69,13 +69,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
   };
 
   const dataSelecionada = form.watch("data");
-  const formattedDate = dataSelecionada ? format(dataSelecionada, "yyyy-MM-dd") : "";
-  const jaIndisponivel = agendamentos?.some(
-    (agendamento) =>
-      agendamento.barber_id === barbeiroId &&
-      agendamento.date === formattedDate &&
-      agendamento.status === "indisponivel"
-  );
+  const estaIndisponivel = dataSelecionada ? verificarIndisponibilidade(barbeiroId, dataSelecionada) : false;
 
   return (
     <Form {...form}>
@@ -110,7 +104,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
             Cancelar
           </Button>
           <Button type="submit">
-            {jaIndisponivel ? "Remover Indisponibilidade" : "Registrar Indisponibilidade"}
+            {estaIndisponivel ? "Remover Indisponibilidade" : "Registrar Indisponibilidade"}
           </Button>
         </div>
       </form>
