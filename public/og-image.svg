@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#2B3141"/>
+  <path d="M600 315C600 244.5 600 174 600 103.5C600 33 600 33 600 33" stroke="#C4A962" stroke-width="60" stroke-linecap="round"/>
+  <path d="M600 315C600 385.5 600 456 600 526.5C600 597 600 597 600 597" stroke="#C4A962" stroke-width="60" stroke-linecap="round"/>
+  <path d="M600 315L450 315" stroke="#C4A962" stroke-width="60" stroke-linecap="round"/>
+  <path d="M600 315L750 315" stroke="#C4A962" stroke-width="60" stroke-linecap="round"/>
+  <text x="600" y="315" font-family="Playfair Display" font-size="72" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">BarberPro</text>
+</svg> 
