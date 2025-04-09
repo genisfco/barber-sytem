@@ -125,7 +125,7 @@ const Index = () => {
         client_id: agendamento.client_id,
         barber_id: agendamento.barber_id,
         date: agendamento.date,
-        status: "confirmado"
+        status: "confirmado" 
       });
 
       console.log('✅ Atualização concluída com sucesso');

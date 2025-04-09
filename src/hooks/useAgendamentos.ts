@@ -350,33 +350,69 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       date: string; 
       status: string 
     }) => {
-      // Busca todos os agendamentos relacionados com status cancelado
+      console.log('==================================');
+      console.log('🔍 INICIANDO BUSCA DE AGENDAMENTOS');
+      console.log('==================================');
+      console.log('Filtros:', {
+        client_id: data.client_id,
+        barber_id: data.barber_id,
+        date: data.date,
+        status: ['pendente', 'cancelado']
+      });
+
+      // Busca todos os agendamentos relacionados com status pendente ou cancelado
       const { data: agendamentos, error } = await supabase
         .from('appointments')
         .select('*')
         .eq('client_id', data.client_id)
         .eq('barber_id', data.barber_id)
         .eq('date', data.date)
-        .eq('status', 'cancelado');
+        .in('status', ['pendente', 'cancelado']);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ ERRO NA BUSCA:', error);
+        throw error;
+      }
+
+      console.log('==================================');
+      console.log('✨ AGENDAMENTOS ENCONTRADOS:', agendamentos?.length || 0);
+      console.log('==================================');
+      console.log(JSON.stringify(agendamentos, null, 2));
 
       // Atualiza o status de todos os agendamentos encontrados
       if (agendamentos && agendamentos.length > 0) {
-        const promises = agendamentos.map((agendamento) => 
-          supabase
+        console.log('==================================');
+        console.log('🔄 INICIANDO ATUALIZAÇÕES');
+        console.log('==================================');
+        
+        const promises = agendamentos.map((agendamento) => {
+          console.log('📝 Atualizando:', {
+            id: agendamento.id,
+            cliente: agendamento.client_name,
+            barbeiro: agendamento.barber,
+            servico: agendamento.service,
+            de_status: agendamento.status,
+            para_status: data.status
+          });
+          
+          return supabase
             .from('appointments')
             .update({ status: data.status })
-            .eq('id', agendamento.id)
-        );
+            .eq('id', agendamento.id);
+        });
 
         await Promise.all(promises);
+        console.log('✅ TODAS AS ATUALIZAÇÕES CONCLUÍDAS COM SUCESSO');
+      } else {
+        console.log('⚠️ NENHUM AGENDAMENTO ENCONTRADO PARA ATUALIZAR');
       }
 
+      console.log('==================================');
       return agendamentos;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      console.log('🔄 CACHE ATUALIZADO');
     },
   });
 

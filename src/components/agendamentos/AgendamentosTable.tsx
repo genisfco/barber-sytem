@@ -74,9 +74,16 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   const agendamentosFiltrados = agendamentosDoDia ? agruparAgendamentos(agendamentosDoDia) : [];
 
   const handleConfirmar = async (id: string) => {
+    console.log('🎯 Iniciando confirmação do agendamento:', id);
+    
     // Encontra o agendamento para obter suas informações
     const agendamento = agendamentos?.find(a => a.id === id);
-    if (!agendamento) return;
+    if (!agendamento) {
+      console.log('❌ Agendamento não encontrado');
+      return;
+    }
+
+    console.log('📋 Dados do agendamento:', agendamento);
 
     try {
       // Atualiza todos os agendamentos relacionados
@@ -86,8 +93,10 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
         date: agendamento.date,
         status: "confirmado"
       });
+
+      console.log('✅ Atualização concluída com sucesso');
     } catch (error) {
-      // Se houver erro, deixa o toast handler do mutation tratar
+      console.error('❌ Erro ao atualizar agendamentos:', error);
     }
   };
 
