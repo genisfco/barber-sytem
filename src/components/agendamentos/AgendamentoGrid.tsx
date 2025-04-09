@@ -82,11 +82,8 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
         agendamento.date === dataFormatada &&
-        agendamento.time.slice(0, 5) === horario && // REMOVENDO OS SEGS, PARA USAR APENAS HH:mm
-        (agendamento.status === "pendente" || 
-         agendamento.status === "atendido" || 
-         agendamento.status === "confirmado" ||
-         agendamento.status === "ocupado")
+        agendamento.time.slice(0, 5) === horario &&
+        ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
     );
 
     return horarioOcupado || false;
@@ -126,40 +123,25 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-2">
-              {horarios.map((horario) => {
-      const horario_passado = isHorarioPassado(horario);
-      const barbeiro_indisponivel_no_dia = !verificarDisponibilidadeBarbeiro(barbeiro.id, dataFormatada);
-      const horario_ocupado = agendamentos?.some(
-        (agendamento) =>
-          agendamento.barber_id === barbeiro.id &&
-          agendamento.date === dataFormatada &&
-          agendamento.time.slice(0, 5) === horario &&
-          ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
-      );
+                {horarios.map((horario) => {
+                  const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
+                  const horario_passado = isHorarioPassado(horario);
+                  const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
 
-      const hora_agenda_indisponivel = horario_passado || barbeiro_indisponivel_no_dia || horario_ocupado;
-
-      let motivoTooltip = "";
-      if (horario_passado) motivoTooltip = "Horário já passou";
-      else if (barbeiro_indisponivel_no_dia) motivoTooltip = "Barbeiro indisponível no dia";
-      else if (horario_ocupado) motivoTooltip = "Horário ocupado com outro agendamento";
-
-      return (
-        <div
-          key={`${barbeiro.id}-${horario}`}
-          className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
-            hora_agenda_indisponivel
-              ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
-              : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-          }`}
-          onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
-          title={hora_agenda_indisponivel ? motivoTooltip : ""}
-        >
-          {horario}
-        </div>
-      );
-    })}
-
+                  return (
+                    <div
+                      key={`${barbeiro.id}-${horario}`}
+                      className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
+                        hora_agenda_indisponivel
+                          ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
+                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                      }`}
+                      onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
+                    >
+                      {horario}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
