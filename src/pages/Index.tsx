@@ -108,21 +108,131 @@ const Index = () => {
   };
 
   const handleConfirmar = async (id: string) => {
-    await updateAgendamento.mutateAsync({
-      id,
-      status: "confirmado"
-    });
+    // Encontra o agendamento para obter suas informações
+    const agendamento = agendamentos?.find(a => a.id === id);
+    if (!agendamento) return;
+
+    // Encontra o serviço para obter sua duração
+    const servico = servicos?.find(s => s.name === agendamento.service);
+    const slotsNecessarios = servico ? Math.ceil(servico.duration / 30) : 1;
+
+    // Se precisar de mais de um slot, atualiza todos os slots relacionados
+    if (slotsNecessarios > 1) {
+      const [hora, minuto] = agendamento.time.split(':').map(Number);
+      const horariosParaAtualizar = [agendamento.time];
+
+      // Adiciona os próximos horários se forem necessários
+      for (let i = 1; i < slotsNecessarios; i++) {
+        const proximoHorario = new Date();
+        proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
+        const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
+        horariosParaAtualizar.push(proximoHorarioFormatado);
+      }
+
+      // Atualiza o status de todos os slots relacionados
+      for (const horario of horariosParaAtualizar) {
+        const agendamentoRelacionado = agendamentos?.find(
+          a => a.date === agendamento.date &&
+               a.time === horario &&
+               a.client_id === agendamento.client_id &&
+               a.barber_id === agendamento.barber_id
+        );
+
+        if (agendamentoRelacionado) {
+          await updateAgendamento.mutateAsync({
+            id: agendamentoRelacionado.id,
+            status: "confirmado"
+          });
+        }
+      }
+    } else {
+      await updateAgendamento.mutateAsync({
+        id,
+        status: "confirmado"
+      });
+    }
   };
 
   const handleCancelar = async (id: string) => {
-    await updateAgendamento.mutateAsync({
-      id,
-      status: "cancelado"
-    });
+    // Encontra o agendamento para obter suas informações
+    const agendamento = agendamentos?.find(a => a.id === id);
+    if (!agendamento) return;
+
+    // Encontra o serviço para obter sua duração
+    const servico = servicos?.find(s => s.name === agendamento.service);
+    const slotsNecessarios = servico ? Math.ceil(servico.duration / 30) : 1;
+
+    // Se precisar de mais de um slot, atualiza todos os slots relacionados
+    if (slotsNecessarios > 1) {
+      const [hora, minuto] = agendamento.time.split(':').map(Number);
+      const horariosParaAtualizar = [agendamento.time];
+
+      // Adiciona os próximos horários se forem necessários
+      for (let i = 1; i < slotsNecessarios; i++) {
+        const proximoHorario = new Date();
+        proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
+        const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
+        horariosParaAtualizar.push(proximoHorarioFormatado);
+      }
+
+      // Atualiza o status de todos os slots relacionados
+      for (const horario of horariosParaAtualizar) {
+        const agendamentoRelacionado = agendamentos?.find(
+          a => a.date === agendamento.date &&
+               a.time === horario &&
+               a.client_id === agendamento.client_id &&
+               a.barber_id === agendamento.barber_id
+        );
+
+        if (agendamentoRelacionado) {
+          await updateAgendamento.mutateAsync({
+            id: agendamentoRelacionado.id,
+            status: "cancelado"
+          });
+        }
+      }
+    } else {
+      await updateAgendamento.mutateAsync({
+        id,
+        status: "cancelado"
+      });
+    }
   };
 
   const handleAtendido = async (agendamento: any) => {
-    await marcarComoAtendido.mutateAsync(agendamento);
+    // Encontra o serviço para obter sua duração
+    const servico = servicos?.find(s => s.name === agendamento.service);
+    const slotsNecessarios = servico ? Math.ceil(servico.duration / 30) : 1;
+
+    // Se precisar de mais de um slot, atualiza todos os slots relacionados
+    if (slotsNecessarios > 1) {
+      const [hora, minuto] = agendamento.time.split(':').map(Number);
+      const horariosParaAtualizar = [agendamento.time];
+
+      // Adiciona os próximos horários se forem necessários
+      for (let i = 1; i < slotsNecessarios; i++) {
+        const proximoHorario = new Date();
+        proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
+        const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
+        horariosParaAtualizar.push(proximoHorarioFormatado);
+      }
+
+      // Atualiza o status de todos os slots relacionados
+      for (const horario of horariosParaAtualizar) {
+        const agendamentoRelacionado = agendamentos?.find(
+          a => a.date === agendamento.date &&
+               a.time === horario &&
+               a.client_id === agendamento.client_id &&
+               a.barber_id === agendamento.barber_id
+        );
+
+        if (agendamentoRelacionado) {
+          await marcarComoAtendido.mutateAsync(agendamentoRelacionado);
+        }
+      }
+    } else {
+      await marcarComoAtendido.mutateAsync(agendamento);
+    }
   };
 
   const handleEditar = (agendamento: any) => {

@@ -39,7 +39,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
   const { servicos } = useServicos();
 
-  // Função para agrupar agendamentos que fazem parte do mesmo serviço
+  // Função para agrupar agendamentos que fazem parte do mesmo cliente
   const agruparAgendamentos = (agendamentos: Agendamento[]) => {
     const agendamentosAgrupados = new Map<string, Agendamento>();
     

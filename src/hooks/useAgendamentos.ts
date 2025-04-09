@@ -122,7 +122,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         // 1. Primeiro, verificamos o status atual do agendamento
         const { data: currentAppointment, error: fetchError } = await supabase
           .from('appointments')
-          .select('status')
+          .select('*')
           .eq('id', agendamento.id)
           .single();
 
@@ -147,7 +147,41 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           if (deleteCommissionError) throw deleteCommissionError;
         }
 
-        // 3. Atualiza o agendamento
+        // 3. Se o agendamento está sendo cancelado, precisamos encontrar e cancelar todos os slots relacionados
+        if (agendamento.status === 'cancelado') {
+          // Encontra o serviço para obter sua duração
+          const servico = servicos?.find(s => s.id === currentAppointment.service_id);
+          const slotsNecessarios = servico ? Math.ceil(servico.duration / 30) : 1;
+
+          // Se precisar de mais de um slot, atualiza todos os slots relacionados
+          if (slotsNecessarios > 1) {
+            const [hora, minuto] = currentAppointment.time.split(':').map(Number);
+            const horariosParaAtualizar = [currentAppointment.time];
+
+            // Adiciona os próximos horários se forem necessários
+            for (let i = 1; i < slotsNecessarios; i++) {
+              const proximoHorario = new Date();
+              proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
+              const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
+              horariosParaAtualizar.push(proximoHorarioFormatado);
+            }
+
+            // Atualiza o status de todos os slots relacionados
+            for (const horario of horariosParaAtualizar) {
+              const { error: updateError } = await supabase
+                .from('appointments')
+                .update({ status: 'cancelado' })
+                .eq('date', currentAppointment.date)
+                .eq('time', horario)
+                .eq('client_id', currentAppointment.client_id)
+                .eq('barber_id', currentAppointment.barber_id);
+
+              if (updateError) throw updateError;
+            }
+          }
+        }
+
+        // 4. Atualiza o agendamento principal
         const { data, error } = await supabase
           .from('appointments')
           .update(agendamento)
