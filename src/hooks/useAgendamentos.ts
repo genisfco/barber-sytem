@@ -343,6 +343,43 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
     },
   });
 
+  const updateAgendamentosRelacionados = useMutation({
+    mutationFn: async (data: { 
+      client_id: string; 
+      barber_id: string; 
+      date: string; 
+      status: string 
+    }) => {
+      // Busca todos os agendamentos relacionados com status cancelado
+      const { data: agendamentos, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('client_id', data.client_id)
+        .eq('barber_id', data.barber_id)
+        .eq('date', data.date)
+        .eq('status', 'cancelado');
+
+      if (error) throw error;
+
+      // Atualiza o status de todos os agendamentos encontrados
+      if (agendamentos && agendamentos.length > 0) {
+        const promises = agendamentos.map((agendamento) => 
+          supabase
+            .from('appointments')
+            .update({ status: data.status })
+            .eq('id', agendamento.id)
+        );
+
+        await Promise.all(promises);
+      }
+
+      return agendamentos;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    },
+  });
+
   // Função para verificar se um barbeiro está disponível em uma data específica
   const verificarDisponibilidadeBarbeiro = (barbeiroId: string, data: string) => {
     // Verificar se o barbeiro está indisponível para o dia todo
@@ -368,5 +405,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
     deleteAgendamento,
     marcarComoAtendido,
     verificarDisponibilidadeBarbeiro,
+    updateAgendamentosRelacionados,
   };
 }

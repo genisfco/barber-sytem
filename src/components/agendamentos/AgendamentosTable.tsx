@@ -34,7 +34,7 @@ interface AgendamentosTableProps {
 }
 
 export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTableProps) {
-  const { updateAgendamento, marcarComoAtendido } = useAgendamentos(new Date());
+  const { updateAgendamento, updateAgendamentosRelacionados, marcarComoAtendido } = useAgendamentos(new Date());
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
   const { servicos } = useServicos();
@@ -74,10 +74,21 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   const agendamentosFiltrados = agendamentosDoDia ? agruparAgendamentos(agendamentosDoDia) : [];
 
   const handleConfirmar = async (id: string) => {
-    await updateAgendamento.mutateAsync({
-      id,
-      status: "confirmado"
-    });
+    // Encontra o agendamento para obter suas informações
+    const agendamento = agendamentos?.find(a => a.id === id);
+    if (!agendamento) return;
+
+    try {
+      // Atualiza todos os agendamentos relacionados
+      await updateAgendamentosRelacionados.mutateAsync({
+        client_id: agendamento.client_id,
+        barber_id: agendamento.barber_id,
+        date: agendamento.date,
+        status: "confirmado"
+      });
+    } catch (error) {
+      // Se houver erro, deixa o toast handler do mutation tratar
+    }
   };
 
   const handleCancelar = async (id: string) => {
