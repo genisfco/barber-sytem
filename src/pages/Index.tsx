@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useTransacoes } from "@/hooks/useTransacoes";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useServicos } from "@/hooks/useServicos";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ const Index = () => {
   const { agendamentos, updateAgendamento, marcarComoAtendido } = useAgendamentos(today);
   const { totais } = useTransacoes();
   const { barbeiros } = useBarbeiros();
+  const { servicos } = useServicos();
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>();
   const [dataHoraAtual, setDataHoraAtual] = useState(new Date());
@@ -27,9 +29,39 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Função para agrupar agendamentos que fazem parte do mesmo serviço
+  const agruparAgendamentos = (agendamentos: any[]) => {
+    const agendamentosAgrupados = new Map<string, any>();
+    
+    agendamentos.forEach(agendamento => {
+      // Verifica se já existe um agendamento para este cliente
+      const agendamentoExistente = Array.from(agendamentosAgrupados.values())
+        .find(a => a.client_id === agendamento.client_id && a.date === agendamento.date);
+
+      if (agendamentoExistente) {
+        // Se já existe um agendamento para este cliente, verifica se este é o primeiro horário
+        const [horaExistente, minutoExistente] = agendamentoExistente.time.split(':').map(Number);
+        const [horaAtual, minutoAtual] = agendamento.time.split(':').map(Number);
+
+        // Se o horário atual for anterior ao existente, substitui
+        if (horaAtual < horaExistente || (horaAtual === horaExistente && minutoAtual < minutoExistente)) {
+          agendamentosAgrupados.delete(agendamentoExistente.id);
+          agendamentosAgrupados.set(agendamento.id, agendamento);
+        }
+      } else {
+        // Se não existe agendamento para este cliente, adiciona
+        agendamentosAgrupados.set(agendamento.id, agendamento);
+      }
+    });
+    
+    return Array.from(agendamentosAgrupados.values());
+  };
+
   const agendamentosHoje = agendamentos?.filter(
     (agendamento) => agendamento.date === format(today, "yyyy-MM-dd")
   );
+
+  const agendamentosFiltrados = agendamentosHoje ? agruparAgendamentos(agendamentosHoje) : [];
 
   // Função auxiliar para obter o horário atual de agendamento (00 ou 30)
   const getHorarioAtualAgenda = () => {
@@ -40,7 +72,7 @@ const Index = () => {
     return `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
   };
 
-  const proximosAgendamentos = agendamentosHoje
+  const proximosAgendamentos = agendamentosFiltrados
     ?.filter(agendamento => {
       // Incluir agendamentos do horário atual e futuros
       const horarioAtualAgenda = getHorarioAtualAgenda();

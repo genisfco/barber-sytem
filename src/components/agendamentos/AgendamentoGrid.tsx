@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
-import { useIndisponibilidades } from "@/hooks/useIndisponibilidades";
 import { horarios } from "@/constants/horarios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
@@ -21,7 +20,6 @@ interface AgendamentoGridProps {
 export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGridProps) {
   const { barbeiros } = useBarbeiros();
   const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
-  const { indisponibilidades } = useIndisponibilidades();
   const [selectedBarbeiro, setSelectedBarbeiro] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
@@ -44,14 +42,19 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
 
   const isHorarioPassado = (horario: string) => {
     const [hora, minuto] = horario.split(":").map(Number);
-    const horaAtual = new Date().getHours();
-    const minutoAtual = new Date().getMinutes();
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = new Date();
+    const horaAtual = hoje.getHours();
+    const minutoAtual = hoje.getMinutes();
+    const dataAtual = hoje.toISOString().split("T")[0];
     const dataSelecionada = format(date, "yyyy-MM-dd");
 
-    if (dataSelecionada < hoje) return true;
-    if (dataSelecionada > hoje) return false;
+    // Se a data selecionada for anterior a hoje, todos os horários são considerados passados
+    if (dataSelecionada < dataAtual) return true;
     
+    // Se a data selecionada for posterior a hoje, nenhum horário é considerado passado
+    if (dataSelecionada > dataAtual) return false;
+    
+    // Se for hoje, verifica se o horário já passou
     if (hora < horaAtual) return true;
     if (hora === horaAtual && minuto <= minutoAtual) return true;
     
@@ -68,17 +71,25 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return true;
     }
     
+    // Verifica se o horário já passou
+    const horarioPassado = isHorarioPassado(horario);
+    if (horarioPassado) {
+      return true;
+    }
+    
     // Caso contrário, verificamos se o horário específico está ocupado com algum agendamento
-    return agendamentos?.some(
+    const horarioOcupado = agendamentos?.some(
       (agendamento) =>
         agendamento.barber_id === barbeiroId &&
+        agendamento.date === dataFormatada &&
         agendamento.time.slice(0, 5) === horario && // REMOVENDO OS SEGS, PARA USAR APENAS HH:mm
         (agendamento.status === "pendente" || 
          agendamento.status === "atendido" || 
          agendamento.status === "confirmado" ||
          agendamento.status === "ocupado")
-        // Removemos a verificação de "indisponivel" aqui, pois agora está na outra tabela
     );
+
+    return horarioOcupado || false;
   };
 
   if (isLoading) {
@@ -115,25 +126,40 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-2">
-                {horarios.map((horario) => {
-                  const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
-                  const horario_passado = isHorarioPassado(horario);
-                  const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
+              {horarios.map((horario) => {
+      const horario_passado = isHorarioPassado(horario);
+      const barbeiro_indisponivel_no_dia = !verificarDisponibilidadeBarbeiro(barbeiro.id, dataFormatada);
+      const horario_ocupado = agendamentos?.some(
+        (agendamento) =>
+          agendamento.barber_id === barbeiro.id &&
+          agendamento.date === dataFormatada &&
+          agendamento.time.slice(0, 5) === horario &&
+          ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
+      );
 
-                  return (
-                    <div
-                      key={`${barbeiro.id}-${horario}`}
-                      className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
-                        hora_agenda_indisponivel
-                          ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
-                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                      }`}
-                      onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
-                    >
-                      {horario}
-                    </div>
-                  );
-                })}
+      const hora_agenda_indisponivel = horario_passado || barbeiro_indisponivel_no_dia || horario_ocupado;
+
+      let motivoTooltip = "";
+      if (horario_passado) motivoTooltip = "Horário já passou";
+      else if (barbeiro_indisponivel_no_dia) motivoTooltip = "Barbeiro indisponível no dia";
+      else if (horario_ocupado) motivoTooltip = "Horário ocupado com outro agendamento";
+
+      return (
+        <div
+          key={`${barbeiro.id}-${horario}`}
+          className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
+            hora_agenda_indisponivel
+              ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
+              : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+          }`}
+          onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
+          title={hora_agenda_indisponivel ? motivoTooltip : ""}
+        >
+          {horario}
+        </div>
+      );
+    })}
+
               </div>
             </CardContent>
           </Card>

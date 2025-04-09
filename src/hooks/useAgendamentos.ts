@@ -311,15 +311,19 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
   // Função para verificar se um barbeiro está disponível em uma data específica
   const verificarDisponibilidadeBarbeiro = (barbeiroId: string, data: string) => {
-    // Verificar apenas na nova tabela de indisponibilidades
+    // Verificar se o barbeiro está indisponível para o dia todo
     const indisponivelNaData = indisponibilidades?.some(
       indisponibilidade => 
         indisponibilidade.barber_id === barbeiroId && 
         indisponibilidade.date === data
     );
     
-    // Retorna false se estiver indisponível, true se estiver disponível
-    return !indisponivelNaData;
+    // Se estiver indisponível para o dia todo, retorna false
+    if (indisponivelNaData) return false;
+
+    // Se não estiver indisponível para o dia todo, retorna true
+    // A verificação de horários específicos é feita no componente AgendamentoGrid
+    return true;
   };
 
   return {

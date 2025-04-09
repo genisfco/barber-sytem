@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useState } from "react";
 import { AgendamentoForm } from "../forms/AgendamentoForm";
+import { useServicos } from "@/hooks/useServicos";
 
 interface Agendamento {
   id: string;
@@ -36,12 +37,41 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   const { updateAgendamento, marcarComoAtendido } = useAgendamentos(new Date());
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
+  const { servicos } = useServicos();
+
+  // Função para agrupar agendamentos que fazem parte do mesmo serviço
+  const agruparAgendamentos = (agendamentos: Agendamento[]) => {
+    const agendamentosAgrupados = new Map<string, Agendamento>();
+    
+    agendamentos.forEach(agendamento => {
+      // Verifica se já existe um agendamento para este cliente
+      const agendamentoExistente = Array.from(agendamentosAgrupados.values())
+        .find(a => a.client_id === agendamento.client_id && a.date === agendamento.date);
+
+      if (agendamentoExistente) {
+        // Se já existe um agendamento para este cliente, verifica se este é o primeiro horário
+        const [horaExistente, minutoExistente] = agendamentoExistente.time.split(':').map(Number);
+        const [horaAtual, minutoAtual] = agendamento.time.split(':').map(Number);
+
+        // Se o horário atual for anterior ao existente, substitui
+        if (horaAtual < horaExistente || (horaAtual === horaExistente && minutoAtual < minutoExistente)) {
+          agendamentosAgrupados.delete(agendamentoExistente.id);
+          agendamentosAgrupados.set(agendamento.id, agendamento);
+        }
+      } else {
+        // Se não existe agendamento para este cliente, adiciona
+        agendamentosAgrupados.set(agendamento.id, agendamento);
+      }
+    });
+    
+    return Array.from(agendamentosAgrupados.values());
+  };
 
   const agendamentosDoDia = agendamentos
     ?.filter(agendamento => !["indisponivel", "liberado"].includes(agendamento.status))
-    ?.sort((a, b) => 
-      a.time.localeCompare(b.time)
-    );
+    ?.sort((a, b) => a.time.localeCompare(b.time));
+
+  const agendamentosFiltrados = agendamentosDoDia ? agruparAgendamentos(agendamentosDoDia) : [];
 
   const handleConfirmar = async (id: string) => {
     await updateAgendamento.mutateAsync({
@@ -75,7 +105,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
         <CardContent>
           {isLoading ? (
             <div className="text-center py-4">Carregando...</div>
-          ) : agendamentosDoDia?.length === 0 ? (
+          ) : agendamentosFiltrados?.length === 0 ? (
             <div className="text-muted-foreground">
               Nenhum agendamento para hoje.
             </div>
@@ -92,7 +122,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {agendamentosDoDia?.map((agendamento) => (
+                {agendamentosFiltrados?.map((agendamento) => (
                   <TableRow key={agendamento.id}>
                     <TableCell>{agendamento.time}</TableCell>
                     <TableCell>{agendamento.client_name}</TableCell>
