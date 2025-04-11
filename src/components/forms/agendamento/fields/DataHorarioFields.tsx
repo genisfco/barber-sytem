@@ -1,22 +1,20 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../schema";
 import { horarios } from "../../../../constants/horarios";
 import { Dispatch, SetStateAction } from "react";
+import { cn } from "@/lib/utils";
 
 interface DataHorarioFieldsProps {
   form: UseFormReturn<FormValues>;
   date: Date | undefined;
   setDate: Dispatch<SetStateAction<Date | undefined>>;
-  agendamentos: any[]; // Assuming the type for agendamentos
+  agendamentos: any[];
 }
 
 export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHorarioFieldsProps) {
-  // Função para verificar se um horário está disponível para agendamento
   const isHorarioDisponivel = (horario: string) => {
-    // Se não houver data selecionada, não está disponível
     if (!date) return false;
 
     const hoje = new Date();
@@ -24,7 +22,6 @@ export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHor
     const dataSelecionada = new Date(date);
     dataSelecionada.setHours(0, 0, 0, 0);
 
-    // Se for hoje, só permite horários futuros 
     const [horaAgendamento, minutoAgendamento] = horario.split(':').map(Number);
     const horaAtual = hoje.getHours();
     const minutoAtual = hoje.getMinutes();
@@ -32,7 +29,6 @@ export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHor
     if (horaAgendamento < horaAtual) return false;
     if (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual) return false;
 
-    // Verifica se o horário já está agendado para o barbeiro selecionado
     const horarioJaAgendado = agendamentos?.some(agendamento => {
       const dataAgendamento = new Date(agendamento.date);
       dataAgendamento.setHours(0, 0, 0, 0);
@@ -47,7 +43,6 @@ export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHor
 
     if (horarioJaAgendado) return false;
 
-    // Verifica se o cliente já tem um agendamento para o mesmo horário
     const clienteJaAgendado = agendamentos?.some(agendamento => {
       const dataAgendamento = new Date(agendamento.date);
       dataAgendamento.setHours(0, 0, 0, 0);
@@ -65,7 +60,6 @@ export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHor
     return true;
   };
 
-  // Função para desabilitar datas anteriores ao dia atual
   const isDateDisabled = (date: Date) => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -87,7 +81,6 @@ export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHor
               onSelect={(date) => {
                 setDate(date);
                 field.onChange(date);
-                // Limpa o horário selecionado se a data for alterada
                 if (date) {
                   form.setValue('horario', '');
                 }
@@ -104,27 +97,34 @@ export function DataHorarioFields({ form, date, setDate, agendamentos }: DataHor
         control={form.control}
         name="horario"
         render={({ field }) => (
-          <FormItem className="flex flex-col h-full">
+          <FormItem className="flex flex-col">
             <FormLabel>Horário</FormLabel>
-            <div className="flex-1 flex items-center">
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione o horário" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  {horarios.map((horario) => (
-                    <SelectItem 
-                      key={horario} 
-                      value={horario}
-                      disabled={!isHorarioDisponivel(horario)}
-                    >
-                      {horario}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-4 gap-2">
+              {horarios.map((horario) => {
+                const disponivel = isHorarioDisponivel(horario);
+                const selecionado = field.value === horario;
+                
+                return (
+                  <button
+                    key={horario}
+                    type="button"
+                    onClick={() => {
+                      if (disponivel) {
+                        field.onChange(horario);
+                      }
+                    }}
+                    className={cn(
+                      "p-2 rounded-md text-sm transition-colors",
+                      !disponivel && "opacity-50 cursor-not-allowed",
+                      selecionado && "bg-primary text-primary-foreground",
+                      disponivel && !selecionado && "hover:bg-primary/10"
+                    )}
+                    disabled={!disponivel}
+                  >
+                    {horario}
+                  </button>
+                );
+              })}
             </div>
             <FormMessage />
           </FormItem>

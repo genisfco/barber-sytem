@@ -1,8 +1,9 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../schema";
 import { useServicos } from "@/hooks/useServicos";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ServicoFieldProps {
   form: UseFormReturn<FormValues>;
@@ -18,30 +19,37 @@ export function ServicoField({ form }: ServicoFieldProps) {
       render={({ field }) => (
         <FormItem>
           <FormLabel>Serviço</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
-            <FormControl>
-              <SelectTrigger className="truncate">
-                <SelectValue placeholder="Selecione o serviço" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
+          <ScrollArea className="h-[200px] rounded-md border p-4">
+            <div className="space-y-4">
               {isLoading ? (
-                <SelectItem value="loading" disabled>
-                  Carregando serviços...
-                </SelectItem>
+                <div className="text-sm text-muted-foreground">Carregando serviços...</div>
               ) : servicos?.length === 0 ? (
-                <SelectItem value="empty" disabled>
-                  Nenhum serviço cadastrado
-                </SelectItem>
+                <div className="text-sm text-muted-foreground">Nenhum serviço cadastrado</div>
               ) : (
                 servicos?.map((servico) => (
-                  <SelectItem key={servico.id} value={servico.id}>
-                    {servico.name} - R$ {servico.price.toFixed(2)}
-                  </SelectItem>
+                  <div key={servico.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={servico.id}
+                      checked={field.value === servico.id}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          field.onChange(servico.id);
+                        } else {
+                          field.onChange("");
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={servico.id}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {servico.name} - R$ {servico.price.toFixed(2)}
+                    </label>
+                  </div>
                 ))
               )}
-            </SelectContent>
-          </Select>
+            </div>
+          </ScrollArea>
           <FormMessage />
         </FormItem>
       )}
