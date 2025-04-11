@@ -76,7 +76,10 @@ export function AgendamentoForm({
   // Preenche o formulário quando recebe um agendamento para editar
   useEffect(() => {
     if (agendamentoParaEditar) {
-      const data = new Date(agendamentoParaEditar.date);
+      // Corrige o problema do fuso horário
+      const [year, month, day] = agendamentoParaEditar.date.split('-').map(Number);
+      const data = new Date(year, month - 1, day);
+      
       form.reset({
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
