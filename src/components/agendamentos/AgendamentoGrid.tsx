@@ -10,6 +10,12 @@ import { IndisponivelForm } from "@/components/forms/BarberIndisponivelForm";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AgendamentoGridProps {
   date: Date;
@@ -89,6 +95,44 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
     return horarioOcupado || false;
   };
 
+  // Função para obter o motivo da indisponibilidade
+  const getMotivoIndisponibilidade = (barbeiroId: string, horario: string) => {
+    // Primeiro verificamos se o horário já passou
+    if (isHorarioPassado(horario)) {
+      const agendamento = agendamentos?.find(
+        (agendamento) =>
+          agendamento.barber_id === barbeiroId &&
+          agendamento.date === dataFormatada &&
+          agendamento.time.slice(0, 5) === horario &&
+          ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
+      );
+
+      if (agendamento) {
+        return `Atendimento ${agendamento.client_name}`;
+      }
+      return "Horário expirado";
+    }
+
+    const barbeiroBloqueadoNoDia = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada);
+    if (barbeiroBloqueadoNoDia) {
+      return "Barbeiro indisponível no dia";
+    }
+
+    const agendamento = agendamentos?.find(
+      (agendamento) =>
+        agendamento.barber_id === barbeiroId &&
+        agendamento.date === dataFormatada &&
+        agendamento.time.slice(0, 5) === horario &&
+        ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
+    );
+
+    if (agendamento) {
+      return `Agendado para ${agendamento.client_name}`;
+    }
+
+    return "Horário indisponível";
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -127,19 +171,30 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
                   const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
                   const horario_passado = isHorarioPassado(horario);
                   const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
+                  const motivoIndisponibilidade = getMotivoIndisponibilidade(barbeiro.id, horario);
 
                   return (
-                    <div
-                      key={`${barbeiro.id}-${horario}`}
-                      className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
-                        hora_agenda_indisponivel
-                          ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
-                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                      }`}
-                      onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
-                    >
-                      {horario}
-                    </div>
+                    <TooltipProvider key={`${barbeiro.id}-${horario}`}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
+                              hora_agenda_indisponivel
+                                ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
+                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                            }`}
+                            onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
+                          >
+                            {horario}
+                          </div>
+                        </TooltipTrigger>
+                        {hora_agenda_indisponivel && (
+                          <TooltipContent>
+                            <p>{motivoIndisponibilidade}</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
                   );
                 })}
               </div>
