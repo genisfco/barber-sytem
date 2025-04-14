@@ -10,7 +10,9 @@ import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Agendamentos from "./pages/Agendamentos";
 import Clientes from "./pages/Clientes";
-import Barbeiros from "./pages/BarbeirosServicos";
+import Barbeiros from "./pages/Barbeiros";
+import Servicos from "./pages/Servicos";
+import Produtos from "./pages/Produtos";
 import Financeiro from "./pages/Financeiro";
 import RelatorioMensal from "./pages/RelatorioMensal";
 import RelatorioAnual from "./pages/RelatorioAnual";
@@ -81,6 +83,14 @@ const App = () => (
               }
             />
             <Route
+              path="/servicos"
+              element={
+                <ProtectedRoute>
+                  <Servicos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/financeiro"
               element={
                 <ProtectedRoute>
@@ -104,6 +114,15 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/produtos"
+              element={
+                <ProtectedRoute>
+                  <Produtos />
+                </ProtectedRoute>
+              }
+            />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

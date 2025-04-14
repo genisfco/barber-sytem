@@ -83,14 +83,26 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return true;
     }
     
-    // Caso contrário, verificamos se o horário específico está ocupado com algum agendamento
-    const horarioOcupado = agendamentos?.some(
-      (agendamento) =>
-        agendamento.barber_id === barbeiroId &&
-        agendamento.date === dataFormatada &&
-        agendamento.time.slice(0, 5) === horario &&
+    // Verifica se o horário está ocupado por algum agendamento
+    const horarioOcupado = agendamentos?.some((agendamento) => {
+      if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
+        return false;
+      }
+
+      // Converte os horários para minutos para facilitar a comparação
+      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
+      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
+      
+      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
+      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
+      
+      // Verifica se o horário que estamos verificando está dentro do período do agendamento
+      return (
+        minutosVerificar >= minutosAgendamento &&
+        minutosVerificar < minutosAgendamento + agendamento.service_duration &&
         ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
-    );
+      );
+    });
 
     return horarioOcupado || false;
   };
@@ -99,16 +111,26 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const getMotivoIndisponibilidade = (barbeiroId: string, horario: string) => {
     // Primeiro verificamos se o horário já passou
     if (isHorarioPassado(horario)) {
-      const agendamento = agendamentos?.find(
-        (agendamento) =>
-          agendamento.barber_id === barbeiroId &&
-          agendamento.date === dataFormatada &&
-          agendamento.time.slice(0, 5) === horario &&
+      const agendamento = agendamentos?.find((agendamento) => {
+        if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
+          return false;
+        }
+
+        const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
+        const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
+        
+        const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
+        const minutosVerificar = horaVerificar * 60 + minutoVerificar;
+        
+        return (
+          minutosVerificar >= minutosAgendamento &&
+          minutosVerificar < minutosAgendamento + agendamento.service_duration &&
           ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
-      );
+        );
+      });
 
       if (agendamento) {
-        return `Atendimento ${agendamento.client_name}`;
+        return `Atendimento ${agendamento.client_name} (${agendamento.service})`;
       }
       return "Horário expirado";
     }
@@ -118,16 +140,26 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return "Barbeiro indisponível no dia";
     }
 
-    const agendamento = agendamentos?.find(
-      (agendamento) =>
-        agendamento.barber_id === barbeiroId &&
-        agendamento.date === dataFormatada &&
-        agendamento.time.slice(0, 5) === horario &&
+    const agendamento = agendamentos?.find((agendamento) => {
+      if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
+        return false;
+      }
+
+      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
+      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
+      
+      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
+      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
+      
+      return (
+        minutosVerificar >= minutosAgendamento &&
+        minutosVerificar < minutosAgendamento + agendamento.service_duration &&
         ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
-    );
+      );
+    });
 
     if (agendamento) {
-      return `Agendado para ${agendamento.client_name}`;
+      return `Agendado para ${agendamento.client_name} (${agendamento.service})`;
     }
 
     return "Horário indisponível";

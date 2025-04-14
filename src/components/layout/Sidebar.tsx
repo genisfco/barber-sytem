@@ -9,6 +9,8 @@ import {
   BarChart,
   TrendingUp,
   LogOut,
+  ListTodo,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -25,9 +27,11 @@ export function Sidebar() {
     { href: "/agendamentos", label: "Agendamentos", icon: Calendar },
     { href: "/clientes", label: "Clientes", icon: Users },
     { href: "/barbeiros", label: "Barbeiros", icon: Scissors },
+    { href: "/servicos", label: "Serviços", icon: ListTodo },
+    { href: "/produtos", label: "Produtos", icon: Package },
     { href: "/financeiro", label: "Financeiro", icon: DollarSign },
-    { href: "/relatorio-mensal", label: "Relatório Mensal", icon: BarChart },
-    { href: "/relatorio-anual", label: "Relatório Anual", icon: TrendingUp },
+    //{ href: "/relatorio-mensal", label: "Relatório Mensal", icon: BarChart },
+    //{ href: "/relatorio-anual", label: "Relatório Anual", icon: TrendingUp },
   ];
 
   return (

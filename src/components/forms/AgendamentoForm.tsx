@@ -99,84 +99,53 @@ export function AgendamentoForm({
       return;
     }
 
-    // Calcula quantos slots de 30 minutos são necessários
-    const slotsNecessarios = Math.ceil(servico.duration / 30);
-    const horariosParaAgendar = [values.horario];
+    // Calcula o horário final do serviço
+    const [horaInicial, minutoInicial] = values.horario.split(':').map(Number);
+    const horarioInicial = new Date();
+    horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
+    
+    const horarioFinal = new Date(horarioInicial);
+    horarioFinal.setMinutes(horarioFinal.getMinutes() + servico.duration);
 
-    // Se precisar de mais de um slot, adiciona os próximos horários
-    for (let i = 1; i < slotsNecessarios; i++) {
-      const [hora, minuto] = values.horario.split(':').map(Number);
-      const proximoHorario = new Date();
-      proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
-      const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
-      horariosParaAgendar.push(proximoHorarioFormatado);
+    // Verifica disponibilidade para todo o período do serviço
+    const agendamentosConflitantes = await supabase
+      .from('appointments')
+      .select('*')
+      .or(`and(client_id.eq.${cliente.id},date.eq.${values.data.toISOString().split('T')[0]},time.lte.${horarioFinal.toTimeString().slice(0,5)},time_end.gte.${values.horario}),and(barber_id.eq.${barbeiro.id},date.eq.${values.data.toISOString().split('T')[0]},time.lte.${horarioFinal.toTimeString().slice(0,5)},time_end.gte.${values.horario})`)
+      .in('status', ['confirmado', 'pendente']);
+
+    if (agendamentosConflitantes.data && agendamentosConflitantes.data.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao agendar",
+        description: "Já existe um agendamento conflitante para este horário.",
+      });
+      return;
     }
 
-    // Verifica disponibilidade para todos os horários necessários
-    for (const horario of horariosParaAgendar) {
-      // Verifica se o cliente já tem um agendamento para o mesmo horário
-      const agendamentoExistente = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('client_id', cliente.id)
-        .eq('date', values.data.toISOString().split('T')[0])
-        .eq('time', horario)
-        .in('status', ['confirmado', 'pendente'])
-        .single();
+    const dadosAgendamento = {
+      date: values.data.toISOString().split('T')[0],
+      time: values.horario,
+      time_end: horarioFinal.toTimeString().slice(0,5),
+      client_id: cliente.id,
+      client_name: cliente.name,
+      client_email: cliente.email,
+      client_phone: cliente.phone,
+      barber_id: barbeiro.id,
+      barber: barbeiro.name,
+      service_id: servico.id,
+      service: servico.name,
+      service_duration: servico.duration,
+      status: 'pendente'
+    };
 
-      if (agendamentoExistente.data) {
-        toast({
-          variant: "destructive",
-          title: "Erro ao agendar",
-          description: `Este cliente já possui um agendamento para o horário ${horario}.`,
-        });
-        return;
-      }
-
-      // Verifica se o barbeiro já tem um agendamento para o mesmo horário
-      const barbeiroAgendado = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('barber_id', barbeiro.id)
-        .eq('date', values.data.toISOString().split('T')[0])
-        .eq('time', horario)
-        .in('status', ['confirmado', 'pendente'])
-        .single();
-
-      if (barbeiroAgendado.data) {
-        toast({
-          variant: "destructive",
-          title: "Erro ao agendar",
-          description: `Este barbeiro já possui um agendamento para o horário ${horario}.`,
-        });
-        return;
-      }
-    }
-
-    // Cria os agendamentos para cada horário necessário
-    for (const horario of horariosParaAgendar) {
-      const dadosAgendamento = {
-        date: values.data.toISOString().split('T')[0],
-        time: horario,
-        client_id: cliente.id,
-        client_name: cliente.name,
-        client_email: cliente.email,
-        client_phone: cliente.phone,
-        barber_id: barbeiro.id,
-        barber: barbeiro.name,
-        service_id: servico.id,
-        service: servico.name,
-        status: 'pendente'
-      };
-
-      if (agendamentoParaEditar && horario === values.horario) {
-        await updateAgendamento.mutateAsync({
-          id: agendamentoParaEditar.id,
-          ...dadosAgendamento,
-        });
-      } else {
-        await createAgendamento.mutateAsync(dadosAgendamento);
-      }
+    if (agendamentoParaEditar) {
+      await updateAgendamento.mutateAsync({
+        id: agendamentoParaEditar.id,
+        ...dadosAgendamento,
+      });
+    } else {
+      await createAgendamento.mutateAsync(dadosAgendamento);
     }
 
     onOpenChange(false);

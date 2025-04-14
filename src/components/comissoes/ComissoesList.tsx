@@ -61,8 +61,9 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
             <TableHead>Data</TableHead>
             <TableHead>Serviço</TableHead>
             <TableHead>Cliente</TableHead>
-            <TableHead className="text-right">Valor</TableHead>
-            <TableHead className="text-right">Comissão</TableHead>
+            <TableHead className="text-right">Valor Serviço</TableHead>
+            <TableHead className="text-right">% Comissão</TableHead>
+            <TableHead className="text-right">Valor Comissão</TableHead>
             <TableHead className="text-center">Status</TableHead>
           </TableRow>
         </TableHeader>
@@ -70,15 +71,18 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
           {comissoes.map((comissao) => (
             <TableRow key={comissao.id}>
               <TableCell>
-                {format(new Date(comissao.date + 'T00:00:00'), "dd/MM/yyyy", { locale: ptBR })}
+                {format(new Date(comissao.created_at!), "dd/MM/yyyy", { locale: ptBR })}
               </TableCell>
-              <TableCell>{comissao.service}</TableCell>
-              <TableCell>{comissao.client_name}</TableCell>
+              <TableCell>{comissao.appointments.service}</TableCell>
+              <TableCell>{comissao.appointments.client_name}</TableCell>
               <TableCell className="text-right">
-                {formatMoney(comissao.service_amount)}
+                {formatMoney(comissao.service_price)}
               </TableCell>
               <TableCell className="text-right">
-                {formatMoney(comissao.commission_amount)}
+                {comissao.commission_percentage}%
+              </TableCell>
+              <TableCell className="text-right">
+                {formatMoney(comissao.commission_value)}
               </TableCell>
               <TableCell className="text-center">
                 {comissao.status === "pendente" ? (
@@ -90,10 +94,14 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
                   >
                     Pendente
                   </Button>
-                ) : (
+                ) : comissao.status === "pago" ? (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     <Check className="mr-1 h-3 w-3" />
                     Pago
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    Cancelado
                   </span>
                 )}
               </TableCell>

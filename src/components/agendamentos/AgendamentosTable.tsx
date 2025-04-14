@@ -111,7 +111,16 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
     await marcarComoAtendido.mutateAsync(agendamento);
   };
 
-  const handleEditar = (agendamento: Agendamento) => {
+  const handleEditar = async (agendamento: Agendamento) => {
+    // Primeiro, atualiza os agendamentos relacionados para liberar os slots
+    await updateAgendamentosRelacionados.mutateAsync({
+      client_id: agendamento.client_id,
+      barber_id: agendamento.barber_id,
+      date: agendamento.date,
+      status: "liberado"
+    });
+
+    // Depois, abre o formulário de edição
     setAgendamentoParaEditar(agendamento);
     setOpenEditForm(true);
   };

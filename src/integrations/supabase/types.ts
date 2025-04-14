@@ -213,6 +213,7 @@ export type Database = {
           notes: string | null
           phone: string
           updated_at: string | null
+          active: boolean
         }
         Insert: {
           created_at?: string | null
@@ -222,6 +223,7 @@ export type Database = {
           notes?: string | null
           phone: string
           updated_at?: string | null
+          active?: boolean
         }
         Update: {
           created_at?: string | null
@@ -231,36 +233,37 @@ export type Database = {
           notes?: string | null
           phone?: string
           updated_at?: string | null
+          active?: boolean
         }
         Relationships: []
       }
       services: {
         Row: {
-          created_at: string
-          description: string | null
-          duration: number
-          id: string
-          name: string
-          price: number
-          updated_at: string
+          id: string;
+          name: string;
+          price: number;
+          duration: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
         }
         Insert: {
-          created_at?: string
-          description?: string | null
-          duration: number
-          id?: string
-          name: string
-          price: number
-          updated_at?: string
+          id?: string;
+          name: string;
+          price: number;
+          duration: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
         }
         Update: {
-          created_at?: string
-          description?: string | null
-          duration?: number
-          id?: string
-          name?: string
-          price?: number
-          updated_at?: string
+          id?: string;
+          name?: string;
+          price?: number;
+          duration?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
         }
         Relationships: []
       }
@@ -297,6 +300,39 @@ export type Database = {
           notes?: string | null
           type?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          price: number;
+          stock: number;
+          active: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        }
+        Insert: {
+          id?: string;
+          name: string;
+          description: string;
+          price: number;
+          stock: number;
+          active?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        }
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          price?: number;
+          stock?: number;
+          active?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
         }
         Relationships: []
       }
