@@ -288,12 +288,21 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   });
 
   const marcarComoAtendido = useMutation({
-    mutationFn: async (appointment: Agendamento & { servicos: ServicoAgendamento[]; produtos: ProdutoAgendamento[] }) => {
+    mutationFn: async (appointment: Agendamento & { 
+      servicos: ServicoAgendamento[]; 
+      produtos: ProdutoAgendamento[];
+      payment_method: string;
+      observacoes?: string;
+    }) => {
       try {
         // 1. Primeiro atualizamos o status do agendamento
         const { data: updatedAppointment, error: updateError } = await supabase
           .from('appointments')
-          .update({ status: 'atendido' })
+          .update({ 
+            status: 'atendido',
+            payment_method: appointment.payment_method,
+            observacoes: appointment.observacoes
+          })
           .eq('id', appointment.id)
           .select()
           .single();
@@ -335,7 +344,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             type: 'receita',
             value: totalServiceAmount,
             description: `Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')} - Cliente: ${appointment.client_name}`,
-            payment_method: 'dinheiro',
+            payment_method: appointment.payment_method,
             status: 'pendente'
           });
 
@@ -349,11 +358,30 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             type: 'despesa',
             value: commissionAmount,
             description: `Comissão: ${appointment.barber} - Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')}`,
-            payment_method: 'dinheiro',
+            payment_method: appointment.payment_method,
             status: 'pendente'
           });
 
         if (despesaError) throw despesaError;
+
+        // 7. Se houver produtos, lançamos a receita dos produtos
+        if (appointment.produtos && appointment.produtos.length > 0) {
+          const totalProdutosAmount = appointment.produtos.reduce((sum, produto) => 
+            sum + (produto.product_price * produto.quantity), 0);
+
+          const { error: produtosError } = await supabase
+            .from('transactions')
+            .insert({
+              appointment_id: appointment.id,
+              type: 'receita',
+              value: totalProdutosAmount,
+              description: `Produtos: ${appointment.produtos.map(p => `${p.product_name} (${p.quantity}x)`).join(', ')} - Cliente: ${appointment.client_name}`,
+              payment_method: appointment.payment_method,
+              status: 'pendente'
+            });
+
+          if (produtosError) throw produtosError;
+        }
 
         return updatedAppointment;
       } catch (error) {

@@ -1,0 +1,302 @@
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useToast } from "@/components/ui/use-toast";
+import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useServicos } from "@/hooks/useServicos";
+import { useProdutos } from "@/hooks/useProdutos";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Agendamento } from "@/types/agendamento";
+
+const formSchema = z.object({
+  servicos: z.array(z.string()),
+  produtos: z.array(z.object({
+    id: z.string(),
+    quantity: z.number()
+  })),
+  payment_method: z.enum(["dinheiro", "cartao_credito", "cartao_debito", "pix"]),
+  observacoes: z.string().optional()
+});
+
+interface FinalizarAtendimentoFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  agendamento: Agendamento;
+}
+
+export function FinalizarAtendimentoForm({
+  open,
+  onOpenChange,
+  agendamento
+}: FinalizarAtendimentoFormProps) {
+  const { toast } = useToast();
+  const { marcarComoAtendido } = useAgendamentos();
+  const { servicos } = useServicos();
+  const { produtos } = useProdutos();
+  const [total, setTotal] = useState(0);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      servicos: agendamento.servicos.map(s => s.service_id),
+      produtos: agendamento.produtos.map(p => ({
+        id: p.product_id,
+        quantity: p.quantity
+      })),
+      payment_method: "dinheiro",
+      observacoes: ""
+    }
+  });
+
+  // Efeito para calcular o total inicial
+  useEffect(() => {
+    calcularTotal();
+  }, []);
+
+  const calcularTotal = () => {
+    const servicosSelecionados = form.getValues("servicos");
+    const produtosSelecionados = form.getValues("produtos");
+
+    const totalServicos = servicosSelecionados.reduce((sum, servicoId) => {
+      const servico = servicos?.find(s => s.id === servicoId);
+      return sum + (servico?.price || 0);
+    }, 0);
+
+    const totalProdutos = produtosSelecionados.reduce((sum, produto) => {
+      const produtoInfo = produtos?.find(p => p.id === produto.id);
+      return sum + ((produtoInfo?.price || 0) * produto.quantity);
+    }, 0);
+
+    setTotal(totalServicos + totalProdutos);
+  };
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      // Atualiza o agendamento com os serviços e produtos selecionados
+      const servicosSelecionados = values.servicos.map(servicoId => {
+        const servico = servicos?.find(s => s.id === servicoId);
+        return {
+          id: crypto.randomUUID(),
+          appointment_id: agendamento.id,
+          service_id: servicoId,
+          service_name: servico?.name || "",
+          service_price: servico?.price || 0,
+          service_duration: servico?.duration || 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      });
+
+      const produtosSelecionados = values.produtos.map(produto => {
+        const produtoInfo = produtos?.find(p => p.id === produto.id);
+        return {
+          id: crypto.randomUUID(),
+          appointment_id: agendamento.id,
+          product_id: produto.id,
+          product_name: produtoInfo?.name || "",
+          product_price: produtoInfo?.price || 0,
+          quantity: produto.quantity,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      });
+
+      const agendamentoAtualizado = {
+        ...agendamento,
+        servicos: servicosSelecionados,
+        produtos: produtosSelecionados,
+        payment_method: values.payment_method,
+        observacoes: values.observacoes,
+        total_price: total,
+        final_price: total
+      };
+
+      // Marca como atendido e lança os valores no financeiro
+      await marcarComoAtendido.mutateAsync(agendamentoAtualizado);
+
+      toast({
+        title: "Atendimento finalizado!",
+        description: "O agendamento foi marcado como atendido e os valores foram lançados no financeiro.",
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Erro ao finalizar atendimento:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao finalizar atendimento",
+        description: "Ocorreu um erro ao tentar finalizar o atendimento. Tente novamente.",
+      });
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Finalizar Atendimento</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="font-medium">Cliente</h3>
+              <p>{agendamento.client_name}</p>
+            </div>
+            <div>
+              <h3 className="font-medium">Barbeiro</h3>
+              <p>{agendamento.barber}</p>
+            </div>
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="font-medium">Serviços</h3>
+                <div className="space-y-2">
+                  {servicos?.map((servico) => (
+                    <FormField
+                      key={servico.id}
+                      control={form.control}
+                      name="servicos"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(servico.id)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value || [];
+                                if (checked) {
+                                  field.onChange([...current, servico.id]);
+                                } else {
+                                  field.onChange(current.filter(id => id !== servico.id));
+                                }
+                                calcularTotal();
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {servico.name} - R$ {servico.price.toFixed(2)}
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-medium">Produtos</h3>
+                <div className="space-y-2">
+                  {produtos?.map((produto) => (
+                    <FormField
+                      key={produto.id}
+                      control={form.control}
+                      name="produtos"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.some(p => p.id === produto.id)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value || [];
+                                if (checked) {
+                                  field.onChange([...current, { id: produto.id, quantity: 1 }]);
+                                } else {
+                                  field.onChange(current.filter(p => p.id !== produto.id));
+                                }
+                                calcularTotal();
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {produto.name} - R$ {produto.price.toFixed(2)}
+                          </FormLabel>
+                          {field.value?.some(p => p.id === produto.id) && (
+                            <Input
+                              type="number"
+                              min="1"
+                              value={field.value.find(p => p.id === produto.id)?.quantity || 1}
+                              onChange={(e) => {
+                                const current = field.value || [];
+                                field.onChange(current.map(p => 
+                                  p.id === produto.id 
+                                    ? { ...p, quantity: parseInt(e.target.value) } 
+                                    : p
+                                ));
+                                calcularTotal();
+                              }}
+                              className="w-20"
+                            />
+                          )}
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-medium">Forma de Pagamento</h3>
+                <FormField
+                  control={form.control}
+                  name="payment_method"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a forma de pagamento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                          <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                          <SelectItem value="pix">PIX</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-medium">Observações</h3>
+                <FormField
+                  control={form.control}
+                  name="observacoes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input placeholder="Observações sobre o atendimento" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-medium">Total</h3>
+                  <p className="text-2xl font-bold">R$ {total.toFixed(2)}</p>
+                </div>
+                <Button type="submit">Finalizar Atendimento</Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+} 

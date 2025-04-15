@@ -12,46 +12,9 @@ import { Button } from "@/components/ui/button";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useState } from "react";
 import { AgendamentoForm } from "../forms/AgendamentoForm";
+import { FinalizarAtendimentoForm } from "../forms/FinalizarAtendimentoForm";
 import { useServicos } from "@/hooks/useServicos";
-
-interface Agendamento {
-  id: string;
-  date: string;
-  time: string;
-  client_id: string;
-  client_name: string;
-  client_email: string;
-  client_phone: string;
-  barber_id: string;
-  barber: string;
-  total_duration: number;
-  total_price: number;
-  total_products_price: number;
-  final_price: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  servicos: Array<{
-    id: string;
-    appointment_id: string;
-    service_id: string;
-    service_name: string;
-    service_price: number;
-    service_duration: number;
-    created_at: string;
-    updated_at: string;
-  }>;
-  produtos: Array<{
-    id: string;
-    appointment_id: string;
-    product_id: string;
-    product_name: string;
-    product_price: number;
-    quantity: number;
-    created_at: string;
-    updated_at: string;
-  }>;
-}
+import { Agendamento } from "@/types/agendamento";
 
 interface AgendamentosTableProps {
   agendamentos: Agendamento[] | undefined;
@@ -61,7 +24,9 @@ interface AgendamentosTableProps {
 export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTableProps) {
   const { updateAgendamento, updateAgendamentosRelacionados, marcarComoAtendido } = useAgendamentos(new Date());
   const [openEditForm, setOpenEditForm] = useState(false);
+  const [openFinalizarForm, setOpenFinalizarForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<Agendamento>();
+  const [agendamentoParaFinalizar, setAgendamentoParaFinalizar] = useState<Agendamento>();
   const { servicos } = useServicos();
 
   const agendamentosDoDia = agendamentos
@@ -104,7 +69,8 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   };
 
   const handleAtendido = async (agendamento: Agendamento) => {
-    await marcarComoAtendido.mutateAsync(agendamento);
+    setAgendamentoParaFinalizar(agendamento);
+    setOpenFinalizarForm(true);
   };
 
   const handleEditar = async (agendamento: Agendamento) => {
@@ -202,6 +168,14 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
         onOpenChange={setOpenEditForm}
         agendamentoParaEditar={agendamentoParaEditar}
       />
+
+      {agendamentoParaFinalizar && (
+        <FinalizarAtendimentoForm
+          open={openFinalizarForm}
+          onOpenChange={setOpenFinalizarForm}
+          agendamento={agendamentoParaFinalizar}
+        />
+      )}
     </>
   );
 }
