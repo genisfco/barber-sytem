@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { useComissoes } from "@/hooks/useComissoes";
+import { Comissao } from "@/types/comissao";
 
 interface ComissoesListProps {
   barbeiroId: string;
@@ -59,12 +60,11 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
         <TableHeader>
           <TableRow>
             <TableHead>Data</TableHead>
-            <TableHead>Serviço</TableHead>
             <TableHead>Cliente</TableHead>
-            <TableHead className="text-right">Valor Serviço</TableHead>
-            <TableHead className="text-right">% Comissão</TableHead>
+            <TableHead className="text-right">Valor Total</TableHead>
             <TableHead className="text-right">Valor Comissão</TableHead>
             <TableHead className="text-center">Status</TableHead>
+            <TableHead className="text-center">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -73,16 +73,12 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
               <TableCell>
                 {format(new Date(comissao.created_at!), "dd/MM/yyyy", { locale: ptBR })}
               </TableCell>
-              <TableCell>{comissao.appointments.service}</TableCell>
-              <TableCell>{comissao.appointments.client_name}</TableCell>
+              <TableCell>{comissao.appointment?.client_name}</TableCell>
               <TableCell className="text-right">
-                {formatMoney(comissao.service_price)}
+                {formatMoney(comissao.total_price)}
               </TableCell>
               <TableCell className="text-right">
-                {comissao.commission_percentage}%
-              </TableCell>
-              <TableCell className="text-right">
-                {formatMoney(comissao.commission_value)}
+                {formatMoney(comissao.total_commission)}
               </TableCell>
               <TableCell className="text-center">
                 {comissao.status === "pendente" ? (
@@ -104,6 +100,16 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
                     Cancelado
                   </span>
                 )}
+              </TableCell>
+              <TableCell className="text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => pagarComissao.mutate({ id: comissao.id, isSingle: true })}
+                  disabled={comissao.status !== "pendente"}
+                >
+                  {comissao.status === "pendente" ? "Pagar" : ""}
+                </Button>
               </TableCell>
             </TableRow>
           ))}

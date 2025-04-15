@@ -441,26 +441,59 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           valor: commissionAmount
         });
 
-        // 8. Registramos a comissão
+        // 8. Verificamos se já existe uma comissão para este agendamento
         if (commissionAmount > 0) {
-          const { error: commissionError } = await supabase
+          const { data: existingCommission, error: searchError } = await supabase
             .from('barber_commissions')
-            .insert({
-              barber_id: appointment.barber_id,
-              appointment_id: appointment.id,
-              total_price: totalServiceAmount,
-              total_commission: commissionAmount,
-              status: 'pendente',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
+            .select()
+            .eq('appointment_id', appointment.id)
+            .single();
 
-          if (commissionError) {
-            console.error('❌ Erro ao registrar comissão:', commissionError);
-            throw commissionError;
+          if (searchError && searchError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
+            console.error('❌ Erro ao buscar comissão existente:', searchError);
+            throw searchError;
           }
 
-          console.log('✅ Comissão registrada');
+          if (existingCommission) {
+            // Atualiza a comissão existente
+            console.log('🔄 Atualizando comissão existente');
+            const { error: updateError } = await supabase
+              .from('barber_commissions')
+              .update({
+                total_price: totalServiceAmount,
+                total_commission: commissionAmount,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingCommission.id);
+
+            if (updateError) {
+              console.error('❌ Erro ao atualizar comissão:', updateError);
+              throw updateError;
+            }
+
+            console.log('✅ Comissão atualizada');
+          } else {
+            // Cria uma nova comissão
+            console.log('📝 Criando nova comissão');
+            const { error: commissionError } = await supabase
+              .from('barber_commissions')
+              .insert({
+                barber_id: appointment.barber_id,
+                appointment_id: appointment.id,
+                total_price: totalServiceAmount,
+                total_commission: commissionAmount,
+                status: 'pendente',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+            if (commissionError) {
+              console.error('❌ Erro ao registrar comissão:', commissionError);
+              throw commissionError;
+            }
+
+            console.log('✅ Nova comissão registrada');
+          }
         }
 
         // 9. Lançamos a receita dos serviços

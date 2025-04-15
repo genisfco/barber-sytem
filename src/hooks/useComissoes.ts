@@ -2,18 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export interface Comissao {
-  id: string;
-  barber_id: string;
-  appointment_id: string;
-  service_price: number;
-  commission_percentage: number;
-  commission_value: number;
-  status: 'pendente' | 'pago' | 'cancelado';
-  created_at?: string;
-  updated_at?: string;
-}
+import { Comissao } from "@/types/comissao";
 
 // Define a type for the mutate function parameters
 type PayComissaoParams = {
@@ -34,14 +23,25 @@ export function useComissoes(
   const { data: comissoes, isLoading } = useQuery({
     queryKey: ["comissoes", barbeiroId, dataInicioFormatada, dataFimFormatada],
     queryFn: async () => {
+      console.log("🔍 Buscando comissões:", {
+        barbeiroId,
+        dataInicio: dataInicioFormatada,
+        dataFim: dataFimFormatada
+      });
+
       const { data, error } = await supabase
         .from("barber_commissions")
         .select(`
           *,
-          appointments (
+          appointment:appointments (
+            id,
             client_name,
-            service,
-            service_duration
+            date,
+            time,
+            appointment_services (
+              service_name,
+              service_price
+            )
           )
         `)
         .eq("barber_id", barbeiroId)
@@ -50,9 +50,12 @@ export function useComissoes(
         .order("created_at", { ascending: false });
 
       if (error) {
+        console.error("❌ Erro ao carregar comissões:", error);
         toast.error("Erro ao carregar comissões");
         throw error;
       }
+
+      console.log("✅ Comissões encontradas:", data);
 
       return data as Comissao[];
     },
@@ -60,7 +63,7 @@ export function useComissoes(
   });
 
   const totalComissao = comissoes?.reduce(
-    (total, comissao) => total + Number(comissao.commission_value),
+    (total, comissao) => total + Number(comissao.total_commission),
     0
   ) || 0;
 
@@ -69,7 +72,10 @@ export function useComissoes(
       if (params.isSingle) {
         const { error } = await supabase
           .from("barber_commissions")
-          .update({ status: "pago" })
+          .update({ 
+            status: "pago",
+            updated_at: new Date().toISOString()
+          })
           .eq("id", params.id);
 
         if (error) throw error;
@@ -77,7 +83,10 @@ export function useComissoes(
       } else {
         const { error } = await supabase
           .from("barber_commissions")
-          .update({ status: "pago" })
+          .update({ 
+            status: "pago",
+            updated_at: new Date().toISOString()
+          })
           .eq("barber_id", params.id)
           .eq("status", "pendente")
           .gte("created_at", dataInicioFormatada)
