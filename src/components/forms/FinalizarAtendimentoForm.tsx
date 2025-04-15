@@ -16,14 +16,17 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Agendamento } from "@/types/agendamento";
 
+type PaymentMethod = "dinheiro" | "cartao_credito" | "cartao_debito" | "pix";
+
 const formSchema = z.object({
-  servicos: z.array(z.string()),
+  servicos: z.array(z.string()).min(1, "Selecione pelo menos um serviço"),
   produtos: z.array(z.object({
     id: z.string(),
-    quantity: z.number()
+    quantity: z.number().min(1, "A quantidade deve ser maior que zero")
   })),
-  payment_method: z.enum(["dinheiro", "cartao_credito", "cartao_debito", "pix"]),
-  observacoes: z.string().optional()
+  payment_method: z.enum(["dinheiro", "cartao_credito", "cartao_debito", "pix"], {
+    required_error: "Selecione a forma de pagamento"
+  })
 });
 
 interface FinalizarAtendimentoFormProps {
@@ -51,8 +54,7 @@ export function FinalizarAtendimentoForm({
         id: p.product_id,
         quantity: p.quantity
       })),
-      payment_method: "dinheiro",
-      observacoes: ""
+      payment_method: "dinheiro" as PaymentMethod
     }
   });
 
@@ -80,60 +82,94 @@ export function FinalizarAtendimentoForm({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      console.log("🚀 Iniciando finalização do atendimento...", {
+        agendamento_id: agendamento.id,
+        status_atual: agendamento.status,
+        servicos_selecionados: values.servicos,
+        produtos_selecionados: values.produtos,
+      });
+      
+      if (!servicos || !produtos) {
+        throw new Error("Dados de serviços ou produtos não carregados");
+      }
+
       // Atualiza o agendamento com os serviços e produtos selecionados
       const servicosSelecionados = values.servicos.map(servicoId => {
-        const servico = servicos?.find(s => s.id === servicoId);
+        const servico = servicos.find(s => s.id === servicoId);
+        if (!servico) {
+          throw new Error(`Serviço não encontrado: ${servicoId}`);
+        }
         return {
           id: crypto.randomUUID(),
           appointment_id: agendamento.id,
           service_id: servicoId,
-          service_name: servico?.name || "",
-          service_price: servico?.price || 0,
-          service_duration: servico?.duration || 0,
+          service_name: servico.name,
+          service_price: servico.price,
+          service_duration: servico.duration,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
       });
 
       const produtosSelecionados = values.produtos.map(produto => {
-        const produtoInfo = produtos?.find(p => p.id === produto.id);
+        const produtoInfo = produtos.find(p => p.id === produto.id);
+        if (!produtoInfo) {
+          throw new Error(`Produto não encontrado: ${produto.id}`);
+        }
         return {
           id: crypto.randomUUID(),
           appointment_id: agendamento.id,
           product_id: produto.id,
-          product_name: produtoInfo?.name || "",
-          product_price: produtoInfo?.price || 0,
+          product_name: produtoInfo.name,
+          product_price: produtoInfo.price,
           quantity: produto.quantity,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
       });
 
+      console.log("📦 Dados preparados para atualização:", {
+        servicos: servicosSelecionados.length,
+        produtos: produtosSelecionados.length,
+        total,
+      });
+
+      const totalDuration = servicosSelecionados.reduce((sum, servico) => {
+        const servicoInfo = servicos?.find(s => s.id === servico.service_id);
+        return sum + (servicoInfo?.duration || 0);
+      }, 0);
+
       const agendamentoAtualizado = {
         ...agendamento,
         servicos: servicosSelecionados,
         produtos: produtosSelecionados,
         payment_method: values.payment_method,
-        observacoes: values.observacoes,
+        total_duration: totalDuration,
         total_price: total,
-        final_price: total
+        final_price: total,
+        status: "atendido" as const,
+        updated_at: new Date().toISOString()
       };
+
+      console.log("📤 Enviando dados para atualização...");
 
       // Marca como atendido e lança os valores no financeiro
       await marcarComoAtendido.mutateAsync(agendamentoAtualizado);
 
+      console.log("✅ Atendimento finalizado com sucesso!");
+
       toast({
         title: "Atendimento finalizado!",
-        description: "O agendamento foi marcado como atendido e os valores foram lançados no financeiro.",
+        description: `Atendimento do cliente ${agendamento.client_name} finalizado com sucesso.`,
       });
 
       onOpenChange(false);
     } catch (error) {
-      console.error("Erro ao finalizar atendimento:", error);
+      console.error("❌ Erro ao finalizar atendimento:", error);
       toast({
         variant: "destructive",
         title: "Erro ao finalizar atendimento",
-        description: "Ocorreu um erro ao tentar finalizar o atendimento. Tente novamente.",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao tentar finalizar o atendimento. Tente novamente.",
       });
     }
   }
@@ -264,22 +300,6 @@ export function FinalizarAtendimentoForm({
                           <SelectItem value="pix">PIX</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-medium">Observações</h3>
-                <FormField
-                  control={form.control}
-                  name="observacoes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input placeholder="Observações sobre o atendimento" {...field} />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

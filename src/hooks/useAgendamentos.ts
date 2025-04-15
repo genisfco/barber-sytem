@@ -288,104 +288,254 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   });
 
   const marcarComoAtendido = useMutation({
-    mutationFn: async (appointment: Agendamento & { 
+    mutationFn: async (appointment: Partial<Agendamento> & { 
+      id: string;
       servicos: ServicoAgendamento[]; 
       produtos: ProdutoAgendamento[];
-      payment_method: string;
-      observacoes?: string;
+      payment_method?: string;
+      client_name: string;
+      barber: string;
+      barber_id: string;
     }) => {
       try {
-        // 1. Primeiro atualizamos o status do agendamento
-        const { data: updatedAppointment, error: updateError } = await supabase
+        console.log('🚀 Iniciando processo de finalização do atendimento:', {
+          id: appointment.id,
+          cliente: appointment.client_name,
+          servicos: appointment.servicos.length,
+          produtos: appointment.produtos.length,
+          status_atual: appointment.status,
+          forma_pagamento: appointment.payment_method
+        });
+
+        // 1. Primeiro atualizamos o status do agendamento para "atendido"
+        const { data: statusUpdate, error: statusError } = await supabase
           .from('appointments')
           .update({ 
             status: 'atendido',
-            payment_method: appointment.payment_method,
-            observacoes: appointment.observacoes
+            updated_at: new Date().toISOString()
           })
           .eq('id', appointment.id)
           .select()
           .single();
 
-        if (updateError) throw updateError;
+        if (statusError) {
+          console.error('❌ Erro ao atualizar status:', statusError);
+          throw statusError;
+        }
 
-        // 2. Buscamos as informações do barbeiro para obter a taxa de comissão
+        console.log('✅ Status atualizado para atendido');
+
+        // 2. Removemos os serviços e produtos existentes
+        const { error: deleteServicesError } = await supabase
+          .from('appointment_services')
+          .delete()
+          .eq('appointment_id', appointment.id);
+
+        if (deleteServicesError) {
+          console.error('❌ Erro ao deletar serviços:', deleteServicesError);
+          throw deleteServicesError;
+        }
+
+        console.log('✅ Serviços anteriores removidos');
+
+        const { error: deleteProductsError } = await supabase
+          .from('appointment_products')
+          .delete()
+          .eq('appointment_id', appointment.id);
+
+        if (deleteProductsError) {
+          console.error('❌ Erro ao deletar produtos:', deleteProductsError);
+          throw deleteProductsError;
+        }
+
+        console.log('✅ Produtos anteriores removidos');
+
+        // 3. Inserimos os novos serviços
+        if (appointment.servicos.length > 0) {
+          const { error: servicesError } = await supabase
+            .from('appointment_services')
+            .insert(appointment.servicos.map(servico => ({
+              ...servico,
+              appointment_id: appointment.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })));
+
+          if (servicesError) {
+            console.error('❌ Erro ao inserir serviços:', servicesError);
+            throw servicesError;
+          }
+
+          console.log('✅ Novos serviços inseridos:', appointment.servicos.length);
+        }
+
+        // 4. Inserimos os novos produtos
+        if (appointment.produtos.length > 0) {
+          const { error: productsError } = await supabase
+            .from('appointment_products')
+            .insert(appointment.produtos.map(produto => ({
+              ...produto,
+              appointment_id: appointment.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })));
+
+          if (productsError) {
+            console.error('❌ Erro ao inserir produtos:', productsError);
+            throw productsError;
+          }
+
+          console.log('✅ Novos produtos inseridos:', appointment.produtos.length);
+        }
+
+        // 5. Calculamos os totais
+        const totalServiceAmount = appointment.servicos.reduce((sum, service) => sum + service.service_price, 0);
+        const totalProductsAmount = appointment.produtos.reduce((sum, produto) => 
+          sum + (produto.product_price * produto.quantity), 0);
+        const finalPrice = totalServiceAmount + totalProductsAmount;
+
+        console.log('💰 Totais calculados:', {
+          servicos: totalServiceAmount,
+          produtos: totalProductsAmount,
+          final: finalPrice
+        });
+
+        // 6. Atualizamos o agendamento com os valores finais
+        const { data: updatedAppointment, error: updateError } = await supabase
+          .from('appointments')
+          .update({ 
+            status: 'atendido',
+            total_price: totalServiceAmount,
+            total_products_price: totalProductsAmount,
+            final_price: finalPrice,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', appointment.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('❌ Erro ao atualizar agendamento:', updateError);
+          throw updateError;
+        }
+
+        console.log('✅ Agendamento atualizado com valores finais');
+
+        // 7. Buscamos as informações do barbeiro
         const { data: barber, error: barberError } = await supabase
           .from('barbers')
           .select('commission_rate')
           .eq('id', appointment.barber_id)
           .single();
 
-        if (barberError) throw barberError;
+        if (barberError) {
+          console.error('❌ Erro ao buscar informações do barbeiro:', barberError);
+          throw barberError;
+        }
 
-        // 3. Calcular o valor total dos serviços
-        const totalServiceAmount = appointment.servicos.reduce((sum, service) => sum + service.service_price, 0);
         const commissionRate = barber.commission_rate;
         const commissionAmount = totalServiceAmount * (commissionRate / 100);
 
-        // 4. Registramos a comissão
-        const { error: commissionError } = await supabase
-          .from('barber_commissions')
-          .insert({
-            barber_id: appointment.barber_id,
-            appointment_id: appointment.id,
-            total_price: totalServiceAmount,
-            total_commission: commissionAmount,
-            status: 'pendente'
-          });
+        console.log('💼 Comissão calculada:', {
+          taxa: commissionRate,
+          valor: commissionAmount
+        });
 
-        if (commissionError) throw commissionError;
+        // 8. Registramos a comissão
+        if (commissionAmount > 0) {
+          const { error: commissionError } = await supabase
+            .from('barber_commissions')
+            .insert({
+              barber_id: appointment.barber_id,
+              appointment_id: appointment.id,
+              total_price: totalServiceAmount,
+              total_commission: commissionAmount,
+              status: 'pendente',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
 
-        // 5. Lançamos a receita do serviço no sistema financeiro
-        const { error: receitaError } = await supabase
-          .from('transactions')
-          .insert({
-            appointment_id: appointment.id,
-            type: 'receita',
-            value: totalServiceAmount,
-            description: `Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')} - Cliente: ${appointment.client_name}`,
-            payment_method: appointment.payment_method,
-            status: 'pendente'
-          });
+          if (commissionError) {
+            console.error('❌ Erro ao registrar comissão:', commissionError);
+            throw commissionError;
+          }
 
-        if (receitaError) throw receitaError;
+          console.log('✅ Comissão registrada');
+        }
 
-        // 6. Lançamos a despesa da comissão no sistema financeiro
-        const { error: despesaError } = await supabase
-          .from('transactions')
-          .insert({
-            appointment_id: appointment.id,
-            type: 'despesa',
-            value: commissionAmount,
-            description: `Comissão: ${appointment.barber} - Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')}`,
-            payment_method: appointment.payment_method,
-            status: 'pendente'
-          });
+        // 9. Lançamos a receita dos serviços
+        if (totalServiceAmount > 0) {
+          const { error: receitaError } = await supabase
+            .from('transactions')
+            .insert({
+              appointment_id: appointment.id,
+              type: 'receita',
+              value: totalServiceAmount,
+              description: `Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')} - Cliente: ${appointment.client_name}`,
+              payment_method: appointment.payment_method || 'dinheiro',
+              status: 'pendente',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
 
-        if (despesaError) throw despesaError;
+          if (receitaError) {
+            console.error('❌ Erro ao registrar receita de serviços:', receitaError);
+            throw receitaError;
+          }
 
-        // 7. Se houver produtos, lançamos a receita dos produtos
-        if (appointment.produtos && appointment.produtos.length > 0) {
-          const totalProdutosAmount = appointment.produtos.reduce((sum, produto) => 
-            sum + (produto.product_price * produto.quantity), 0);
+          console.log('✅ Receita de serviços lançada');
+        }
 
+        // 10. Lançamos a despesa da comissão
+        if (commissionAmount > 0) {
+          const { error: despesaError } = await supabase
+            .from('transactions')
+            .insert({
+              appointment_id: appointment.id,
+              type: 'despesa',
+              value: commissionAmount,
+              description: `Comissão: ${appointment.barber} - Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')}`,
+              payment_method: appointment.payment_method || 'dinheiro',
+              status: 'pendente',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (despesaError) {
+            console.error('❌ Erro ao registrar despesa de comissão:', despesaError);
+            throw despesaError;
+          }
+
+          console.log('✅ Despesa de comissão lançada');
+        }
+
+        // 11. Se houver produtos, lançamos a receita
+        if (totalProductsAmount > 0) {
           const { error: produtosError } = await supabase
             .from('transactions')
             .insert({
               appointment_id: appointment.id,
               type: 'receita',
-              value: totalProdutosAmount,
+              value: totalProductsAmount,
               description: `Produtos: ${appointment.produtos.map(p => `${p.product_name} (${p.quantity}x)`).join(', ')} - Cliente: ${appointment.client_name}`,
-              payment_method: appointment.payment_method,
-              status: 'pendente'
+              payment_method: appointment.payment_method || 'dinheiro',
+              status: 'pendente',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             });
 
-          if (produtosError) throw produtosError;
+          if (produtosError) {
+            console.error('❌ Erro ao registrar receita de produtos:', produtosError);
+            throw produtosError;
+          }
+
+          console.log('✅ Receita de produtos lançada');
         }
 
+        console.log('🎉 Processo de finalização concluído com sucesso!');
         return updatedAppointment;
       } catch (error) {
-        console.error("Erro ao marcar como atendido:", error);
+        console.error("❌ Erro ao marcar como atendido:", error);
         throw error;
       }
     },
