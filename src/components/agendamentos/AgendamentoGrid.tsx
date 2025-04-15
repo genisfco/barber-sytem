@@ -49,30 +49,31 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const isHorarioPassado = (horario: string) => {
     const [hora, minuto] = horario.split(":").map(Number);
     const hoje = new Date();
-    const horaAtual = hoje.getHours();
-    const minutoAtual = hoje.getMinutes();
-    const dataAtual = hoje.toISOString().split("T")[0];
-    const dataSelecionada = format(date, "yyyy-MM-dd");
-
+    const dataSelecionada = new Date(date);
+    
     // Se a data selecionada for anterior a hoje, todos os horários são considerados passados
-    if (dataSelecionada < dataAtual) return true;
+    if (dataSelecionada < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) {
+      return true;
+    }
     
     // Se a data selecionada for posterior a hoje, nenhum horário é considerado passado
-    if (dataSelecionada > dataAtual) return false;
+    if (dataSelecionada > new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) {
+      return false;
+    }
     
     // Se for hoje, verifica se o horário já passou
-    if (hora < horaAtual) return true;
-    if (hora === horaAtual && minuto <= minutoAtual) return true;
+    if (hora < hoje.getHours()) return true;
+    if (hora === hoje.getHours() && minuto <= hoje.getMinutes()) return true;
     
     return false;
   };
 
   // Função para verificar se um horário está ocupado para um barbeiro específico
   const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
-    // Primeiro verificamos se o barbeiro está indisponível para o dia inteiro
+    // Verifica se o barbeiro está indisponível para o dia inteiro
     const barbeiroBloqueadoNoDia = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada);
     
-    // Se o barbeiro está indisponível para o dia todo, retorna true imediatamente
+    // Se o barbeiro está indisponível para o dia todo, retorna true
     if (barbeiroBloqueadoNoDia) {
       return true;
     }
@@ -100,7 +101,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return (
         minutosVerificar >= minutosAgendamento &&
         minutosVerificar < minutosAgendamento + agendamento.service_duration &&
-        ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
+        ["pendente", "atendido", "confirmado"].includes(agendamento.status)
       );
     });
 
@@ -125,7 +126,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
         return (
           minutosVerificar >= minutosAgendamento &&
           minutosVerificar < minutosAgendamento + agendamento.service_duration &&
-          ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
+          ["pendente", "atendido", "confirmado"].includes(agendamento.status)
         );
       });
 
@@ -154,7 +155,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return (
         minutosVerificar >= minutosAgendamento &&
         minutosVerificar < minutosAgendamento + agendamento.service_duration &&
-        ["pendente", "atendido", "confirmado", "ocupado"].includes(agendamento.status)
+        ["pendente", "atendido", "confirmado"].includes(agendamento.status)
       );
     });
 

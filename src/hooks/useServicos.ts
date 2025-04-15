@@ -1,49 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Servico } from "@/types/servico";
+import { Database } from "@/integrations/supabase/types";
 
-interface SupabaseService {
-  id: string;
-  name: string;
-  price: number;
-  duration: number;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type Servico = Database['public']['Tables']['services']['Row'];
 
 export function useServicos() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: servicos, isLoading } = useQuery({
-    queryKey: ["servicos"],
+    queryKey: ['servicos'],
     queryFn: async () => {
-      console.log("Buscando serviços...");
       const { data, error } = await supabase
-        .from("services")
-        .select("*")
-        .eq("active", true)
-        .order("name");
+        .from('services')
+        .select('*')
+        .order('name');
 
       if (error) {
         console.error("Erro ao buscar serviços:", error);
         throw error;
       }
 
-      return data as SupabaseService[];
-    },
+      return data as Servico[];
+    }
   });
 
   const createServico = useMutation({
-    mutationFn: async (servico: Omit<Servico, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (servico: Omit<Servico, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
-        .from("services")
-        .insert({
-          ...servico,
-          active: true
-        })
+        .from('services')
+        .insert(servico)
         .select()
         .single();
 
@@ -51,32 +38,27 @@ export function useServicos() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["servicos"] });
+      queryClient.invalidateQueries({ queryKey: ['servicos'] });
       toast({
-        title: "Serviço cadastrado com sucesso!",
-        description: "O serviço foi adicionado à sua lista.",
+        title: "Serviço criado com sucesso!",
+        description: "O serviço foi adicionado ao sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao cadastrar serviço",
-        description: error.message || "Ocorreu um erro ao tentar cadastrar o serviço.",
+        title: "Erro ao criar serviço",
+        description: error.message || "Ocorreu um erro ao tentar criar o serviço. Tente novamente.",
       });
     },
   });
 
   const updateServico = useMutation({
-    mutationFn: async (servico: Servico) => {
+    mutationFn: async (servico: Partial<Servico> & { id: string }) => {
       const { data, error } = await supabase
-        .from("services")
-        .update({
-          name: servico.name,
-          price: servico.price,
-          duration: servico.duration,
-          active: servico.active,
-        })
-        .eq("id", servico.id)
+        .from('services')
+        .update(servico)
+        .eq('id', servico.id)
         .select()
         .single();
 
@@ -84,7 +66,7 @@ export function useServicos() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["servicos"] });
+      queryClient.invalidateQueries({ queryKey: ['servicos'] });
       toast({
         title: "Serviço atualizado com sucesso!",
         description: "As informações do serviço foram atualizadas.",
@@ -94,7 +76,7 @@ export function useServicos() {
       toast({
         variant: "destructive",
         title: "Erro ao atualizar serviço",
-        description: error.message || "Ocorreu um erro ao tentar atualizar o serviço.",
+        description: error.message || "Ocorreu um erro ao tentar atualizar o serviço. Tente novamente.",
       });
     },
   });
@@ -102,24 +84,24 @@ export function useServicos() {
   const deleteServico = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("services")
-        .update({ active: false })
-        .eq("id", id);
+        .from('services')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["servicos"] });
+      queryClient.invalidateQueries({ queryKey: ['servicos'] });
       toast({
-        title: "Serviço inativado com sucesso!",
-        description: "O serviço foi removido da sua lista ativa.",
+        title: "Serviço excluído com sucesso!",
+        description: "O serviço foi removido do sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao inativar serviço",
-        description: error.message || "Ocorreu um erro ao tentar inativar o serviço.",
+        title: "Erro ao excluir serviço",
+        description: error.message || "Ocorreu um erro ao tentar excluir o serviço. Tente novamente.",
       });
     },
   });

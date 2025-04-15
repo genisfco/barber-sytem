@@ -6,335 +6,343 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       appointments: {
         Row: {
-          barber: string
-          barber_id: string | null
-          client_email: string
-          client_id: string | null
-          client_name: string
-          client_phone: string
-          created_at: string | null
-          date: string
           id: string
-          service: string
-          service_id: string | null
-          status: string
+          date: string
           time: string
-          updated_at: string | null
+          client_id: string
+          client_name: string
+          client_email: string
+          client_phone: string
+          barber_id: string
+          barber: string
+          total_duration: number
+          total_price: number
+          total_products_price: number
+          final_price: number
+          status: string
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          barber: string
-          barber_id?: string | null
-          client_email: string
-          client_id?: string | null
-          client_name: string
-          client_phone: string
-          created_at?: string | null
-          date: string
           id?: string
-          service: string
-          service_id?: string | null
-          status?: string
+          date: string
           time: string
-          updated_at?: string | null
+          client_id: string
+          client_name: string
+          client_email: string
+          client_phone: string
+          barber_id: string
+          barber: string
+          total_duration: number
+          total_price: number
+          total_products_price: number
+          final_price: number
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          barber?: string
-          barber_id?: string | null
-          client_email?: string
-          client_id?: string | null
-          client_name?: string
-          client_phone?: string
-          created_at?: string | null
-          date?: string
           id?: string
-          service?: string
-          service_id?: string | null
-          status?: string
+          date?: string
           time?: string
-          updated_at?: string | null
+          client_id?: string
+          client_name?: string
+          client_email?: string
+          client_phone?: string
+          barber_id?: string
+          barber?: string
+          total_duration?: number
+          total_price?: number
+          total_products_price?: number
+          final_price?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "appointments_barber_id_fkey"
-            columns: ["barber_id"]
-            isOneToOne: false
-            referencedRelation: "barbers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-        ]
       }
-      barber_commissions: {
+      appointment_services: {
         Row: {
-          appointment_id: string
-          barber_id: string
-          commission_amount: number
-          commission_rate: number
-          created_at: string | null
-          date: string
           id: string
-          service_amount: number
-          status: string
-          updated_at: string | null
+          appointment_id: string
+          service_id: string
+          service_name: string
+          service_price: number
+          service_duration: number
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          appointment_id: string
-          barber_id: string
-          commission_amount: number
-          commission_rate: number
-          created_at?: string | null
-          date: string
           id?: string
-          service_amount: number
-          status?: string
-          updated_at?: string | null
+          appointment_id: string
+          service_id: string
+          service_name: string
+          service_price: number
+          service_duration: number
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          appointment_id?: string
-          barber_id?: string
-          commission_amount?: number
-          commission_rate?: number
-          created_at?: string | null
-          date?: string
           id?: string
-          service_amount?: number
-          status?: string
-          updated_at?: string | null
+          appointment_id?: string
+          service_id?: string
+          service_name?: string
+          service_price?: number
+          service_duration?: number
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "barber_commissions_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: true
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "barber_commissions_barber_id_fkey"
-            columns: ["barber_id"]
-            isOneToOne: false
-            referencedRelation: "barbers"
-            referencedColumns: ["id"]
-          },
-        ]
+      }
+      appointment_products: {
+        Row: {
+          id: string
+          appointment_id: string
+          product_id: string
+          product_name: string
+          product_price: number
+          quantity: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          product_id: string
+          product_name: string
+          product_price: number
+          quantity: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          product_id?: string
+          product_name?: string
+          product_price?: number
+          quantity?: number
+          created_at?: string
+          updated_at?: string
+        }
       }
       barbers: {
         Row: {
-          commission_rate: number
-          created_at: string | null
-          email: string
           id: string
           name: string
+          email: string
           phone: string
-          specialty: string | null
-          updated_at: string | null
+          active: boolean
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          commission_rate: number
-          created_at?: string | null
-          email: string
           id?: string
           name: string
+          email: string
           phone: string
-          specialty?: string | null
-          updated_at?: string | null
+          active?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          commission_rate?: number
-          created_at?: string | null
-          email?: string
           id?: string
           name?: string
+          email?: string
           phone?: string
-          specialty?: string | null
-          updated_at?: string | null
+          active?: boolean
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: []
+      }
+      clients: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          phone: string
+          notes: string
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          phone: string
+          notes?: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          phone?: string
+          notes?: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      services: {
+        Row: {
+          id: string
+          name: string
+          price: number
+          duration: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          price: number
+          duration: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          price?: number
+          duration?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      products: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          price: number
+          stock: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string
+          price: number
+          stock?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          price?: number
+          stock?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
       }
       barber_unavailability: {
         Row: {
           id: string
           barber_id: string
-          barber_name: string
           date: string
-          motivo: string | null
-          created_at: string | null
+          reason: string
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           barber_id: string
-          barber_name: string
           date: string
-          motivo?: string | null
-          created_at?: string | null
+          reason?: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           barber_id?: string
-          barber_name?: string
           date?: string
-          motivo?: string | null
-          created_at?: string | null
+          reason?: string
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "barber_unavailability_barber_id_fkey"
-            columns: ["barber_id"]
-            isOneToOne: false
-            referencedRelation: "barbers"
-            referencedColumns: ["id"]
-          }
-        ]
       }
-      clients: {
+      barber_commissions: {
         Row: {
-          created_at: string | null
-          email: string
           id: string
-          name: string
-          notes: string | null
-          phone: string
-          updated_at: string | null
-          active: boolean
+          barber_id: string
+          appointment_id: string
+          total_price: number
+          total_commission: number
+          status: string
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          email: string
           id?: string
-          name: string
-          notes?: string | null
-          phone: string
-          updated_at?: string | null
-          active?: boolean
+          barber_id: string
+          appointment_id: string
+          total_price: number
+          total_commission: number
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          email?: string
           id?: string
-          name?: string
-          notes?: string | null
-          phone?: string
-          updated_at?: string | null
-          active?: boolean
+          barber_id?: string
+          appointment_id?: string
+          total_price?: number
+          total_commission?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: []
-      }
-      services: {
-        Row: {
-          id: string;
-          name: string;
-          price: number;
-          duration: number;
-          active: boolean;
-          created_at: string;
-          updated_at: string;
-        }
-        Insert: {
-          id?: string;
-          name: string;
-          price: number;
-          duration: number;
-          active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        }
-        Update: {
-          id?: string;
-          name?: string;
-          price?: number;
-          duration?: number;
-          active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        }
-        Relationships: []
       }
       transactions: {
         Row: {
-          amount: number
-          category: string
-          created_at: string | null
-          date: string
-          description: string
           id: string
-          notes: string | null
+          appointment_id: string
           type: string
-          updated_at: string | null
-        }
-        Insert: {
-          amount: number
-          category: string
-          created_at?: string | null
-          date: string
           description: string
-          id?: string
-          notes?: string | null
-          type: string
-          updated_at?: string | null
-        }
-        Update: {
-          amount?: number
-          category?: string
-          created_at?: string | null
-          date?: string
-          description?: string
-          id?: string
-          notes?: string | null
-          type?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      products: {
-        Row: {
-          id: string;
-          name: string;
-          description: string;
-          price: number;
-          stock: number;
-          active: boolean;
-          created_at: string | null;
-          updated_at: string | null;
+          value: number
+          payment_method: string
+          status: string
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          id?: string;
-          name: string;
-          description: string;
-          price: number;
-          stock: number;
-          active?: boolean;
-          created_at?: string | null;
-          updated_at?: string | null;
+          id?: string
+          appointment_id?: string
+          type: string
+          description: string
+          value: number
+          payment_method?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          id?: string;
-          name?: string;
-          description?: string;
-          price?: number;
-          stock?: number;
-          active?: boolean;
-          created_at?: string | null;
-          updated_at?: string | null;
+          id?: string
+          appointment_id?: string
+          type?: string
+          description?: string
+          value?: number
+          payment_method?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: []
       }
     }
     Views: {
@@ -344,9 +352,6 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
       [_ in never]: never
     }
   }
@@ -432,19 +437,4 @@ export type Enums<
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

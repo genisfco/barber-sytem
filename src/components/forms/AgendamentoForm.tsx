@@ -22,6 +22,20 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface Agendamento {
   id: string;
@@ -55,12 +69,11 @@ export function AgendamentoForm({
   dataInicial,
 }: AgendamentoFormProps) {
   const { toast } = useToast();
-  const { createAgendamento, updateAgendamento } = useAgendamentos();
+  const { createAgendamento, updateAgendamento, agendamentos, verificarDisponibilidadeBarbeiro, verificarAgendamentoCliente } = useAgendamentos(dataInicial);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { clientes } = useClientes();
   const { barbeiros } = useBarbeiros();
   const { servicos } = useServicos();
-  const { agendamentos } = useAgendamentos(dataInicial);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(createFormSchema(agendamentos, servicos)),
@@ -72,6 +85,28 @@ export function AgendamentoForm({
       horario: horarioInicial || "",
     },
   });
+
+  // Função para focar no primeiro campo com erro
+  const focusFirstError = (errors: any) => {
+    const firstError = Object.keys(errors)[0];
+    if (firstError) {
+      const element = document.querySelector(`[name="${firstError}"]`);
+      if (element) {
+        (element as HTMLElement).focus();
+      }
+    }
+  };
+
+  // Adiciona o listener para erros do formulário
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (type === 'change') {
+        form.clearErrors(name);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   // Preenche o formulário quando recebe um agendamento para editar
   useEffect(() => {
@@ -90,66 +125,171 @@ export function AgendamentoForm({
     }
   }, [agendamentoParaEditar, form]);
 
+  const formatarPreco = (preco: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(preco);
+  };
+
   async function onSubmit(values: FormValues) {
-    const cliente = clientes?.find((c) => c.id === values.clienteId);
-    const barbeiro = barbeiros?.find((b) => b.id === values.barbeiroId);
-    const servico = servicos?.find((s) => s.id === values.servicoId);
+    try {
+      // Valida todos os campos
+      const isValid = await form.trigger();
+      
+      if (!isValid) {
+        // Encontra o primeiro campo com erro
+        const firstError = Object.keys(form.formState.errors)[0];
+        if (firstError) {
+          // Foca no campo com erro
+          const element = document.querySelector(`[name="${firstError}"]`);
+          if (element) {
+            (element as HTMLElement).focus();
+          }
+          // Mostra mensagem de erro
+          toast({
+            title: "Campos obrigatórios",
+            description: "Por favor, preencha todos os campos obrigatórios.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
-    if (!cliente || !barbeiro || !servico) {
-      return;
-    }
+      const cliente = clientes?.find((c) => c.id === values.clienteId);
+      const barbeiro = barbeiros?.find((b) => b.id === values.barbeiroId);
+      const servico = servicos?.find((s) => s.id === values.servicoId);
 
-    // Calcula o horário final do serviço
-    const [horaInicial, minutoInicial] = values.horario.split(':').map(Number);
-    const horarioInicial = new Date();
-    horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
-    
-    const horarioFinal = new Date(horarioInicial);
-    horarioFinal.setMinutes(horarioFinal.getMinutes() + servico.duration);
+      if (!cliente || !barbeiro || !servico) {
+        toast({
+          title: "Erro no agendamento",
+          description: "Dados inválidos. Por favor, verifique se todos os campos foram preenchidos.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Verifica disponibilidade para todo o período do serviço
-    const agendamentosConflitantes = await supabase
-      .from('appointments')
-      .select('*')
-      .or(`and(client_id.eq.${cliente.id},date.eq.${values.data.toISOString().split('T')[0]},time.lte.${horarioFinal.toTimeString().slice(0,5)},time_end.gte.${values.horario}),and(barber_id.eq.${barbeiro.id},date.eq.${values.data.toISOString().split('T')[0]},time.lte.${horarioFinal.toTimeString().slice(0,5)},time_end.gte.${values.horario})`)
-      .in('status', ['confirmado', 'pendente']);
+      // Verificar se o cliente já tem agendamento no mesmo dia
+      const clienteJaAgendado = verificarAgendamentoCliente(cliente.id, format(values.data, "yyyy-MM-dd"));
+      
+      if (clienteJaAgendado) {
+        toast({
+          title: "Cliente já possui agendamento",
+          description: "Este cliente já possui um agendamento para o dia selecionado. Por gentileza verifique a lista de agendamentos.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (agendamentosConflitantes.data && agendamentosConflitantes.data.length > 0) {
+      // Calcula o horário final do serviço
+      const [horaInicial, minutoInicial] = values.horario.split(':').map(Number);
+      const horarioInicial = new Date();
+      horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
+      
+      const horarioFinal = new Date(horarioInicial);
+      horarioFinal.setMinutes(horarioFinal.getMinutes() + servico.duration);
+
+      // Verifica disponibilidade para todo o período do serviço
+      const agendamentosConflitantes = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('date', values.data.toISOString().split('T')[0])
+        .or(`barber_id.eq.${barbeiro.id},client_id.eq.${cliente.id}`)
+        .neq('status', 'cancelado')
+        .in('status', ['confirmado', 'pendente']);
+
+      if (agendamentosConflitantes.data) {
+        const verificarConflito = async (ag: any) => {
+          const [horaAg, minutoAg] = ag.time.split(':').map(Number);
+          const horarioAg = new Date();
+          horarioAg.setHours(horaAg, minutoAg, 0, 0);
+
+          const fimAg = new Date(horarioAg);
+          const servicosAg = await supabase
+            .from('appointment_services')
+            .select('service_duration')
+            .eq('appointment_id', ag.id);
+          
+          const duracaoTotal = servicosAg.data?.reduce((sum, s) => sum + s.service_duration, 0) || 0;
+          fimAg.setMinutes(fimAg.getMinutes() + duracaoTotal);
+
+          const novoInicio = new Date();
+          novoInicio.setHours(horaInicial, minutoInicial, 0, 0);
+          
+          const novoFim = new Date(novoInicio);
+          novoFim.setMinutes(novoFim.getMinutes() + servico.duration);
+
+          return (
+            (novoInicio >= horarioAg && novoInicio < fimAg) ||
+            (novoFim > horarioAg && novoFim <= fimAg) ||
+            (novoInicio <= horarioAg && novoFim >= fimAg)
+          );
+        };
+
+        const conflitos = await Promise.all(agendamentosConflitantes.data.map(verificarConflito));
+        const temConflito = conflitos.some(conflito => conflito);
+
+        if (temConflito) {
+          toast({
+            variant: "destructive",
+            title: "Erro ao agendar",
+            description: "Já existe um agendamento conflitante para este horário.",
+          });
+          return;
+        }
+      }
+
+      const dadosAgendamento = {
+        date: values.data.toISOString().split('T')[0],
+        time: values.horario,
+        client_id: cliente.id,
+        client_name: cliente.name,
+        client_email: cliente.email,
+        client_phone: cliente.phone,
+        barber_id: barbeiro.id,
+        barber: barbeiro.name,
+        services: [{
+          service_id: servico.id,
+          service_name: servico.name,
+          service_price: servico.price,
+          service_duration: servico.duration
+        }],
+        status: 'pendente'
+      };
+
+      if (agendamentoParaEditar) {
+        const { services, ...dadosAgendamentoSemServicos } = dadosAgendamento;
+        await updateAgendamento.mutateAsync({
+          id: agendamentoParaEditar.id,
+          ...dadosAgendamentoSemServicos,
+        });
+
+        // Atualiza os serviços separadamente
+        await supabase
+          .from('appointment_services')
+          .delete()
+          .eq('appointment_id', agendamentoParaEditar.id);
+
+        await supabase
+          .from('appointment_services')
+          .insert(services.map(service => ({
+            appointment_id: agendamentoParaEditar.id,
+            ...service
+          })));
+      } else {
+        await createAgendamento.mutateAsync(dadosAgendamento);
+      }
+
+      onOpenChange(false);
+      form.reset();
+    } catch (error) {
+      console.error("Erro ao processar o formulário:", error);
       toast({
-        variant: "destructive",
         title: "Erro ao agendar",
-        description: "Já existe um agendamento conflitante para este horário.",
+        description: "Ocorreu um erro ao processar o formulário. Por favor, tente novamente mais tarde.",
+        variant: "destructive",
       });
-      return;
     }
-
-    const dadosAgendamento = {
-      date: values.data.toISOString().split('T')[0],
-      time: values.horario,
-      time_end: horarioFinal.toTimeString().slice(0,5),
-      client_id: cliente.id,
-      client_name: cliente.name,
-      client_email: cliente.email,
-      client_phone: cliente.phone,
-      barber_id: barbeiro.id,
-      barber: barbeiro.name,
-      service_id: servico.id,
-      service: servico.name,
-      service_duration: servico.duration,
-      status: 'pendente'
-    };
-
-    if (agendamentoParaEditar) {
-      await updateAgendamento.mutateAsync({
-        id: agendamentoParaEditar.id,
-        ...dadosAgendamento,
-      });
-    } else {
-      await createAgendamento.mutateAsync(dadosAgendamento);
-    }
-
-    onOpenChange(false);
-    form.reset();
   }
 
   return (
@@ -163,9 +303,87 @@ export function AgendamentoForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ClienteField form={form} />
-              <BarbeiroField form={form} />
-              <ServicoField form={form} />
+              <FormField
+                control={form.control}
+                name="clienteId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um cliente" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {clientes?.map((cliente) => (
+                          <SelectItem key={cliente.id} value={cliente.id}>
+                            {cliente.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-red-500 text-sm" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="barbeiroId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Barbeiro *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um barbeiro" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {barbeiros?.map((barbeiro) => (
+                          <SelectItem key={barbeiro.id} value={barbeiro.id}>
+                            {barbeiro.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-red-500 text-sm" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="servicoId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Serviço *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um serviço" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {servicos?.map((servico) => (
+                          <SelectItem key={servico.id} value={servico.id}>
+                            {servico.name} - {formatarPreco(servico.price)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-red-500 text-sm" />
+                  </FormItem>
+                )}
+              />
             </div>
             <DataHorarioFields 
               form={form} 

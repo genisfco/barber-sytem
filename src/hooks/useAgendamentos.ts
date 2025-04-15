@@ -2,22 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useServicos } from "@/hooks/useServicos";
+import { Database } from "@/integrations/supabase/types";
+import { format } from "date-fns";
 
-interface Agendamento {
-  id: string;
-  date: string;
-  time: string;
-  client_id: string;
-  client_name: string;
-  client_email: string;
-  client_phone: string;
-  barber_id: string;
-  barber: string;
-  service: string;
-  status: string;
-  created_at?: string;
-  updated_at?: string;
-}
+type Agendamento = Database['public']['Tables']['appointments']['Row'];
+type ServicoAgendamento = Database['public']['Tables']['appointment_services']['Row'];
+type ProdutoAgendamento = Database['public']['Tables']['appointment_products']['Row'];
 
 interface CreateAgendamentoData {
   date: string;
@@ -28,7 +18,8 @@ interface CreateAgendamentoData {
   client_phone: string;
   barber_id: string;
   barber: string;
-  service: string;
+  services: Omit<ServicoAgendamento, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>[];
+  products?: Omit<ProdutoAgendamento, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>[];
 }
 
 export function useAgendamentos(date?: Date, barbeiro_id?: string) {
@@ -36,7 +27,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   const queryClient = useQueryClient();
   const { servicos } = useServicos();
 
-  const formattedDate = date?.toISOString().split('T')[0];
+  // Formata a data para o formato YYYY-MM-DD
+  const formattedDate = date ? format(date, 'yyyy-MM-dd') : undefined;
 
   // Buscar indisponibilidades
   const { data: indisponibilidades } = useQuery({
@@ -55,6 +47,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
     }
   });
 
+  // Buscar agendamentos
   const { data: agendamentos, isLoading } = useQuery({
     queryKey: ['agendamentos', formattedDate, barbeiro_id],
     queryFn: async () => {
@@ -72,33 +65,109 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         query.eq('barber_id', barbeiro_id);
       }
 
-      const { data, error } = await query;
+      const { data: appointments, error } = await query;
 
       if (error) {
         console.error("Erro ao buscar agendamentos:", error);
         throw error;
       }
 
-      console.log("Agendamentos encontrados:", data);
-      return data as Agendamento[];
+      // Buscar serviços e produtos para cada agendamento
+      const agendamentosCompletos = await Promise.all(
+        (appointments || []).map(async (agendamento) => {
+          const { data: servicos } = await supabase
+            .from('appointment_services')
+            .select('*')
+            .eq('appointment_id', agendamento.id);
+
+          const { data: produtos } = await supabase
+            .from('appointment_products')
+            .select('*')
+            .eq('appointment_id', agendamento.id);
+
+          return {
+            ...agendamento,
+            servicos: servicos || [],
+            produtos: produtos || []
+          };
+        })
+      );
+
+      console.log("Agendamentos completos encontrados:", agendamentosCompletos);
+      return agendamentosCompletos;
     },
-    refetchInterval: 5000, // Refetch a cada 5 segundos
-    refetchOnWindowFocus: true, // Refetch quando a janela receber foco
+    enabled: !!formattedDate, // Só executa a query se tiver uma data
+    staleTime: 1000 * 60, // Considera os dados frescos por 1 minuto
+    refetchInterval: 5000, // Recarrega a cada 5 segundos
+    refetchOnWindowFocus: true // Recarrega quando a janela ganha foco
   });
 
   const createAgendamento = useMutation({
     mutationFn: async (agendamento: CreateAgendamentoData) => {
-      const { data, error } = await supabase
+      // Calcular totais
+      const totalPrice = agendamento.services.reduce((sum, service) => sum + service.service_price, 0);
+      const totalDuration = agendamento.services.reduce((sum, service) => sum + service.service_duration, 0);
+      const totalProductsPrice = agendamento.products?.reduce((sum, product) => sum + (product.product_price * product.quantity), 0) || 0;
+      const finalPrice = totalPrice + totalProductsPrice;
+
+      // Criar o agendamento principal
+      const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
-        .insert(agendamento)
+        .insert({
+          date: agendamento.date,
+          time: agendamento.time,
+          client_id: agendamento.client_id,
+          client_name: agendamento.client_name,
+          client_email: agendamento.client_email,
+          client_phone: agendamento.client_phone,
+          barber_id: agendamento.barber_id,
+          barber: agendamento.barber,
+          total_duration: totalDuration,
+          total_price: totalPrice,
+          total_products_price: totalProductsPrice,
+          final_price: finalPrice,
+          status: 'pendente'
+        })
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (appointmentError) throw appointmentError;
+
+      // Inserir serviços do agendamento
+      const { error: servicesError } = await supabase
+        .from('appointment_services')
+        .insert(
+          agendamento.services.map(service => ({
+            appointment_id: appointment.id,
+            service_id: service.service_id,
+            service_name: service.service_name,
+            service_price: service.service_price,
+            service_duration: service.service_duration
+          }))
+        );
+
+      if (servicesError) throw servicesError;
+
+      // Inserir produtos do agendamento, se houver
+      if (agendamento.products && agendamento.products.length > 0) {
+        const { error: productsError } = await supabase
+          .from('appointment_products')
+          .insert(
+            agendamento.products.map(product => ({
+              appointment_id: appointment.id,
+              product_id: product.product_id,
+              product_name: product.product_name,
+              product_price: product.product_price,
+              quantity: product.quantity
+            }))
+          );
+
+        if (productsError) throw productsError;
+      }
+
+      return appointment;
     },
     onSuccess: (_, variables) => {
-      // Invalida todas as queries de agendamentos relacionadas
       queryClient.invalidateQueries({ 
         queryKey: ['agendamentos']
       });
@@ -219,7 +288,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   });
 
   const marcarComoAtendido = useMutation({
-    mutationFn: async (appointment: Agendamento) => {
+    mutationFn: async (appointment: Agendamento & { servicos: ServicoAgendamento[]; produtos: ProdutoAgendamento[] }) => {
       try {
         // 1. Primeiro atualizamos o status do agendamento
         const { data: updatedAppointment, error: updateError } = await supabase
@@ -240,12 +309,10 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
         if (barberError) throw barberError;
 
-        // 3. Encontrar o valor do serviço na lista de serviços
-        const servicoInfo = servicos?.find(s => s.name === appointment.service);
-        const serviceAmount = servicoInfo?.price || 35; // Usa valor padrão se não encontrar
-        
+        // 3. Calcular o valor total dos serviços
+        const totalServiceAmount = appointment.servicos.reduce((sum, service) => sum + service.service_price, 0);
         const commissionRate = barber.commission_rate;
-        const commissionAmount = serviceAmount * (commissionRate / 100);
+        const commissionAmount = totalServiceAmount * (commissionRate / 100);
 
         // 4. Registramos a comissão
         const { error: commissionError } = await supabase
@@ -253,10 +320,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .insert({
             barber_id: appointment.barber_id,
             appointment_id: appointment.id,
-            service_amount: serviceAmount,
-            commission_amount: commissionAmount,
-            commission_rate: commissionRate,
-            date: appointment.date,
+            total_price: totalServiceAmount,
+            total_commission: commissionAmount,
             status: 'pendente'
           });
 
@@ -266,12 +331,12 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         const { error: receitaError } = await supabase
           .from('transactions')
           .insert({
+            appointment_id: appointment.id,
             type: 'receita',
-            amount: serviceAmount,
-            description: `Serviço: ${appointment.service} - Cliente: ${appointment.client_name}`,
-            category: 'servico',
-            date: appointment.date,
-            notes: `Referente ao agendamento ID: ${appointment.id}`
+            value: totalServiceAmount,
+            description: `Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')} - Cliente: ${appointment.client_name}`,
+            payment_method: 'dinheiro',
+            status: 'pendente'
           });
 
         if (receitaError) throw receitaError;
@@ -280,12 +345,12 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         const { error: despesaError } = await supabase
           .from('transactions')
           .insert({
+            appointment_id: appointment.id,
             type: 'despesa',
-            amount: commissionAmount,
-            description: `Comissão: ${appointment.barber} - Serviço: ${appointment.service}`,
-            category: 'comissao',
-            date: appointment.date,
-            notes: `Referente ao agendamento ID: ${appointment.id}`
+            value: commissionAmount,
+            description: `Comissão: ${appointment.barber} - Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')}`,
+            payment_method: 'dinheiro',
+            status: 'pendente'
           });
 
         if (despesaError) throw despesaError;
@@ -297,7 +362,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       }
     },
     onSuccess: (_, variables) => {
-      // Invalida todas as queries de agendamentos relacionadas
       queryClient.invalidateQueries({ 
         queryKey: ['agendamentos']
       });
@@ -433,6 +497,18 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
     return true;
   };
 
+  // Verificar se o cliente já tem agendamento no mesmo dia
+  const verificarAgendamentoCliente = (clientId: string, date: string) => {
+    if (!agendamentos) return false;
+    
+    return agendamentos.some(
+      (agendamento) => 
+        agendamento.client_id === clientId && 
+        agendamento.date === date &&
+        ["pendente", "confirmado"].includes(agendamento.status)
+    );
+  };
+
   return {
     agendamentos,
     isLoading,
@@ -442,5 +518,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
     marcarComoAtendido,
     verificarDisponibilidadeBarbeiro,
     updateAgendamentosRelacionados,
+    verificarAgendamentoCliente,
   };
 }

@@ -29,39 +29,10 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Função para agrupar agendamentos que fazem parte do mesmo serviço
-  const agruparAgendamentos = (agendamentos: any[]) => {
-    const agendamentosAgrupados = new Map<string, any>();
-    
-    agendamentos.forEach(agendamento => {
-      // Verifica se já existe um agendamento para este cliente
-      const agendamentoExistente = Array.from(agendamentosAgrupados.values())
-        .find(a => a.client_id === agendamento.client_id && a.date === agendamento.date);
+  const agendamentosDoDia = agendamentos
+    ?.sort((a, b) => a.time.localeCompare(b.time)) || [];
 
-      if (agendamentoExistente) {
-        // Se já existe um agendamento para este cliente, verifica se este é o primeiro horário
-        const [horaExistente, minutoExistente] = agendamentoExistente.time.split(':').map(Number);
-        const [horaAtual, minutoAtual] = agendamento.time.split(':').map(Number);
-
-        // Se o horário atual for anterior ao existente, substitui
-        if (horaAtual < horaExistente || (horaAtual === horaExistente && minutoAtual < minutoExistente)) {
-          agendamentosAgrupados.delete(agendamentoExistente.id);
-          agendamentosAgrupados.set(agendamento.id, agendamento);
-        }
-      } else {
-        // Se não existe agendamento para este cliente, adiciona
-        agendamentosAgrupados.set(agendamento.id, agendamento);
-      }
-    });
-    
-    return Array.from(agendamentosAgrupados.values());
-  };
-
-  const agendamentosHoje = agendamentos?.filter(
-    (agendamento) => agendamento.date === format(today, "yyyy-MM-dd")
-  );
-
-  const agendamentosFiltrados = agendamentosHoje ? agruparAgendamentos(agendamentosHoje) : [];
+  const agendamentosFiltrados = agendamentosDoDia;
 
   // Função auxiliar para obter o horário atual de agendamento (00 ou 30)
   const getHorarioAtualAgenda = () => {
@@ -77,8 +48,8 @@ const Index = () => {
       // Incluir agendamentos do horário atual e futuros
       const horarioAtualAgenda = getHorarioAtualAgenda();
       
-      // Não mostrar agendamentos indisponíveis ou liberados
-      if (["indisponivel", "liberado"].includes(agendamento.status)) {
+      // Não mostrar agendamentos indisponíveis 
+      if (["indisponivel"].includes(agendamento.status)) {
         return false;
       }
       
@@ -275,7 +246,7 @@ const Index = () => {
     const proximoHorarioAgenda = `${proximaHora.toString().padStart(2, '0')}:${proximoIntervalo}`;
     
     // Filtrar todos os agendamentos do barbeiro para hoje
-    const agendamentosBarbeiro = agendamentosHoje?.filter(
+    const agendamentosBarbeiro = agendamentosDoDia?.filter(
       a => a.barber_id === barbeiroId
     ) || [];
     
@@ -358,7 +329,7 @@ const Index = () => {
   const stats = [
     {
       title: "Agendamentos Hoje",
-      value: agendamentosHoje?.filter(a => 
+      value: agendamentosDoDia?.filter(a => 
         ["pendente", "confirmado", "atendido", "cancelado"].includes(a.status)
       )?.length.toString() || "0",
       icon: Calendar,
@@ -366,7 +337,7 @@ const Index = () => {
     },
     {
       title: "Clientes Atendidos",
-      value: agendamentosHoje?.filter(a => a.status === "atendido")?.length.toString() || "0",
+      value: agendamentosDoDia?.filter(a => a.status === "atendido")?.length.toString() || "0",
       icon: Users,
       color: "text-primary",
     },

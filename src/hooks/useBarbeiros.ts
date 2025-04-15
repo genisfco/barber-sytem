@@ -1,30 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Database } from "@/integrations/supabase/types";
 
-interface Barbeiro {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  active: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
+type Barbeiro = Database['public']['Tables']['barbers']['Row'];
 
 export function useBarbeiros() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: barbeiros, isLoading } = useQuery({
-    queryKey: ["barbeiros"],
+    queryKey: ['barbeiros'],
     queryFn: async () => {
-      console.log("Buscando barbeiros...");
       const { data, error } = await supabase
-        .from("barbers")
-        .select("*")
-        .eq("active", true)
-        .order("name");
+        .from('barbers')
+        .select('*')
+        .order('name');
 
       if (error) {
         console.error("Erro ao buscar barbeiros:", error);
@@ -32,17 +23,14 @@ export function useBarbeiros() {
       }
 
       return data as Barbeiro[];
-    },
+    }
   });
 
   const createBarbeiro = useMutation({
-    mutationFn: async (barbeiro: Omit<Barbeiro, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (barbeiro: Omit<Barbeiro, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
-        .from("barbers")
-        .insert({
-          ...barbeiro,
-          active: true
-        })
+        .from('barbers')
+        .insert(barbeiro)
         .select()
         .single();
 
@@ -50,32 +38,27 @@ export function useBarbeiros() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["barbeiros"] });
+      queryClient.invalidateQueries({ queryKey: ['barbeiros'] });
       toast({
-        title: "Barbeiro cadastrado com sucesso!",
-        description: "O barbeiro foi adicionado à sua equipe.",
+        title: "Barbeiro criado com sucesso!",
+        description: "O barbeiro foi adicionado ao sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao cadastrar barbeiro",
-        description: error.message || "Ocorreu um erro ao tentar cadastrar o barbeiro.",
+        title: "Erro ao criar barbeiro",
+        description: error.message || "Ocorreu um erro ao tentar criar o barbeiro. Tente novamente.",
       });
     },
   });
 
   const updateBarbeiro = useMutation({
-    mutationFn: async (barbeiro: Barbeiro) => {
+    mutationFn: async (barbeiro: Partial<Barbeiro> & { id: string }) => {
       const { data, error } = await supabase
-        .from("barbers")
-        .update({
-          name: barbeiro.name,
-          email: barbeiro.email,
-          phone: barbeiro.phone,
-          active: barbeiro.active,
-        })
-        .eq("id", barbeiro.id)
+        .from('barbers')
+        .update(barbeiro)
+        .eq('id', barbeiro.id)
         .select()
         .single();
 
@@ -83,7 +66,7 @@ export function useBarbeiros() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["barbeiros"] });
+      queryClient.invalidateQueries({ queryKey: ['barbeiros'] });
       toast({
         title: "Barbeiro atualizado com sucesso!",
         description: "As informações do barbeiro foram atualizadas.",
@@ -93,7 +76,7 @@ export function useBarbeiros() {
       toast({
         variant: "destructive",
         title: "Erro ao atualizar barbeiro",
-        description: error.message || "Ocorreu um erro ao tentar atualizar o barbeiro.",
+        description: error.message || "Ocorreu um erro ao tentar atualizar o barbeiro. Tente novamente.",
       });
     },
   });
@@ -101,24 +84,24 @@ export function useBarbeiros() {
   const deleteBarbeiro = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("barbers")
-        .update({ active: false })
-        .eq("id", id);
+        .from('barbers')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["barbeiros"] });
+      queryClient.invalidateQueries({ queryKey: ['barbeiros'] });
       toast({
-        title: "Barbeiro inativado com sucesso!",
-        description: "O barbeiro foi removido da sua equipe ativa.",
+        title: "Barbeiro excluído com sucesso!",
+        description: "O barbeiro foi removido do sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao inativar barbeiro",
-        description: error.message || "Ocorreu um erro ao tentar inativar o barbeiro.",
+        title: "Erro ao excluir barbeiro",
+        description: error.message || "Ocorreu um erro ao tentar excluir o barbeiro. Tente novamente.",
       });
     },
   });
