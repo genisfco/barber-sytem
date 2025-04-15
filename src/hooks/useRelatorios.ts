@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,11 +10,11 @@ export type RelatorioData = {
   transacoes: {
     id: string;
     type: "receita" | "despesa";
-    amount: number;
+    value: number;
     description: string;
-    category: string;
-    date: string;
-    notes?: string;
+    payment_method?: string;
+    status: "pendente" | "pago" | "cancelado";
+    created_at: string;
   }[];
 };
 
@@ -27,20 +26,20 @@ export function useRelatorios() {
         console.log("Buscando relatório mensal...", { mes, ano });
         
         // Cria uma data do primeiro dia do mês
-        const startDate = `${ano}-${mes.padStart(2, "0")}-01`;
+        const startDate = `${ano}-${mes.padStart(2, "0")}-01T00:00:00`;
         
         // Calcula o último dia do mês usando endOfMonth
         const lastDay = endOfMonth(new Date(Number(ano), Number(mes) - 1));
-        const endDate = format(lastDay, "yyyy-MM-dd");
+        const endDate = format(lastDay, "yyyy-MM-dd") + "T23:59:59";
 
         console.log("Período da busca:", { startDate, endDate });
 
         const { data, error } = await supabase
           .from("transactions")
           .select("*")
-          .gte("date", startDate)
-          .lte("date", endDate)
-          .order("date", { ascending: false });
+          .gte("created_at", startDate)
+          .lte("created_at", endDate)
+          .order("created_at", { ascending: false });
 
         if (error) {
           toast.error("Erro ao carregar relatório mensal");
@@ -52,9 +51,9 @@ export function useRelatorios() {
         const totais = data.reduce(
           (acc, transacao) => {
             if (transacao.type === "receita") {
-              acc.receitas += Number(transacao.amount);
+              acc.receitas += Number(transacao.value);
             } else {
-              acc.despesas += Number(transacao.amount);
+              acc.despesas += Number(transacao.value);
             }
             acc.saldo = acc.receitas - acc.despesas;
             return acc;
@@ -74,15 +73,15 @@ export function useRelatorios() {
       queryFn: async () => {
         console.log("Buscando relatório anual...", { ano });
         
-        const startDate = `${ano}-01-01`;
-        const endDate = `${ano}-12-31`;
+        const startDate = `${ano}-01-01T00:00:00`;
+        const endDate = `${ano}-12-31T23:59:59`;
 
         const { data, error } = await supabase
           .from("transactions")
           .select("*")
-          .gte("date", startDate)
-          .lte("date", endDate)
-          .order("date", { ascending: false });
+          .gte("created_at", startDate)
+          .lte("created_at", endDate)
+          .order("created_at", { ascending: false });
 
         if (error) {
           toast.error("Erro ao carregar relatório anual");
@@ -94,9 +93,9 @@ export function useRelatorios() {
         const totais = data.reduce(
           (acc, transacao) => {
             if (transacao.type === "receita") {
-              acc.receitas += Number(transacao.amount);
+              acc.receitas += Number(transacao.value);
             } else {
-              acc.despesas += Number(transacao.amount);
+              acc.despesas += Number(transacao.value);
             }
             acc.saldo = acc.receitas - acc.despesas;
             return acc;

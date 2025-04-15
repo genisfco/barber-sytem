@@ -1,4 +1,3 @@
-
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,7 +29,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 import { FormValues } from "./types";
-import { categoriasReceita, categoriasDespesa } from "./categories";
+
+const metodosPagamento = [
+  { id: "dinheiro", nome: "Dinheiro" },
+  { id: "pix", nome: "PIX" },
+  { id: "cartao_credito", nome: "Cartão de Crédito" },
+  { id: "cartao_debito", nome: "Cartão de Débito" },
+  { id: "outro", nome: "Outro" },
+];
 
 type FormFieldsProps = {
   form: UseFormReturn<FormValues>;
@@ -38,8 +44,6 @@ type FormFieldsProps = {
 };
 
 export function FormFields({ form, tipo }: FormFieldsProps) {
-  const categorias = tipo === "receita" ? categoriasReceita : categoriasDespesa;
-
   return (
     <>
       <FormField
@@ -78,20 +82,20 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
 
       <FormField
         control={form.control}
-        name="categoria"
+        name="metodo_pagamento"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Categoria</FormLabel>
+            <FormLabel>Método de Pagamento</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione a categoria" />
+                  <SelectValue placeholder="Selecione o método de pagamento" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {categorias.map((categoria) => (
-                  <SelectItem key={categoria.id} value={categoria.id}>
-                    {categoria.nome}
+                {metodosPagamento.map((metodo) => (
+                  <SelectItem key={metodo.id} value={metodo.id}>
+                    {metodo.nome}
                   </SelectItem>
                 ))}
               </SelectContent>

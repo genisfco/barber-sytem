@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -6,13 +5,15 @@ import { format } from "date-fns";
 
 export type Transacao = {
   id: string;
+  appointment_id?: string;
   type: "receita" | "despesa";
-  amount: number;
+  value: number;
   description: string;
-  category: string;
-  date: string;
+  payment_method?: string;
+  status: "pendente" | "pago" | "cancelado";
   notes?: string;
-  created_at?: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export function useTransacoes() {
@@ -26,7 +27,7 @@ export function useTransacoes() {
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
-        .order("date", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) {
         toast.error("Erro ao carregar transações");
@@ -45,7 +46,8 @@ export function useTransacoes() {
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
-        .eq("date", today);
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`);
 
       if (error) {
         toast.error("Erro ao carregar transações do dia");
@@ -58,9 +60,19 @@ export function useTransacoes() {
   });
 
   const createTransacao = useMutation({
-    mutationFn: async (transacao: Omit<Transacao, "id" | "created_at">) => {
-      console.log("Dados a serem salvos:", transacao);
+    mutationFn: async (transacao: Omit<Transacao, "id" | "created_at" | "updated_at">) => {
+      console.log("Iniciando criação de transação:", transacao);
       
+      // Validar o tipo da transação
+      if (transacao.type !== "receita" && transacao.type !== "despesa") {
+        throw new Error(`Tipo de transação inválido: ${transacao.type}`);
+      }
+
+      // Validar o valor
+      if (typeof transacao.value !== "number" || transacao.value <= 0) {
+        throw new Error(`Valor inválido: ${transacao.value}`);
+      }
+
       const { data, error } = await supabase
         .from("transactions")
         .insert(transacao)
@@ -68,26 +80,40 @@ export function useTransacoes() {
         .single();
 
       if (error) {
-        toast.error("Erro ao criar transação");
+        console.error("Erro detalhado do Supabase:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        if (error.code === "23514") { // Violação de check constraint
+          throw new Error("Erro na validação do tipo de transação. Por favor, entre em contato com o suporte.");
+        }
         throw error;
       }
 
-      console.log("Transação salva:", data);
+      console.log("Transação criada com sucesso:", data);
       return data;
     },
     onSuccess: () => {
+      console.log("Transação criada com sucesso, invalidando queries...");
       queryClient.invalidateQueries({ queryKey: ["transacoes"] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
     },
+    onError: (error: Error) => {
+      console.error("Erro na mutação createTransacao:", error);
+      toast.error(`Erro ao criar transação: ${error.message}`);
+    }
   });
 
   // Cálculos de totais apenas do dia atual
   const totais = transacoesHoje?.reduce(
     (acc, transacao) => {
       if (transacao.type === "receita") {
-        acc.receitas += Number(transacao.amount);
+        acc.receitas += Number(transacao.value);
       } else {
-        acc.despesas += Number(transacao.amount);
+        acc.despesas += Number(transacao.value);
       }
       acc.saldo = acc.receitas - acc.despesas;
       return acc;

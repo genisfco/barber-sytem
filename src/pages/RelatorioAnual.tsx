@@ -35,12 +35,12 @@ const RelatorioAnual = () => {
     });
   };
 
-  const agruparPorCategoria = (transacoes: any[], tipo: 'receita' | 'despesa') => {
+  const agruparPorMetodoPagamento = (transacoes: any[], tipo: 'receita' | 'despesa') => {
     return transacoes
       .filter(t => t.type === tipo)
       .reduce((acc, curr) => {
-        const categoria = curr.category;
-        acc[categoria] = (acc[categoria] || 0) + Number(curr.amount);
+        const metodo = curr.payment_method || "Não informado";
+        acc[metodo] = (acc[metodo] || 0) + Number(curr.value);
         return acc;
       }, {} as Record<string, number>);
   };
@@ -151,8 +151,8 @@ const RelatorioAnual = () => {
                   <div>
                     <div className="font-medium">{transacao.description}</div>
                     <div className="text-sm text-muted-foreground">
-                      {format(parseISO(transacao.date), "dd/MM/yyyy")} -{" "}
-                      {transacao.category}
+                      {format(new Date(transacao.created_at), "dd/MM/yyyy")} -{" "}
+                      {transacao.payment_method || "Não informado"}
                     </div>
                   </div>
                   <div
@@ -162,7 +162,7 @@ const RelatorioAnual = () => {
                         : "text-red-600"
                     }`}
                   >
-                    {formatarMoeda(transacao.amount)}
+                    {formatarMoeda(transacao.value)}
                   </div>
                 </div>
               ))}
@@ -175,8 +175,8 @@ const RelatorioAnual = () => {
         open={openDetalhesReceitas}
         onOpenChange={setOpenDetalhesReceitas}
         titulo="Detalhes das Receitas"
-        dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'receita')).map(([categoria, valor]) => ({
-          categoria,
+        dados={Object.entries(agruparPorMetodoPagamento(relatorio?.transacoes || [], 'receita')).map(([metodo, valor]) => ({
+          categoria: metodo,
           valor: Number(valor)
         }))}
       />
@@ -185,8 +185,8 @@ const RelatorioAnual = () => {
         open={openDetalhesDespesas}
         onOpenChange={setOpenDetalhesDespesas}
         titulo="Detalhes das Despesas"
-        dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'despesa')).map(([categoria, valor]) => ({
-          categoria,
+        dados={Object.entries(agruparPorMetodoPagamento(relatorio?.transacoes || [], 'despesa')).map(([metodo, valor]) => ({
+          categoria: metodo,
           valor: Number(valor)
         }))}
       />

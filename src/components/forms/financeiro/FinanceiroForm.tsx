@@ -28,17 +28,28 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
 
   async function onSubmit(values: FormValues) {
     try {
+      console.log("Dados do formulário:", values);
+      console.log("Tipo da transação:", tipo);
+      
       const data = new Date(values.data);
       data.setHours(0, 0, 0, 0);
 
-      await createTransacao.mutateAsync({
+      // Validar o tipo
+      if (tipo !== "receita" && tipo !== "despesa") {
+        throw new Error(`Tipo inválido: ${tipo}`);
+      }
+
+      const transacao = {
         type: tipo,
-        amount: Number(values.valor),
+        value: Number(values.valor),
         description: values.descricao,
-        category: values.categoria,
-        date: data.toISOString().split('T')[0],
-        notes: values.observacao,
-      });
+        payment_method: values.metodo_pagamento,
+        status: "pendente" as const,
+      };
+
+      console.log("Dados a serem enviados:", transacao);
+
+      await createTransacao.mutateAsync(transacao);
 
       toast.success(
         `${tipo === "receita" ? "Receita" : "Despesa"} cadastrada com sucesso!`
@@ -46,7 +57,10 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
       onOpenChange(false);
       form.reset();
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao salvar transação:", error);
+      toast.error(
+        `Erro ao cadastrar ${tipo === "receita" ? "receita" : "despesa"}. Verifique os dados e tente novamente.`
+      );
     }
   }
 

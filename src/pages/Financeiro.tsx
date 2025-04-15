@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,7 +125,7 @@ const Financeiro = () => {
                 <TableRow>
                   <TableHead>Data</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
+                  <TableHead>Método de Pagamento</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -134,12 +133,12 @@ const Financeiro = () => {
                 {transacoes.map((transacao) => (
                   <TableRow key={transacao.id}>
                     <TableCell>
-                      {format(new Date(`${transacao.date}T00:00:00`), "dd/MM/yyyy", {
+                      {format(new Date(transacao.created_at), "dd/MM/yyyy", {
                         locale: ptBR,
                       })}
                     </TableCell>
                     <TableCell>{transacao.description}</TableCell>
-                    <TableCell>{transacao.category}</TableCell>
+                    <TableCell>{transacao.payment_method || "-"}</TableCell>
                     <TableCell
                       className={`text-right ${
                         transacao.type === "receita"
@@ -147,7 +146,7 @@ const Financeiro = () => {
                           : "text-red-600"
                       }`}
                     >
-                      {formatMoney(transacao.amount)}
+                      {formatMoney(transacao.value)}
                     </TableCell>
                   </TableRow>
                 ))}
