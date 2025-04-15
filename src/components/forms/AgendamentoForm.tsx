@@ -36,6 +36,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Agendamento {
   id: string;
@@ -49,6 +50,12 @@ interface Agendamento {
   barber: string;
   service_id: string;
   service: string;
+  servicos: Array<{
+    service_id: string;
+    service_name: string;
+    service_price: number;
+    service_duration: number;
+  }>;
 }
 
 interface AgendamentoFormProps {
@@ -80,7 +87,7 @@ export function AgendamentoForm({
     defaultValues: {
       clienteId: "",
       barbeiroId: barbeiroInicial || "",
-      servicoId: "",
+      servicosSelecionados: [],
       data: dataInicial || new Date(),
       horario: horarioInicial || "",
     },
@@ -118,7 +125,7 @@ export function AgendamentoForm({
       form.reset({
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
-        servicoId: agendamentoParaEditar.service_id,
+        servicosSelecionados: agendamentoParaEditar.servicos?.map(s => s.service_id) || [],
         data: data,
         horario: agendamentoParaEditar.time,
       });
@@ -138,15 +145,12 @@ export function AgendamentoForm({
       const isValid = await form.trigger();
       
       if (!isValid) {
-        // Encontra o primeiro campo com erro
         const firstError = Object.keys(form.formState.errors)[0];
         if (firstError) {
-          // Foca no campo com erro
           const element = document.querySelector(`[name="${firstError}"]`);
           if (element) {
             (element as HTMLElement).focus();
           }
-          // Mostra mensagem de erro
           toast({
             title: "Campos obrigatórios",
             description: "Por favor, preencha todos os campos obrigatórios.",
@@ -158,9 +162,9 @@ export function AgendamentoForm({
 
       const cliente = clientes?.find((c) => c.id === values.clienteId);
       const barbeiro = barbeiros?.find((b) => b.id === values.barbeiroId);
-      const servico = servicos?.find((s) => s.id === values.servicoId);
+      const servicosSelecionados = servicos?.filter((s) => values.servicosSelecionados.includes(s.id));
 
-      if (!cliente || !barbeiro || !servico) {
+      if (!cliente || !barbeiro || !servicosSelecionados?.length) {
         toast({
           title: "Erro no agendamento",
           description: "Dados inválidos. Por favor, verifique se todos os campos foram preenchidos.",
@@ -186,8 +190,9 @@ export function AgendamentoForm({
       const horarioInicial = new Date();
       horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
       
+      const duracaoTotal = servicosSelecionados.reduce((sum, s) => sum + s.duration, 0);
       const horarioFinal = new Date(horarioInicial);
-      horarioFinal.setMinutes(horarioFinal.getMinutes() + servico.duration);
+      horarioFinal.setMinutes(horarioFinal.getMinutes() + duracaoTotal);
 
       // Verifica disponibilidade para todo o período do serviço
       const agendamentosConflitantes = await supabase
@@ -210,14 +215,14 @@ export function AgendamentoForm({
             .select('service_duration')
             .eq('appointment_id', ag.id);
           
-          const duracaoTotal = servicosAg.data?.reduce((sum, s) => sum + s.service_duration, 0) || 0;
-          fimAg.setMinutes(fimAg.getMinutes() + duracaoTotal);
+          const duracaoTotalAg = servicosAg.data?.reduce((sum, s) => sum + s.service_duration, 0) || 0;
+          fimAg.setMinutes(fimAg.getMinutes() + duracaoTotalAg);
 
           const novoInicio = new Date();
           novoInicio.setHours(horaInicial, minutoInicial, 0, 0);
           
           const novoFim = new Date(novoInicio);
-          novoFim.setMinutes(novoFim.getMinutes() + servico.duration);
+          novoFim.setMinutes(novoFim.getMinutes() + duracaoTotal);
 
           return (
             (novoInicio >= horarioAg && novoInicio < fimAg) ||
@@ -248,12 +253,12 @@ export function AgendamentoForm({
         client_phone: cliente.phone,
         barber_id: barbeiro.id,
         barber: barbeiro.name,
-        services: [{
+        services: servicosSelecionados.map(servico => ({
           service_id: servico.id,
           service_name: servico.name,
           service_price: servico.price,
           service_duration: servico.duration
-        }],
+        })),
         status: 'pendente'
       };
 
@@ -357,34 +362,58 @@ export function AgendamentoForm({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="servicoId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serviço *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um serviço" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {servicos?.map((servico) => (
-                          <SelectItem key={servico.id} value={servico.id}>
-                            {servico.name} - {formatarPreco(servico.price)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-red-500 text-sm" />
-                  </FormItem>
-                )}
-              />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="servicosSelecionados"
+              render={() => (
+                <FormItem>
+                  <div className="mb-4">
+                    <FormLabel className="text-base">Serviços *</FormLabel>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {servicos?.map((servico) => (
+                      <FormField
+                        key={servico.id}
+                        control={form.control}
+                        name="servicosSelecionados"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={servico.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(servico.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...field.value, servico.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== servico.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel className="font-normal">
+                                  {servico.name} - {formatarPreco(servico.price)}
+                                </FormLabel>
+                              </div>
+                            </FormItem>
+                          )
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage className="text-red-500 text-sm" />
+                </FormItem>
+              )}
+            />
+
             <DataHorarioFields 
               form={form} 
               date={form.watch('data')} 

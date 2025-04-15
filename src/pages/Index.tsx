@@ -402,7 +402,7 @@ const Index = () => {
                     <div className="flex-1">
                       <p className="font-medium text-lg">{agendamento.client_name}</p>
                       <div className="flex flex-col text-sm text-muted-foreground">
-                        <span>Serviço: {agendamento.service}</span>
+                        <span>Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
                         <span>Barbeiro: {agendamento.barber || "Não definido"}</span>
                         <span className={cn("font-medium", getStatusColor(agendamento.status))}>
                           Status: {getStatusText(agendamento.status)}

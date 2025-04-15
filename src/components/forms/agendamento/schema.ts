@@ -12,7 +12,7 @@ interface Agendamento {
 interface FormData {
   clienteId?: string;
   barbeiroId?: string;
-  servicoId?: string;
+  servicosSelecionados?: string[];
   data?: Date;
   horario?: string;
 }
@@ -24,8 +24,8 @@ export const createFormSchema = (agendamentos: Agendamento[] = [], servicos: any
   barbeiroId: z.string({
     required_error: "Selecione o barbeiro",
   }),
-  servicoId: z.string({
-    required_error: "Selecione o serviço",
+  servicosSelecionados: z.array(z.string()).min(1, {
+    message: "Selecione pelo menos um serviço",
   }),
   data: z.date({
     required_error: "Selecione a data",
@@ -43,9 +43,10 @@ export const createFormSchema = (agendamentos: Agendamento[] = [], servicos: any
 function isHorarioDisponivel(data: FormData, agendamentos: Agendamento[], servicos: any[]): boolean {
   const dataFormatada = data.data?.toISOString().split('T')[0];
   
-  // Encontra o serviço selecionado para obter sua duração
-  const servicoSelecionado = servicos?.find(s => s.id === data.servicoId);
-  const slotsNecessarios = servicoSelecionado ? Math.ceil(servicoSelecionado.duration / 30) : 1;
+  // Encontra os serviços selecionados para obter a duração total
+  const servicosSelecionados = servicos?.filter(s => data.servicosSelecionados?.includes(s.id));
+  const duracaoTotal = servicosSelecionados?.reduce((sum, s) => sum + s.duration, 0) || 0;
+  const slotsNecessarios = Math.ceil(duracaoTotal / 30);
   const horariosParaVerificar = [data.horario];
 
   // Adiciona os próximos horários se forem necessários
