@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,6 +55,12 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
   });
 
   const handleSubmit = (data: ComissoesFormValues) => {
+    console.log("🔍 Dados do formulário:", {
+      barbeiro: barbeiros?.find(b => b.id === data.barbeiroId)?.name,
+      barbeiroId: data.barbeiroId,
+      dataInicio: format(data.dataInicio, "yyyy-MM-dd"),
+      dataFim: format(data.dataFim, "yyyy-MM-dd")
+    });
     onSubmit(data);
   };
 
