@@ -100,7 +100,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       // Verifica se o horário que estamos verificando está dentro do período do agendamento
       return (
         minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.service_duration &&
+        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
         ["pendente", "atendido", "confirmado"].includes(agendamento.status)
       );
     });
@@ -125,13 +125,14 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
         
         return (
           minutosVerificar >= minutosAgendamento &&
-          minutosVerificar < minutosAgendamento + agendamento.service_duration &&
+          minutosVerificar < minutosAgendamento + agendamento.total_duration &&
           ["pendente", "atendido", "confirmado"].includes(agendamento.status)
         );
       });
 
       if (agendamento) {
-        return `Atendimento ${agendamento.client_name} (${agendamento.service})`;
+        const servicos = agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado';
+        return `Atendimento ${agendamento.client_name} (${servicos})`;
       }
       return "Horário expirado";
     }
@@ -154,13 +155,14 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       
       return (
         minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.service_duration &&
+        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
         ["pendente", "atendido", "confirmado"].includes(agendamento.status)
       );
     });
 
     if (agendamento) {
-      return `Agendado para ${agendamento.client_name} (${agendamento.service})`;
+      const servicos = agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado';
+      return `Agendado para ${agendamento.client_name} (${servicos})`;
     }
 
     return "Horário indisponível";

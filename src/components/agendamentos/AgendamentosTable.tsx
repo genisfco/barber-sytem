@@ -24,8 +24,33 @@ interface Agendamento {
   client_phone: string;
   barber_id: string;
   barber: string;
-  service: string;
+  total_duration: number;
+  total_price: number;
+  total_products_price: number;
+  final_price: number;
   status: string;
+  created_at: string;
+  updated_at: string;
+  servicos: Array<{
+    id: string;
+    appointment_id: string;
+    service_id: string;
+    service_name: string;
+    service_price: number;
+    service_duration: number;
+    created_at: string;
+    updated_at: string;
+  }>;
+  produtos: Array<{
+    id: string;
+    appointment_id: string;
+    product_id: string;
+    product_name: string;
+    product_price: number;
+    quantity: number;
+    created_at: string;
+    updated_at: string;
+  }>;
 }
 
 interface AgendamentosTableProps {
@@ -115,10 +140,12 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
               <TableBody>
                 {agendamentosFiltrados?.map((agendamento) => (
                   <TableRow key={agendamento.id}>
-                    <TableCell>{agendamento.time}</TableCell>
+                    <TableCell>{agendamento.time.substring(0, 5)}</TableCell>
                     <TableCell>{agendamento.client_name}</TableCell>
                     <TableCell>{agendamento.barber}</TableCell>
-                    <TableCell>{agendamento.service}</TableCell>
+                    <TableCell>
+                      {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}
+                    </TableCell>
                     <TableCell>{agendamento.status}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
