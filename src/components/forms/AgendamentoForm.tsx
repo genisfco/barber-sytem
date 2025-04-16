@@ -191,6 +191,7 @@ export function AgendamentoForm({
       horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
       
       const duracaoTotal = servicosSelecionados.reduce((sum, s) => sum + s.duration, 0);
+      const precoTotalServicos = servicosSelecionados.reduce((sum, s) => sum + s.price, 0);
       const horarioFinal = new Date(horarioInicial);
       horarioFinal.setMinutes(horarioFinal.getMinutes() + duracaoTotal);
 
@@ -260,6 +261,8 @@ export function AgendamentoForm({
           service_price: servico.price,
           service_duration: servico.duration
         })),
+        total_duration: duracaoTotal,
+        total_price: precoTotalServicos,
         status: 'pendente'
       };
 
