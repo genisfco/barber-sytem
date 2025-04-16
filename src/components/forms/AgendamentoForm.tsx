@@ -190,7 +190,10 @@ export function AgendamentoForm({
       const horarioInicial = new Date();
       horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
       
-      const duracaoTotal = servicosSelecionados.reduce((sum, s) => sum + s.duration, 0);
+      // Limitar a duração total a 120 minutos (4 slots de 30 minutos)
+      const duracaoMaxima = 120;
+      const duracaoTotal = Math.min(servicosSelecionados.reduce((sum, s) => sum + s.duration, 0), duracaoMaxima);
+
       const precoTotalServicos = servicosSelecionados.reduce((sum, s) => sum + s.price, 0);
       const horarioFinal = new Date(horarioInicial);
       horarioFinal.setMinutes(horarioFinal.getMinutes() + duracaoTotal);
