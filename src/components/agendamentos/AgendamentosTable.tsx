@@ -15,6 +15,9 @@ import { AgendamentoForm } from "../forms/AgendamentoForm";
 import { FinalizarAtendimentoForm } from "../forms/FinalizarAtendimentoForm";
 import { useServicos } from "@/hooks/useServicos";
 import { Agendamento } from "@/types/agendamento";
+import { toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface AgendamentosTableProps {
   agendamentos: Agendamento[] | undefined;
@@ -68,7 +71,11 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
     });
   };
 
-  const handleAtendido = async (agendamento: Agendamento) => {
+  const handleAtendido = (agendamento: Agendamento) => {
+    if (agendamento.status !== "confirmado") {
+      toast.error("Por favor, confirme o agendamento antes de finalizar o atendimento.");
+      return;
+    }
     setAgendamentoParaFinalizar(agendamento);
     setOpenFinalizarForm(true);
   };
@@ -176,6 +183,8 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
           agendamento={agendamentoParaFinalizar}
         />
       )}
+
+      <ToastContainer />
     </>
   );
 }

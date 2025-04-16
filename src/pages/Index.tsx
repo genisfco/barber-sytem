@@ -10,6 +10,10 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
+import { FinalizarAtendimentoForm } from "@/components/forms/FinalizarAtendimentoForm";
+import { toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Index = () => {
   const today = new Date();
@@ -20,6 +24,8 @@ const Index = () => {
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>();
   const [dataHoraAtual, setDataHoraAtual] = useState(new Date());
+  const [openFinalizarForm, setOpenFinalizarForm] = useState(false);
+  const [agendamentoParaFinalizar, setAgendamentoParaFinalizar] = useState<any>();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -151,46 +157,13 @@ const Index = () => {
     }
   };
 
-  const handleAtendido = async (agendamento: any) => {
-    // Encontra o serviço para obter sua duração
-    const servico = servicos?.find(s => s.name === agendamento.service);
-    const slotsNecessarios = servico ? Math.ceil(servico.duration / 30) : 1;
-
-    // Se precisar de mais de um slot, atualiza todos os slots relacionados
-    if (slotsNecessarios > 1) {
-      const [hora, minuto] = agendamento.time.split(':').map(Number);
-      const horariosParaAtualizar = [agendamento.time];
-
-      // Adiciona os próximos horários se forem necessários
-      for (let i = 1; i < slotsNecessarios; i++) {
-        const proximoHorario = new Date();
-        proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
-        const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
-        horariosParaAtualizar.push(proximoHorarioFormatado);
-      }
-
-      // Atualiza o status de todos os slots relacionados
-      for (const horario of horariosParaAtualizar) {
-        const agendamentoRelacionado = agendamentos?.find(
-          a => a.date === agendamento.date &&
-               a.time === horario &&
-               a.client_id === agendamento.client_id &&
-               a.barber_id === agendamento.barber_id
-        );
-
-        if (agendamentoRelacionado) {
-          await updateAgendamento.mutateAsync({
-            id: agendamentoRelacionado.id,
-            status: "atendido"
-          });
-        }
-      }
-    } else {
-      await updateAgendamento.mutateAsync({
-        id: agendamento.id,
-        status: "atendido"
-      });
+  const handleAtendido = (agendamento: any) => {
+    if (agendamento.status !== "confirmado") {
+      toast.error("Por favor, confirme o agendamento antes de finalizar o atendimento.");
+      return;
     }
+    setAgendamentoParaFinalizar(agendamento);
+    setOpenFinalizarForm(true);
   };
 
   const handleEditar = (agendamento: any) => {
@@ -517,6 +490,16 @@ const Index = () => {
         onOpenChange={setOpenEditForm}
         agendamentoParaEditar={agendamentoParaEditar}
       />
+
+      {agendamentoParaFinalizar && (
+        <FinalizarAtendimentoForm
+          open={openFinalizarForm}
+          onOpenChange={setOpenFinalizarForm}
+          agendamento={agendamentoParaFinalizar}
+        />
+      )}
+
+      <ToastContainer />
     </div>
   );
 };
