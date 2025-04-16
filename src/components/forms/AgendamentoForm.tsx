@@ -174,7 +174,7 @@ export function AgendamentoForm({
       }
 
       // Verificar se o cliente já tem agendamento no mesmo dia
-      const clienteJaAgendado = verificarAgendamentoCliente(cliente.id, format(values.data, "yyyy-MM-dd"));
+      const clienteJaAgendado = verificarAgendamentoCliente(cliente.id, format(values.data, "yyyy-MM-dd"), agendamentoParaEditar?.id);
       
       if (clienteJaAgendado) {
         toast({
@@ -201,6 +201,7 @@ export function AgendamentoForm({
         .eq('date', values.data.toISOString().split('T')[0])
         .or(`barber_id.eq.${barbeiro.id},client_id.eq.${cliente.id}`)
         .neq('status', 'cancelado')
+        .neq('id', agendamentoParaEditar?.id || '')
         .in('status', ['confirmado', 'pendente']);
 
       if (agendamentosConflitantes.data) {
