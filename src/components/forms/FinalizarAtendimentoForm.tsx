@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Agendamento } from "@/types/agendamento";
+import { Dialog as ConfirmDialog, DialogContent as ConfirmDialogContent, DialogHeader as ConfirmDialogHeader, DialogTitle as ConfirmDialogTitle, DialogFooter as ConfirmDialogFooter } from "@/components/ui/dialog";
 
 type PaymentMethod = "dinheiro" | "cartao_credito" | "cartao_debito" | "pix";
 
@@ -45,6 +46,7 @@ export function FinalizarAtendimentoForm({
   const { servicos } = useServicos();
   const { produtos } = useProdutos();
   const [total, setTotal] = useState(0);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -173,6 +175,19 @@ export function FinalizarAtendimentoForm({
       });
     }
   }
+
+  const handleFinalizarClick = () => {
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmFinalizar = () => {
+    setConfirmDialogOpen(false);
+    form.handleSubmit(onSubmit)();
+  };
+
+  const handleCancelFinalizar = () => {
+    setConfirmDialogOpen(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -311,11 +326,29 @@ export function FinalizarAtendimentoForm({
                   <h3 className="font-medium">Total</h3>
                   <p className="text-2xl font-bold">R$ {total.toFixed(2)}</p>
                 </div>
-                <Button type="submit">Finalizar Atendimento</Button>
+                <Button type="button" onClick={handleFinalizarClick}>Finalizar Atendimento</Button>
               </div>
             </form>
           </Form>
         </div>
+
+        <ConfirmDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+          <ConfirmDialogContent>
+            <ConfirmDialogHeader>
+              <ConfirmDialogTitle>Confirmar Finalização</ConfirmDialogTitle>
+            </ConfirmDialogHeader>
+            <div className="space-y-4">
+              <p>Tem certeza que deseja finalizar o atendimento do cliente <span className="font-bold">{agendamento.client_name}</span>?</p>
+              <p>Total: <span className="text-2xl font-bold">R$ {total.toFixed(2)}</span></p>
+              <p className="text-sm text-muted-foreground">Apenas confirme a finalização se o cliente já pagou o valor total do atendimento.</p>
+              <p className="text-sm text-muted-foreground">ATENÇÃO: Esta ação não poderá ser desfeita.</p>
+            </div>
+            <ConfirmDialogFooter>
+              <Button variant="ghost" onClick={handleCancelFinalizar}>Não</Button>
+              <Button onClick={handleConfirmFinalizar}>Sim</Button>
+            </ConfirmDialogFooter>
+          </ConfirmDialogContent>
+        </ConfirmDialog>
       </DialogContent>
     </Dialog>
   );
