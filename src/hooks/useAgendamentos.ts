@@ -709,13 +709,14 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   };
 
   // Verificar se o cliente já tem agendamento no mesmo dia
-  const verificarAgendamentoCliente = (clientId: string, date: string) => {
+  const verificarAgendamentoCliente = (clientId: string, date: string, agendamentoId?: string) => {
     if (!agendamentos) return false;
     
     return agendamentos.some(
       (agendamento) => 
         agendamento.client_id === clientId && 
         agendamento.date === date &&
+        agendamento.id !== agendamentoId &&
         ["pendente", "confirmado"].includes(agendamento.status)
     );
   };
