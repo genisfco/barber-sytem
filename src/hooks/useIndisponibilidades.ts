@@ -7,9 +7,8 @@ import { ptBR } from "date-fns/locale";
 interface Indisponibilidade {
   id?: string;
   barber_id: string;
-  barber_name: string;
   date: string;
-  motivo?: string;
+  reason?: string;
   created_at?: string;
 }
 
@@ -44,9 +43,8 @@ export function useIndisponibilidades() {
   };
 
   const registrarIndisponibilidade = useMutation({
-    mutationFn: async ({ barbeiroId, barbeiroName, data, motivo }: { 
-      barbeiroId: string; 
-      barbeiroName: string; 
+    mutationFn: async ({ barbeiroId, data, motivo }: { 
+      barbeiroId: string;       
       data: Date;
       motivo?: string;
     }) => {
@@ -71,10 +69,9 @@ export function useIndisponibilidades() {
       const { data: novaIndisponibilidade, error } = await supabase
         .from('barber_unavailability')
         .insert({
-          barber_id: barbeiroId,
-          barber_name: barbeiroName,
+          barber_id: barbeiroId,          
           date: formattedDate,
-          motivo: motivo || 'Indisponível'
+          reason: motivo || 'Indisponível'
         })
         .select()
         .single();

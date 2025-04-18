@@ -46,22 +46,18 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
   } = useIndisponibilidades();
 
   const onSubmit = async (data: IndisponivelFormValues) => {
-    // Verificar se o barbeiro já está indisponível na data selecionada
     const estaIndisponivel = verificarIndisponibilidade(barbeiroId, data.data);
     
     if (estaIndisponivel) {
-      // Se já está indisponível, remove a indisponibilidade
       await removerIndisponibilidade.mutateAsync({ 
         barbeiroId, 
         data: data.data 
       });
     } else {
-      // Se não está indisponível, registra a indisponibilidade
       await registrarIndisponibilidade.mutateAsync({
         barbeiroId,
-        barbeiroName,
         data: data.data,
-        motivo: data.motivo // Campo opcional para motivo
+        motivo: data.motivo
       });
     }
 
@@ -74,6 +70,10 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormItem className="flex flex-col">          
+          <div className="text-lg font-semibold mb-4">{barbeiroName}</div>
+        </FormItem>
+          
         <FormField
           control={form.control}
           name="data"
@@ -89,13 +89,14 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                   hoje.setHours(0, 0, 0, 0);
                   return date < hoje;
                 }}
-                className="rounded-md border"
+                className="rounded-md border mx-auto"
               />
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="flex justify-end gap-2">
+
+        <div className="flex justify-end gap-2 mt-6">
           <Button
             type="button"
             variant="outline"
