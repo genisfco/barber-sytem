@@ -70,11 +70,11 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
 
   // Função para verificar se um horário está ocupado para um barbeiro específico
   const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
-    // Verifica se o barbeiro está indisponível para o dia inteiro
-    const barbeiroBloqueadoNoDia = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada);
+    // Verifica se o barbeiro está indisponível para o horário específico
+    const barbeiroBloqueadoNoHorario = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada, horario);
     
-    // Se o barbeiro está indisponível para o dia todo, retorna true
-    if (barbeiroBloqueadoNoDia) {
+    // Se o barbeiro está indisponível para o horário, retorna true
+    if (barbeiroBloqueadoNoHorario) {
       return true;
     }
     
@@ -137,9 +137,9 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return "Horário expirado";
     }
 
-    const barbeiroBloqueadoNoDia = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada);
-    if (barbeiroBloqueadoNoDia) {
-      return "Barbeiro indisponível no dia";
+    const barbeiroBloqueadoNoHorario = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada, horario);
+    if (barbeiroBloqueadoNoHorario) {
+      return "Barbeiro indisponível no horário";
     }
 
     const agendamento = agendamentos?.find((agendamento) => {

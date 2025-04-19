@@ -692,20 +692,37 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   });
 
   // Função para verificar se um barbeiro está disponível em uma data específica
-  const verificarDisponibilidadeBarbeiro = (barbeiroId: string, data: string) => {
-    // Verificar se o barbeiro está indisponível para o dia todo
-    const indisponivelNaData = indisponibilidades?.some(
-      indisponibilidade => 
+  const verificarDisponibilidadeBarbeiro = (barbeiroId: string, data: string, horario?: string) => {
+    // Verifica se o barbeiro está indisponível para o dia/horário
+    const indisponibilidade = indisponibilidades?.find(
+      (indisponibilidade) => 
         indisponibilidade.barber_id === barbeiroId && 
         indisponibilidade.date === data
     );
-    
-    // Se estiver indisponível para o dia todo, retorna false
-    if (indisponivelNaData) return false;
 
-    // Se não estiver indisponível para o dia todo, retorna true
-    // A verificação de horários específicos é feita no componente AgendamentoGrid
-    return true;
+    if (!indisponibilidade) {
+      return true; // Se não houver indisponibilidade, está disponível
+    }
+
+    // Se não foi especificado um horário, verifica se está indisponível para o dia todo
+    if (!horario) {
+      return !indisponibilidade.start_time && !indisponibilidade.end_time;
+    }
+
+    // Se foi especificado um horário, verifica se está dentro do período de indisponibilidade
+    if (indisponibilidade.start_time && indisponibilidade.end_time) {
+      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
+      const [horaInicial, minutoInicial] = indisponibilidade.start_time.split(':').map(Number);
+      const [horaFinal, minutoFinal] = indisponibilidade.end_time.split(':').map(Number);
+      
+      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
+      const minutosInicial = horaInicial * 60 + minutoInicial;
+      const minutosFinal = horaFinal * 60 + minutoFinal;
+      
+      return !(minutosVerificar >= minutosInicial && minutosVerificar < minutosFinal);
+    }
+
+    return true; // Se não houver horários específicos, está disponível
   };
 
   // Verificar se o cliente já tem agendamento no mesmo dia
