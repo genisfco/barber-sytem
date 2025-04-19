@@ -719,7 +719,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       const minutosInicial = horaInicial * 60 + minutoInicial;
       const minutosFinal = horaFinal * 60 + minutoFinal;
       
-      return !(minutosVerificar >= minutosInicial && minutosVerificar < minutosFinal);
+      return !(minutosVerificar >= minutosInicial && minutosVerificar <= minutosFinal);
     }
 
     return true; // Se não houver horários específicos, está disponível
