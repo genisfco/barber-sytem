@@ -190,13 +190,42 @@ export function AgendamentoForm({
       const horarioInicial = new Date();
       horarioInicial.setHours(horaInicial, minutoInicial, 0, 0);
       
-      // Limitar a duração total a 120 minutos (4 slots de 30 minutos)
-      const duracaoMaxima = 120;
-      const duracaoTotal = Math.min(servicosSelecionados.reduce((sum, s) => sum + s.duration, 0), duracaoMaxima);
-
-      const precoTotalServicos = servicosSelecionados.reduce((sum, s) => sum + s.price, 0);
+      const duracaoTotal = servicosSelecionados.reduce((sum, s) => sum + s.duration, 0);
       const horarioFinal = new Date(horarioInicial);
       horarioFinal.setMinutes(horarioFinal.getMinutes() + duracaoTotal);
+
+      // Verifica indisponibilidade do barbeiro
+      const indisponibilidades = await supabase
+        .from('barber_unavailability')
+        .select('*')
+        .eq('barber_id', barbeiro.id)
+        .eq('date', values.data.toISOString().split('T')[0]);
+
+      const conflitoIndisponibilidade = indisponibilidades.data?.some(indisponibilidade => {
+        const [horaIndisponibilidadeInicio, minutoIndisponibilidadeInicio] = indisponibilidade.start_time.split(':').map(Number);
+        const [horaIndisponibilidadeFim, minutoIndisponibilidadeFim] = indisponibilidade.end_time.split(':').map(Number);
+
+        const minutosIndisponibilidadeInicio = horaIndisponibilidadeInicio * 60 + minutoIndisponibilidadeInicio;
+        const minutosIndisponibilidadeFim = horaIndisponibilidadeFim * 60 + minutoIndisponibilidadeFim;
+
+        const minutosAgendamentoInicio = horaInicial * 60 + minutoInicial;
+        const minutosAgendamentoFim = minutosAgendamentoInicio + duracaoTotal;
+
+        return (
+          (minutosAgendamentoInicio >= minutosIndisponibilidadeInicio && minutosAgendamentoInicio < minutosIndisponibilidadeFim) ||
+          (minutosAgendamentoFim > minutosIndisponibilidadeInicio && minutosAgendamentoFim <= minutosIndisponibilidadeFim) ||
+          (minutosAgendamentoInicio <= minutosIndisponibilidadeInicio && minutosAgendamentoFim >= minutosIndisponibilidadeFim)
+        );
+      });
+
+      if (conflitoIndisponibilidade) {
+        toast({
+          variant: "destructive",
+          title: "Conflito de agendamento",
+          description: "O barbeiro estará indisponível para a data e horário necessários. Por favor, escolha outro horário.",
+        });
+        return;
+      }
 
       // Verifica disponibilidade para todo o período do serviço
       const agendamentosConflitantes = await supabase
@@ -265,7 +294,7 @@ export function AgendamentoForm({
           service_duration: servico.duration
         })),
         total_duration: duracaoTotal,
-        total_price: precoTotalServicos,
+        total_price: servicosSelecionados.reduce((sum, s) => sum + s.price, 0),
         status: 'pendente'
       };
 
