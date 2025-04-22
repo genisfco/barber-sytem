@@ -228,19 +228,27 @@ export function AgendamentoForm({
       }
 
       // Verifica disponibilidade para todo o período do serviço
-      const agendamentosConflitantes = await supabase
+      let query = supabase
         .from('appointments')
         .select('*')
         .eq('date', values.data.toISOString().split('T')[0])
         .or(`barber_id.eq.${barbeiro.id},client_id.eq.${cliente.id}`)
         .neq('status', 'cancelado')
-        .neq('id', agendamentoParaEditar?.id || '')
         .in('status', ['confirmado', 'pendente']);
+
+      // Se estiver editando, exclui o próprio agendamento da verificação
+      if (agendamentoParaEditar?.id) {
+        query = query.neq('id', agendamentoParaEditar.id);
+      }
+
+      const agendamentosConflitantes = await query;
+
+      console.log('Agendamentos conflitantes encontrados:', agendamentosConflitantes.data);
 
       if (agendamentosConflitantes.data) {
         const verificarConflito = async (ag: any) => {
           const [horaAg, minutoAg] = ag.time.split(':').map(Number);
-          const horarioAg = new Date();
+          const horarioAg = new Date(values.data);
           horarioAg.setHours(horaAg, minutoAg, 0, 0);
 
           const fimAg = new Date(horarioAg);
@@ -252,17 +260,36 @@ export function AgendamentoForm({
           const duracaoTotalAg = servicosAg.data?.reduce((sum, s) => sum + s.service_duration, 0) || 0;
           fimAg.setMinutes(fimAg.getMinutes() + duracaoTotalAg);
 
-          const novoInicio = new Date();
+          const novoInicio = new Date(values.data);
           novoInicio.setHours(horaInicial, minutoInicial, 0, 0);
           
           const novoFim = new Date(novoInicio);
           novoFim.setMinutes(novoFim.getMinutes() + duracaoTotal);
 
-          return (
+          // Logs para debug
+          console.log('Agendamento existente:', {
+            inicio: horarioAg.toISOString(),
+            fim: fimAg.toISOString(),
+            duracao: duracaoTotalAg
+          });
+
+          console.log('Novo agendamento:', {
+            inicio: novoInicio.toISOString(),
+            fim: novoFim.toISOString(),
+            duracao: duracaoTotal
+          });
+
+          const temConflito = (
             (novoInicio >= horarioAg && novoInicio < fimAg) ||
             (novoFim > horarioAg && novoFim <= fimAg) ||
             (novoInicio <= horarioAg && novoFim >= fimAg)
           );
+
+          if (temConflito) {
+            console.log('Conflito detectado entre agendamentos');
+          }
+
+          return temConflito;
         };
 
         const conflitos = await Promise.all(agendamentosConflitantes.data.map(verificarConflito));
@@ -271,8 +298,8 @@ export function AgendamentoForm({
         if (temConflito) {
           toast({
             variant: "destructive",
-            title: "Erro ao agendar",
-            description: "Já existe um agendamento conflitante para este horário.",
+            title: "Conflito de horários",
+            description: "Já existe um agendamento para execução de serviços neste horário. Por favor, escolha outro horário ou barbeiro.",
           });
           return;
         }
