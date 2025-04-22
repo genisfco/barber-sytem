@@ -29,6 +29,7 @@ type BarbeiroFormData = {
   name: string;
   email: string;
   phone: string;
+  commission_rate: number;
 };
 
 const Barbeiros = () => {
@@ -36,13 +37,18 @@ const Barbeiros = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBarbeiro, setSelectedBarbeiro] = useState<Barbeiro | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm<BarbeiroFormData>();
+  const { register, handleSubmit, reset, setValue } = useForm<BarbeiroFormData>({
+    defaultValues: {
+      commission_rate: 30
+    }
+  });
   const { barbeiros, isLoading, createBarbeiro, updateBarbeiro, deleteBarbeiro } = useBarbeiros();
 
   const onSubmit = async (data: BarbeiroFormData) => {
     const barbeiroData: Omit<Barbeiro, "id" | "created_at" | "updated_at"> = {
       ...data,
       active: true,
+      commission_rate: data.commission_rate || 30,
     };
 
     if (selectedBarbeiro) {
@@ -60,6 +66,7 @@ const Barbeiros = () => {
     setValue("name", barbeiro.name);
     setValue("email", barbeiro.email);
     setValue("phone", barbeiro.phone);
+    setValue("commission_rate", barbeiro.commission_rate);
     setOpen(true);
   };
 
@@ -129,6 +136,18 @@ const Barbeiros = () => {
                   {...register("phone")}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="commission_rate">Taxa de Comissão (%)</Label>
+                <Input
+                  id="commission_rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="Digite a taxa de comissão (padrão: 30)"
+                  {...register("commission_rate", { valueAsNumber: true })}
+                />
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -158,94 +177,73 @@ const Barbeiros = () => {
           </DialogContent>
         </Dialog>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Barbeiros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Buscar barbeiro..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-            />
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar barbeiro..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {isLoading ? (
+          <div className="col-span-full flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-          
-          {isLoading ? (
-            <div className="mt-6 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredBarbeiros?.length === 0 ? (
-            <div className="mt-6 text-muted-foreground">
-              Nenhum barbeiro encontrado.
-            </div>
-          ) : (
-            <div className="mt-6 space-y-4">
-              {filteredBarbeiros?.map((barbeiro) => (
-                <div
-                  key={barbeiro.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
-                >
-                  <div>
-                    <h3 className="font-medium">{barbeiro.name}</h3>
-                    <div className="text-sm text-muted-foreground">
-                      {barbeiro.email} • {barbeiro.phone}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Status: {barbeiro.active ? "Ativo" : "Inativo"}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(barbeiro)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleOpenDeleteDialog(barbeiro)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+        ) : filteredBarbeiros?.length === 0 ? (
+          <div className="col-span-full text-center text-muted-foreground">
+            Nenhum barbeiro encontrado
+          </div>
+        ) : (
+          filteredBarbeiros?.map((barbeiro) => (
+            <Card key={barbeiro.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {barbeiro.name}
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(barbeiro)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleOpenDeleteDialog(barbeiro)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  <p>Email: {barbeiro.email}</p>
+                  <p>Telefone: {barbeiro.phone}</p>
+                  <p>Taxa de Comissão: {barbeiro.commission_rate}%</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Barbeiro</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o barbeiro {selectedBarbeiro?.name}? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este barbeiro? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setDeleteDialogOpen(false);
-              setSelectedBarbeiro(null);
-            }}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedBarbeiro && handleDelete(selectedBarbeiro.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteBarbeiro.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Excluir"
-              )}
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete(selectedBarbeiro?.id || "")}>
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

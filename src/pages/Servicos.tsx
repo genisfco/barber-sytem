@@ -121,12 +121,17 @@ const Servicos = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="duration">Duração (minutos)</Label>
-                <Input
+                <select
                   id="duration"
-                  type="number"
-                  placeholder="Digite a duração em minutos"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                   {...register("duration", { valueAsNumber: true })}
-                />
+                >
+                  <option value="">Selecione a duração</option>
+                  <option value="30">30 minutos</option>
+                  <option value="60">60 minutos</option>
+                  <option value="90">90 minutos</option>
+                  <option value="120">120 minutos</option>
+                </select>
               </div>
               <div className="flex justify-end gap-2">
                 <Button

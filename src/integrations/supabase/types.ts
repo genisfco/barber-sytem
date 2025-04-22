@@ -136,6 +136,7 @@ export interface Database {
           email: string
           phone: string
           active: boolean
+          commission_rate: number
           created_at: string
           updated_at: string
         }
@@ -145,6 +146,7 @@ export interface Database {
           email: string
           phone: string
           active?: boolean
+          commission_rate?: number
           created_at?: string
           updated_at?: string
         }
@@ -154,6 +156,7 @@ export interface Database {
           email?: string
           phone?: string
           active?: boolean
+          commission_rate?: number
           created_at?: string
           updated_at?: string
         }

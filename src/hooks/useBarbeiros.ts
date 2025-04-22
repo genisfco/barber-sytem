@@ -30,7 +30,10 @@ export function useBarbeiros() {
     mutationFn: async (barbeiro: Omit<Barbeiro, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('barbers')
-        .insert(barbeiro)
+        .insert({
+          ...barbeiro,
+          commission_rate: barbeiro.commission_rate || 30
+        })
         .select()
         .single();
 
@@ -57,7 +60,10 @@ export function useBarbeiros() {
     mutationFn: async (barbeiro: Partial<Barbeiro> & { id: string }) => {
       const { data, error } = await supabase
         .from('barbers')
-        .update(barbeiro)
+        .update({
+          ...barbeiro,
+          commission_rate: barbeiro.commission_rate || 30
+        })
         .eq('id', barbeiro.id)
         .select()
         .single();
