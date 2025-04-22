@@ -4,6 +4,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect } from "react";
+import { useToast } from '@/hooks/use-toast';
 
 import {
   Form,
@@ -21,6 +22,7 @@ import { horarios } from "@/constants/horarios";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useAgendamentos } from '@/hooks/useAgendamentos';
 
 const formSchema = z.object({
   data: z.date({
@@ -73,6 +75,9 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
     indisponibilidades 
   } = useIndisponibilidades();
 
+  const { agendamentos } = useAgendamentos(form.watch('data'), barbeiroId);
+  const { toast } = useToast();
+
   // Função para buscar indisponibilidade existente
   const buscarIndisponibilidadeExistente = (data: Date) => {
     if (!indisponibilidades || !data) return null;
@@ -116,6 +121,28 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
     try {
       const indisponibilidade = buscarIndisponibilidadeExistente(data.data);
       
+      // Verifica se há agendamentos para a data e horário selecionados
+      const agendamentosExistentes = agendamentos?.some(agendamento => {
+        const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
+        const [horaInicial, minutoInicial] = data.horarioInicial.split(':').map(Number);
+        const [horaFinal, minutoFinal] = data.horarioFinal.split(':').map(Number);
+
+        const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
+        const minutosInicial = horaInicial * 60 + minutoInicial;
+        const minutosFinal = horaFinal * 60 + minutoFinal;
+
+        return minutosAgendamento >= minutosInicial && minutosAgendamento <= minutosFinal;
+      });
+
+      if (agendamentosExistentes) {
+        toast({
+          variant: 'destructive',
+          title: 'Conflito de Agendamento',
+          description: 'O barbeiro possui agendamentos para a data e período selecionado, verifique a agenda ou selecione outra data e período.'
+        });
+        return;
+      }
+
       if (indisponibilidade) {
         // Se já existe indisponibilidade, remove
         await removerIndisponibilidade.mutateAsync({ 
