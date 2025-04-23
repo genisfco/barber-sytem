@@ -37,8 +37,11 @@ export function ComissoesDialog({ open, onOpenChange }: ComissoesDialogProps) {
         {selecionado && (
           <ComissoesList 
             barbeiroId={selecionado.barbeiroId} 
+            tipoBusca={selecionado.tipoBusca}
+            dataEspecifica={selecionado.dataEspecifica}
             dataInicio={selecionado.dataInicio}
             dataFim={selecionado.dataFim}
+            status={selecionado.status}
           />
         )}
       </DialogContent>

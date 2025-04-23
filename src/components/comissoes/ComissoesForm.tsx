@@ -33,8 +33,24 @@ import { useBarbeiros } from "@/hooks/useBarbeiros";
 
 const formSchema = z.object({
   barbeiroId: z.string({ required_error: "Selecione um barbeiro" }),
-  dataInicio: z.date({ required_error: "Selecione a data inicial" }),
-  dataFim: z.date({ required_error: "Selecione a data final" }),
+  tipoBusca: z.enum(["dataEspecifica", "periodo"], {
+    required_error: "Selecione o tipo de busca"
+  }).default("dataEspecifica"),
+  dataEspecifica: z.date().optional(),
+  dataInicio: z.date().optional(),
+  dataFim: z.date().optional(),
+  status: z.enum(["pendente", "pago", "cancelado", "todos"], {
+    required_error: "Selecione o status"
+  }).default("todos"),
+}).refine((data) => {
+  if (data.tipoBusca === "dataEspecifica") {
+    return !!data.dataEspecifica;
+  } else {
+    return !!data.dataInicio && !!data.dataFim;
+  }
+}, {
+  message: "Preencha as datas corretamente",
+  path: ["dataEspecifica", "dataInicio", "dataFim"]
 });
 
 export type ComissoesFormValues = z.infer<typeof formSchema>;
@@ -49,42 +65,131 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
   const form = useForm<ComissoesFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      tipoBusca: "dataEspecifica",
+      dataEspecifica: new Date(),
       dataInicio: new Date(),
       dataFim: new Date(),
+      status: "todos",
     },
   });
 
+  const tipoBusca = form.watch("tipoBusca");
+
   const handleSubmit = (data: ComissoesFormValues) => {
+    let dataSubmit = { ...data };
+
+    if (data.tipoBusca === "dataEspecifica" && data.dataEspecifica) {
+      // Define o início do dia (00:00:00)
+      const inicioData = new Date(data.dataEspecifica);
+      inicioData.setHours(0, 0, 0, 0);
+
+      // Define o fim do dia (23:59:59)
+      const fimData = new Date(data.dataEspecifica);
+      fimData.setHours(23, 59, 59, 999);
+
+      dataSubmit = {
+        ...dataSubmit,
+        dataInicio: inicioData,
+        dataFim: fimData,
+      };
+    } else if (data.tipoBusca === "periodo" && data.dataInicio && data.dataFim) {
+      // Define o início do primeiro dia (00:00:00)
+      const inicioData = new Date(data.dataInicio);
+      inicioData.setHours(0, 0, 0, 0);
+
+      // Define o fim do último dia (23:59:59)
+      const fimData = new Date(data.dataFim);
+      fimData.setHours(23, 59, 59, 999);
+
+      dataSubmit = {
+        ...dataSubmit,
+        dataInicio: inicioData,
+        dataFim: fimData,
+      };
+    }
+
     console.log("🔍 Dados do formulário:", {
-      barbeiro: barbeiros?.find(b => b.id === data.barbeiroId)?.name,
-      barbeiroId: data.barbeiroId,
-      dataInicio: format(data.dataInicio, "yyyy-MM-dd"),
-      dataFim: format(data.dataFim, "yyyy-MM-dd")
+      barbeiro: barbeiros?.find(b => b.id === dataSubmit.barbeiroId)?.name,
+      barbeiroId: dataSubmit.barbeiroId,
+      tipoBusca: dataSubmit.tipoBusca,
+      dataEspecifica: dataSubmit.dataEspecifica ? format(dataSubmit.dataEspecifica, "yyyy-MM-dd") : null,
+      dataInicio: dataSubmit.dataInicio ? format(dataSubmit.dataInicio, "yyyy-MM-dd HH:mm:ss") : null,
+      dataFim: dataSubmit.dataFim ? format(dataSubmit.dataFim, "yyyy-MM-dd HH:mm:ss") : null,
+      status: dataSubmit.status
     });
-    onSubmit(data);
+
+    onSubmit(dataSubmit);
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="barbeiroId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Barbeiro</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o barbeiro" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {barbeiros?.map((barbeiro) => (
+                      <SelectItem key={barbeiro.id} value={barbeiro.id}>
+                        {barbeiro.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="pago">Pago</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <FormField
           control={form.control}
-          name="barbeiroId"
+          name="tipoBusca"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Barbeiro</FormLabel>
+              <FormLabel>Tipo de Busca</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o barbeiro" />
+                    <SelectValue placeholder="Selecione o tipo de busca" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {barbeiros?.map((barbeiro) => (
-                    <SelectItem key={barbeiro.id} value={barbeiro.id}>
-                      {barbeiro.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="dataEspecifica">Data Específica</SelectItem>
+                  <SelectItem value="periodo">Período</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -92,13 +197,13 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        {tipoBusca === "dataEspecifica" ? (
           <FormField
             control={form.control}
-            name="dataInicio"
+            name="dataEspecifica"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Data Inicial</FormLabel>
+                <FormLabel>Data</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -133,48 +238,91 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
               </FormItem>
             )}
           />
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="dataInicio"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Data Inicial</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                          ) : (
+                            <span>Selecione a data</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        locale={ptBR}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="dataFim"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Data Final</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                        ) : (
-                          <span>Selecione a data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      locale={ptBR}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="dataFim"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Data Final</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                          ) : (
+                            <span>Selecione a data</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        locale={ptBR}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         <div className="flex justify-end">
           <Button type="submit">Buscar</Button>

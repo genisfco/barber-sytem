@@ -15,15 +15,28 @@ import { Comissao } from "@/types/comissao";
 
 interface ComissoesListProps {
   barbeiroId: string;
-  dataInicio: Date;
-  dataFim: Date;
+  tipoBusca: "dataEspecifica" | "periodo";
+  dataEspecifica: Date | null;
+  dataInicio: Date | null;
+  dataFim: Date | null;
+  status: "pendente" | "pago" | "cancelado" | "todos";
 }
 
-export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesListProps) {
+export function ComissoesList({ 
+  barbeiroId, 
+  tipoBusca,
+  dataEspecifica,
+  dataInicio,
+  dataFim,
+  status 
+}: ComissoesListProps) {
   const { comissoes, isLoading, totalComissao, pagarComissao } = useComissoes(
     barbeiroId,
+    tipoBusca,
+    dataEspecifica,
     dataInicio,
-    dataFim
+    dataFim,
+    status
   );
 
   const formatMoney = (value: number) => {
@@ -59,12 +72,11 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Data</TableHead>
+            <TableHead>Data Atendimento</TableHead>
             <TableHead>Cliente</TableHead>
-            <TableHead className="text-right">Valor Total</TableHead>
+            <TableHead className="text-right">Valor Atendimento</TableHead>
             <TableHead className="text-right">Valor Comissão</TableHead>
-            <TableHead className="text-center">Status</TableHead>
-            <TableHead className="text-center">Ações</TableHead>
+            <TableHead className="text-center">Status Pgto</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -82,14 +94,9 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
               </TableCell>
               <TableCell className="text-center">
                 {comissao.status === "pendente" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700"
-                    onClick={() => pagarComissao.mutate({ id: comissao.id, isSingle: true })}
-                  >
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
                     Pendente
-                  </Button>
+                  </span>
                 ) : comissao.status === "pago" ? (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     <Check className="mr-1 h-3 w-3" />
@@ -100,16 +107,6 @@ export function ComissoesList({ barbeiroId, dataInicio, dataFim }: ComissoesList
                     Cancelado
                   </span>
                 )}
-              </TableCell>
-              <TableCell className="text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => pagarComissao.mutate({ id: comissao.id, isSingle: true })}
-                  disabled={comissao.status !== "pendente"}
-                >
-                  {comissao.status === "pendente" ? "Pagar" : ""}
-                </Button>
               </TableCell>
             </TableRow>
           ))}

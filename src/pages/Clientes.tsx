@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,14 +25,25 @@ import { useForm } from "react-hook-form";
 import { useClientes } from "@/hooks/useClientes";
 import type { Cliente } from "@/types/cliente";
 
-type ClienteFormData = Omit<Cliente, "id" | "created_at" | "updated_at">;
+type ClienteFormData = {
+  name: string;
+  email: string;
+  phone: string;
+  notes: string | null;
+  active: boolean;
+};
 
 const Clientes = () => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm<ClienteFormData>();
+  const { register, handleSubmit, reset, setValue } = useForm<ClienteFormData>({
+    defaultValues: {
+      active: true,
+      notes: null
+    }
+  });
   const { clientes, isLoading, createCliente, updateCliente, deleteCliente } = useClientes();
 
   const onSubmit = async (data: ClienteFormData) => {
@@ -160,95 +170,75 @@ const Clientes = () => {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Clientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-            />
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {isLoading ? (
+          <div className="col-span-full flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-          
-          {isLoading ? (
-            <div className="mt-6 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredClientes?.length === 0 ? (
-            <div className="mt-6 text-muted-foreground">
-              Nenhum cliente encontrado.
-            </div>
-          ) : (
-            <div className="mt-6 space-y-4">
-              {filteredClientes?.map((cliente) => (
-                <div
-                  key={cliente.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
-                >
-                  <div>
-                    <h3 className="font-medium">{cliente.name}</h3>
-                    <div className="text-sm text-muted-foreground">
-                      {cliente.email} • {cliente.phone}
-                    </div>
-                    {cliente.notes && (
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {cliente.notes}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(cliente)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleOpenDeleteDialog(cliente)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+        ) : filteredClientes?.length === 0 ? (
+          <div className="col-span-full text-center text-muted-foreground">
+            Nenhum cliente encontrado
+          </div>
+        ) : (
+          filteredClientes?.map((cliente) => (
+            <Card key={cliente.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-medium">
+                  {cliente.name}
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(cliente)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleOpenDeleteDialog(cliente)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  <p>Email: {cliente.email}</p>
+                  <p>Telefone: {cliente.phone}</p>
+                  {cliente.notes && <p>Observações: {cliente.notes}</p>}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Cliente</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o cliente {selectedClient?.name}? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setDeleteDialogOpen(false);
-              setSelectedClient(null);
-            }}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedClient && handleDelete(selectedClient.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteCliente.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Excluir"
-              )}
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => selectedClient && handleDelete(selectedClient.id)}>
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

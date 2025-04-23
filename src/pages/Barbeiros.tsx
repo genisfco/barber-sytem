@@ -201,7 +201,7 @@ const Barbeiros = () => {
           filteredBarbeiros?.map((barbeiro) => (
             <Card key={barbeiro.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-lg font-medium">
                   {barbeiro.name}
                 </CardTitle>
                 <div className="flex items-center space-x-2">

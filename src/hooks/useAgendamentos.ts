@@ -519,30 +519,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           console.log('✅ Receita de serviços lançada');
         }
 
-        // 10. Lançamos a despesa da comissão
-        if (commissionAmount > 0) {
-          const { error: despesaError } = await supabase
-            .from('transactions')
-            .insert({
-              appointment_id: appointment.id,
-              type: 'despesa',
-              value: commissionAmount,
-              description: `Comissão: ${appointment.barber} - Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')}`,
-              payment_method: appointment.payment_method || 'dinheiro',
-              status: 'pendente',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-
-          if (despesaError) {
-            console.error('❌ Erro ao registrar despesa de comissão:', despesaError);
-            throw despesaError;
-          }
-
-          console.log('✅ Despesa de comissão lançada');
-        }
-
-        // 11. Se houver produtos, lançamos a receita
+        // 10. Se houver produtos, lançamos a receita
         if (totalProductsAmount > 0) {
           const { error: produtosError } = await supabase
             .from('transactions')
