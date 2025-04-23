@@ -15,6 +15,7 @@ export function useClientes() {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
+        .eq('active', true)
         .order('name');
 
       if (error) {
@@ -85,7 +86,7 @@ export function useClientes() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('clients')
-        .delete()
+        .update({ active: false })
         .eq('id', id);
 
       if (error) throw error;
@@ -93,15 +94,15 @@ export function useClientes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       toast({
-        title: "Cliente excluído com sucesso!",
-        description: "O cliente foi removido do sistema.",
+        title: "Cliente desativado com sucesso!",
+        description: "O cliente foi marcado como inativo no sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao excluir cliente",
-        description: error.message || "Ocorreu um erro ao tentar excluir o cliente. Tente novamente.",
+        title: "Erro ao desativar cliente",
+        description: error.message || "Ocorreu um erro ao tentar desativar o cliente. Tente novamente.",
       });
     },
   });

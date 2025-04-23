@@ -15,6 +15,7 @@ export function useBarbeiros() {
       const { data, error } = await supabase
         .from('barbers')
         .select('*')
+        .eq('active', true)
         .order('name');
 
       if (error) {
@@ -91,7 +92,7 @@ export function useBarbeiros() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('barbers')
-        .delete()
+        .update({ active: false })
         .eq('id', id);
 
       if (error) throw error;
@@ -99,15 +100,15 @@ export function useBarbeiros() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['barbeiros'] });
       toast({
-        title: "Barbeiro excluído com sucesso!",
-        description: "O barbeiro foi removido do sistema.",
+        title: "Barbeiro desativado com sucesso!",
+        description: "O barbeiro foi marcado como inativo no sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao excluir barbeiro",
-        description: error.message || "Ocorreu um erro ao tentar excluir o barbeiro. Tente novamente.",
+        title: "Erro ao desativar barbeiro",
+        description: error.message || "Ocorreu um erro ao tentar desativar o barbeiro. Tente novamente.",
       });
     },
   });
