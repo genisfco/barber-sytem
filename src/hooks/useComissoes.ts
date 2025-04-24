@@ -133,7 +133,7 @@ export function useComissoes(
             type: 'despesa',
             value: comissao.total_commission,
             description: `Comissão: ${comissao.barbers.name} - Atendimento: ${comissao.appointment?.client_name}`,
-            status: 'pendente',
+            category: 'comissoes',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -177,7 +177,7 @@ export function useComissoes(
             type: 'despesa',
             value: totalComissao,
             description: `Comissão: ${comissoes[0].barbers.name} - Período: ${format(new Date(dataInicioFormatada), 'dd/MM/yyyy')} a ${format(new Date(dataFimFormatada), 'dd/MM/yyyy')}`,
-            status: 'pendente',
+            category: 'comissoes',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });

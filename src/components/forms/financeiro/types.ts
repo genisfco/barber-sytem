@@ -1,21 +1,17 @@
 import { z } from "zod";
 
 export const formSchema = z.object({
-  descricao: z.string().min(3, "A descrição deve ter no mínimo 3 caracteres"),
-  valor: z.string().min(1, "Informe o valor"),
-  metodo_pagamento: z.string({
-    required_error: "Selecione o método de pagamento",
-  }),
-  data: z.date({
-    required_error: "Selecione a data",
-  }),
-  observacao: z.string().optional(),
+  data: z.date(),
+  valor: z.string().min(1, "O valor é obrigatório"),
+  descricao: z.string().min(1, "A descrição é obrigatória"),
+  metodo_pagamento: z.string().optional(),
+  category: z.enum(["servicos", "produtos", "comissoes", "despesas_fixas", "outros"]).default("outros"),
 });
 
 export type FormValues = z.infer<typeof formSchema>;
 
-export type FinanceiroFormProps = {
+export interface FinanceiroFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tipo: "receita" | "despesa";
-};
+}

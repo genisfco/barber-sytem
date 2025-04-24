@@ -61,6 +61,52 @@ const RelatorioMensal = () => {
       }, {} as Record<string, number>);
   };
 
+  const agruparPorCategoria = (transacoes: any[], tipo: 'receita' | 'despesa') => {
+    return transacoes
+      .filter(t => t.type === tipo)
+      .reduce((acc, curr) => {
+        const categoria = curr.category || "outros";
+        const metodoPagamento = curr.payment_method || "Não informado";
+        
+        if (!acc[categoria]) {
+          acc[categoria] = {
+            valor: 0,
+            quantidade: 0,
+            metodosPagamento: {}
+          };
+        }
+
+        if (!acc[categoria].metodosPagamento[metodoPagamento]) {
+          acc[categoria].metodosPagamento[metodoPagamento] = {
+            valor: 0,
+            quantidade: 0
+          };
+        }
+
+        acc[categoria].valor += Number(curr.value);
+        acc[categoria].quantidade += 1;
+        acc[categoria].metodosPagamento[metodoPagamento].valor += Number(curr.value);
+        acc[categoria].metodosPagamento[metodoPagamento].quantidade += 1;
+
+        return acc;
+      }, {} as Record<string, { 
+        valor: number, 
+        quantidade: number,
+        metodosPagamento: Record<string, { valor: number, quantidade: number }>
+      }>);
+  };
+
+  const formatarCategoria = (categoria: string) => {
+    switch (categoria) {
+      case 'servicos': return 'Serviços';
+      case 'produtos': return 'Produtos';
+      case 'comissoes': return 'Comissões';
+      case 'despesas_fixas': return 'Despesas Fixas';
+      case 'outros': return 'Outros';
+      default: return categoria;
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -181,7 +227,11 @@ const RelatorioMensal = () => {
                     <div className="font-medium">{transacao.description}</div>
                     <div className="text-sm text-muted-foreground">
                       {format(new Date(transacao.created_at), "dd/MM/yyyy")} -{" "}
-                      {transacao.payment_method || "Não informado"}
+                      {transacao.category === 'servicos' && 'Serviços'}
+                      {transacao.category === 'produtos' && 'Produtos'}
+                      {transacao.category === 'comissoes' && 'Comissões'}
+                      {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
+                      {transacao.category === 'outros' && 'Outros'}
                     </div>
                   </div>
                   <div
@@ -204,20 +254,40 @@ const RelatorioMensal = () => {
         open={openDetalhesReceitas}
         onOpenChange={setOpenDetalhesReceitas}
         titulo="Detalhes das Receitas"
-        dados={Object.entries(agruparPorMetodoPagamento(relatorio?.transacoes || [], 'receita')).map(([metodo, valor]) => ({
-          categoria: metodo,
-          valor: Number(valor)
-        }))}
+        dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'receita'))
+          .map(([categoria, dados]) => ({
+            categoria: formatarCategoria(categoria),
+            valor: dados.valor,
+            quantidade: dados.quantidade,
+            metodosPagamento: Object.entries(dados.metodosPagamento)
+              .map(([metodo, info]) => ({
+                metodo,
+                valor: info.valor,
+                quantidade: info.quantidade
+              }))
+          }))
+          .sort((a, b) => b.valor - a.valor)
+        }
       />
 
       <DetalhesDialog
         open={openDetalhesDespesas}
         onOpenChange={setOpenDetalhesDespesas}
         titulo="Detalhes das Despesas"
-        dados={Object.entries(agruparPorMetodoPagamento(relatorio?.transacoes || [], 'despesa')).map(([metodo, valor]) => ({
-          categoria: metodo,
-          valor: Number(valor)
-        }))}
+        dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'despesa'))
+          .map(([categoria, dados]) => ({
+            categoria: formatarCategoria(categoria),
+            valor: dados.valor,
+            quantidade: dados.quantidade,
+            metodosPagamento: Object.entries(dados.metodosPagamento)
+              .map(([metodo, info]) => ({
+                metodo,
+                valor: info.valor,
+                quantidade: info.quantidade
+              }))
+          }))
+          .sort((a, b) => b.valor - a.valor)
+        }
       />
     </div>
   );

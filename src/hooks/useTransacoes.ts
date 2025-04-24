@@ -10,7 +10,7 @@ export type Transacao = {
   value: number;
   description: string;
   payment_method?: string;
-  status: "pendente" | "pago" | "cancelado";
+  category: "servicos" | "produtos" | "comissoes" | "despesas_fixas" | "outros";
   notes?: string;
   created_at: string;
   updated_at: string;

@@ -82,6 +82,31 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
 
       <FormField
         control={form.control}
+        name="category"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Categoria</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="servicos">Serviços</SelectItem>
+                <SelectItem value="produtos">Produtos</SelectItem>
+                <SelectItem value="comissoes">Comissões</SelectItem>
+                <SelectItem value="despesas_fixas">Despesas Fixas</SelectItem>
+                <SelectItem value="outros">Outros</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
         name="metodo_pagamento"
         render={({ field }) => (
           <FormItem>

@@ -125,6 +125,7 @@ const Financeiro = () => {
                 <TableRow>
                   <TableHead>Data</TableHead>
                   <TableHead>Descrição</TableHead>
+                  <TableHead>Categoria</TableHead>
                   <TableHead>Método de Pagamento</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
@@ -138,6 +139,13 @@ const Financeiro = () => {
                       })}
                     </TableCell>
                     <TableCell>{transacao.description}</TableCell>
+                    <TableCell>
+                      {transacao.category === 'servicos' && 'Serviços'}
+                      {transacao.category === 'produtos' && 'Produtos'}
+                      {transacao.category === 'comissoes' && 'Comissões'}
+                      {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
+                      {transacao.category === 'outros' && 'Outros'}
+                    </TableCell>
                     <TableCell>{transacao.payment_method || "-"}</TableCell>
                     <TableCell
                       className={`text-right ${

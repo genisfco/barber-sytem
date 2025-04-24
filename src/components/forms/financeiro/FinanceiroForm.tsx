@@ -11,6 +11,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormControl,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { FormFields } from "./FormFields";
 import { formSchema, type FinanceiroFormProps, type FormValues } from "./types";
@@ -44,7 +58,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
         value: Number(values.valor),
         description: values.descricao,
         payment_method: values.metodo_pagamento,
-        status: "pendente" as const,
+        category: values.category,
       };
 
       console.log("Dados a serem enviados:", transacao);

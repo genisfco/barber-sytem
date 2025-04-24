@@ -13,13 +13,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface DetalhesDialogProps {
+export interface DetalhesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   titulo: string;
   dados: {
     categoria: string;
     valor: number;
+    quantidade: number;
+    metodosPagamento: {
+      metodo: string;
+      valor: number;
+      quantidade: number;
+    }[];
   }[];
 }
 
@@ -32,10 +38,11 @@ export function DetalhesDialog({ open, onOpenChange, titulo, dados }: DetalhesDi
   };
 
   const total = dados.reduce((acc, item) => acc + item.valor, 0);
+  const totalTransacoes = dados.reduce((acc, item) => acc + item.quantidade, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
         </DialogHeader>
@@ -44,13 +51,25 @@ export function DetalhesDialog({ open, onOpenChange, titulo, dados }: DetalhesDi
           <TableHeader>
             <TableRow>
               <TableHead>Categoria</TableHead>
+              <TableHead className="text-right">Quantidade</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {dados.map((item) => (
               <TableRow key={item.categoria}>
-                <TableCell>{item.categoria}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{item.categoria}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {item.metodosPagamento.map((metodo, index) => (
+                      <div key={metodo.metodo} className="flex justify-between">
+                        <span>{metodo.metodo}:</span>
+                        <span>{metodo.quantidade} transações - {formatarMoeda(metodo.valor)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">{item.quantidade}</TableCell>
                 <TableCell className="text-right">
                   {formatarMoeda(item.valor)}
                 </TableCell>
@@ -58,6 +77,7 @@ export function DetalhesDialog({ open, onOpenChange, titulo, dados }: DetalhesDi
             ))}
             <TableRow className="font-semibold">
               <TableCell>Total</TableCell>
+              <TableCell className="text-right">{totalTransacoes}</TableCell>
               <TableCell className="text-right">
                 {formatarMoeda(total)}
               </TableCell>
