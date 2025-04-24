@@ -266,21 +266,29 @@ export function FinalizarAtendimentoForm({
                                 }
                                 calcularTotal();
                               }}
+                              disabled={produto.stock === 0}
                             />
                           </FormControl>
-                          <FormLabel className="font-normal">
+                          <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
                             {produto.name} - R$ {produto.price.toFixed(2)}
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              (Estoque: {produto.stock})
+                            </span>
                           </FormLabel>
                           {field.value?.some(p => p.id === produto.id) && (
                             <Input
                               type="number"
                               min="1"
+                              max={produto.stock}
                               value={field.value.find(p => p.id === produto.id)?.quantity || 1}
                               onChange={(e) => {
+                                const quantidade = parseInt(e.target.value);
+                                if (quantidade > produto.stock) return;
+                                
                                 const current = field.value || [];
                                 field.onChange(current.map(p => 
                                   p.id === produto.id 
-                                    ? { ...p, quantity: parseInt(e.target.value) } 
+                                    ? { ...p, quantity: quantidade } 
                                     : p
                                 ));
                                 calcularTotal();

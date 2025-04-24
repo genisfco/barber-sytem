@@ -386,6 +386,40 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           }
 
           console.log('✅ Novos produtos inseridos:', appointment.produtos.length);
+
+          // 4.1 Atualizamos o estoque dos produtos vendidos
+          for (const produto of appointment.produtos) {
+            // Primeiro buscamos o produto atual para pegar o estoque
+            const { data: produtoAtual, error: fetchError } = await supabase
+              .from('products')
+              .select('stock')
+              .eq('id', produto.product_id)
+              .single();
+
+            if (fetchError) {
+              console.error(`❌ Erro ao buscar produto ${produto.product_id}:`, fetchError);
+              throw fetchError;
+            }
+
+            // Calculamos o novo estoque
+            const novoEstoque = produtoAtual.stock - produto.quantity;
+
+            // Atualizamos o produto com o novo estoque
+            const { error: updateError } = await supabase
+              .from('products')
+              .update({ 
+                stock: novoEstoque,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', produto.product_id);
+
+            if (updateError) {
+              console.error(`❌ Erro ao atualizar estoque do produto ${produto.product_id}:`, updateError);
+              throw updateError;
+            }
+
+            console.log(`✅ Estoque do produto ${produto.product_id} atualizado: ${novoEstoque}`);
+          }
         }
 
         // 5. Calculamos os totais
@@ -527,7 +561,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               appointment_id: appointment.id,
               type: 'receita',
               value: totalProductsAmount,
-              description: `Produtos: ${appointment.produtos.map(p => `${p.product_name} (${p.quantity}x)`).join(', ')} - Cliente: ${appointment.client_name}`,
+              description: `Produtos: ${appointment.produtos.map(p => `(${p.quantity}x) ${p.product_name}`).join(', ')} - Cliente: ${appointment.client_name}`,
               payment_method: appointment.payment_method || 'dinheiro',
               category: 'produtos',
               created_at: new Date().toISOString(),

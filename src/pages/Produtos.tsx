@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { useProdutos } from "@/hooks/useProdutos";
 import type { Produto } from "@/types/produto";
+import { VenderProdutosForm } from "@/components/forms/VenderProdutosForm";
 
 type ProdutoFormData = {
   name: string;
@@ -34,6 +35,7 @@ type ProdutoFormData = {
 
 const Produtos = () => {
   const [open, setOpen] = useState(false);
+  const [openVenda, setOpenVenda] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,89 +88,91 @@ const Produtos = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-display text-barber-dark">Produtos</h1>
-        <Dialog open={open} onOpenChange={(newOpen) => {
-          if (!newOpen) {
-            setSelectedProduto(null);
-            reset();
-          }
-          setOpen(newOpen);
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2" />
-              Novo Produto
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {selectedProduto ? "Editar Produto" : "Cadastrar Novo Produto"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome do produto</Label>
-                <Input
-                  id="name"
-                  placeholder="Digite o nome do produto"
-                  {...register("name")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Input
-                  id="description"
-                  placeholder="Digite a descrição do produto"
-                  {...register("description")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Preço</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  placeholder="Digite o preço do produto"
-                  {...register("price", { valueAsNumber: true })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock">Estoque</Label>
-                <Input
-                  id="stock"
-                  type="number"
-                  placeholder="Digite a quantidade em estoque"
-                  {...register("stock", { valueAsNumber: true })}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setOpen(false);
-                    setSelectedProduto(null);
-                    reset();
-                  }}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createProduto.isPending || updateProduto.isPending}
-                >
-                  {(createProduto.isPending || updateProduto.isPending) ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="mr-2 h-4 w-4" />
-                  )}
-                  {selectedProduto ? "Salvar" : "Cadastrar"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Dialog open={open} onOpenChange={(newOpen) => {
+            if (!newOpen) {
+              setSelectedProduto(null);
+              reset();
+            }
+            setOpen(newOpen);
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2" />
+                Novo Produto
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedProduto ? "Editar Produto" : "Cadastrar Novo Produto"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome do produto</Label>
+                  <Input
+                    id="name"
+                    placeholder="Digite o nome do produto"
+                    {...register("name")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Input
+                    id="description"
+                    placeholder="Digite a descrição do produto"
+                    {...register("description")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Preço</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Digite o preço do produto"
+                    {...register("price", { valueAsNumber: true })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stock">Estoque</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    placeholder="Digite a quantidade em estoque"
+                    {...register("stock", { valueAsNumber: true })}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setOpen(false);
+                      setSelectedProduto(null);
+                      reset();
+                    }}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={createProduto.isPending || updateProduto.isPending}
+                  >
+                    {(createProduto.isPending || updateProduto.isPending) ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="mr-2 h-4 w-4" />
+                    )}
+                    {selectedProduto ? "Salvar" : "Cadastrar"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -262,6 +266,19 @@ const Produtos = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={openVenda} onOpenChange={setOpenVenda}>
+        <DialogTrigger asChild>
+          <Button>
+            <ShoppingCart className="mr-2" />
+            Vender Produtos
+          </Button>
+        </DialogTrigger>
+        <VenderProdutosForm 
+          open={openVenda}
+          onOpenChange={setOpenVenda}
+        />
+      </Dialog>
     </div>
   );
 };
