@@ -182,6 +182,7 @@ export function FinalizarAtendimentoForm({
 
   const handleConfirmFinalizar = () => {
     setConfirmDialogOpen(false);
+    onOpenChange(false);
     form.handleSubmit(onSubmit)();
   };
 

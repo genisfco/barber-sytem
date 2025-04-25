@@ -235,6 +235,12 @@ const Financeiro = () => {
               <br />
               Tem certeza que deseja excluir este lançamento?
               <br /><br />
+              <div className="text-left">
+                <p><span className="font-semibold">Descrição:</span> {transacaoParaExcluir?.description}</p>
+                <br />
+                <p><span className="font-semibold">Valor:</span> {formatMoney(transacaoParaExcluir?.value)}</p>
+              </div>
+              <br />
               <span className="font-bold text-red-600">ATENÇÃO:</span> Esta ação não poderá ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

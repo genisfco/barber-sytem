@@ -190,14 +190,23 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             <CardHeader className="bg-primary text-primary-foreground">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg">{barbeiro.name}</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary-foreground hover:text-primary-foreground/80"
-                  onClick={() => handleIndisponivelClick(barbeiro.id, barbeiro.name)}
-                >
-                  <Calendar className="h-4 w-4" />
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary-foreground hover:text-primary-foreground/80"
+                        onClick={() => handleIndisponivelClick(barbeiro.id, barbeiro.name)}
+                      >
+                        <Calendar className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Registrar indisponibilidade</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </CardHeader>
             <CardContent className="p-4">
