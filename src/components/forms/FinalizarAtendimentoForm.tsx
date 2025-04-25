@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Agendamento } from "@/types/agendamento";
-import { Dialog as ConfirmDialog, DialogContent as ConfirmDialogContent, DialogHeader as ConfirmDialogHeader, DialogTitle as ConfirmDialogTitle, DialogFooter as ConfirmDialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type PaymentMethod = "dinheiro" | "cartao_credito" | "cartao_debito" | "pix";
 
@@ -340,23 +340,34 @@ export function FinalizarAtendimentoForm({
           </Form>
         </div>
 
-        <ConfirmDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>Confirmar Finalização</ConfirmDialogTitle>
-            </ConfirmDialogHeader>
-            <div className="space-y-4">
-              <p>Tem certeza que deseja finalizar o atendimento do cliente <span className="font-bold">{agendamento.client_name}</span>?</p>
-              <p>Total: <span className="text-2xl font-bold">R$ {total.toFixed(2)}</span></p>
-              <p className="text-sm text-muted-foreground">Apenas confirme a finalização se o cliente já pagou o valor total do atendimento.</p>
-              <p className="text-sm text-muted-foreground">ATENÇÃO: Esta ação não poderá ser desfeita.</p>
-            </div>
-            <ConfirmDialogFooter>
-              <Button variant="ghost" onClick={handleCancelFinalizar}>Não</Button>
-              <Button onClick={handleConfirmFinalizar}>Sim</Button>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
+        <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+          <AlertDialogContent className="bg-green-50 border-green-200">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-green-600 text-center">Confirmar Finalização</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4 text-center">
+                <p className="text-green-700">
+                  Tem certeza que deseja finalizar o atendimento do cliente <span className="font-bold">{agendamento.client_name}</span>?
+                </p>
+                <p className="text-2xl font-bold text-green-700">
+                  Total: R$ {total.toFixed(2)}
+                </p>
+                <div className="text-sm text-green-600 bg-green-100 p-4 rounded-lg space-y-2">
+                  <p>Apenas confirme a finalização se o cliente já pagou o valor total do atendimento.</p>
+                  <p><span className="font-bold">ATENÇÃO:</span> Esta ação não poderá ser desfeita.</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200">Não</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmFinalizar}
+                className="bg-green-600 text-white hover:bg-green-700"
+              >
+                Sim, Finalizar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

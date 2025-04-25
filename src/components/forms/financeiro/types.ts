@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Transacao } from "@/hooks/useTransacoes";
 
 export const formSchema = z.object({
   data: z.date(),
@@ -14,4 +15,6 @@ export interface FinanceiroFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tipo: "receita" | "despesa";
+  transacao?: Transacao;
+  onSuccess?: () => void;
 }

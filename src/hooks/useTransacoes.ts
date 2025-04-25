@@ -107,6 +107,88 @@ export function useTransacoes() {
     }
   });
 
+  const updateTransacao = useMutation({
+    mutationFn: async (transacao: Partial<Transacao> & { id: string }) => {
+      console.log("Iniciando atualização de transação:", transacao);
+      
+      // Validar o tipo da transação se estiver sendo alterado
+      if (transacao.type && transacao.type !== "receita" && transacao.type !== "despesa") {
+        throw new Error(`Tipo de transação inválido: ${transacao.type}`);
+      }
+
+      // Validar o valor se estiver sendo alterado
+      if (transacao.value && (typeof transacao.value !== "number" || transacao.value <= 0)) {
+        throw new Error(`Valor inválido: ${transacao.value}`);
+      }
+
+      const { data, error } = await supabase
+        .from("transactions")
+        .update({
+          ...transacao,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", transacao.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Erro detalhado do Supabase:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log("Transação atualizada com sucesso:", data);
+      return data;
+    },
+    onSuccess: () => {
+      console.log("Transação atualizada com sucesso, invalidando queries...");
+      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
+      toast.success("Transação atualizada com sucesso");
+    },
+    onError: (error: Error) => {
+      console.error("Erro na mutação updateTransacao:", error);
+      toast.error(`Erro ao atualizar transação: ${error.message}`);
+    }
+  });
+
+  const deleteTransacao = useMutation({
+    mutationFn: async (id: string) => {
+      console.log("Iniciando exclusão de transação:", id);
+      
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        console.error("Erro detalhado do Supabase:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log("Transação excluída com sucesso");
+    },
+    onSuccess: () => {
+      console.log("Transação excluída com sucesso, invalidando queries...");
+      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
+      toast.success("Transação excluída com sucesso");
+    },
+    onError: (error: Error) => {
+      console.error("Erro na mutação deleteTransacao:", error);
+      toast.error(`Erro ao excluir transação: ${error.message}`);
+    }
+  });
+
   // Cálculos de totais apenas do dia atual
   const totais = transacoesHoje?.reduce(
     (acc, transacao) => {
@@ -126,6 +208,8 @@ export function useTransacoes() {
     transacoesHoje, // transações apenas do dia atual
     isLoading,
     createTransacao,
+    updateTransacao,
+    deleteTransacao,
     totais, // totais apenas do dia atual
   };
 }

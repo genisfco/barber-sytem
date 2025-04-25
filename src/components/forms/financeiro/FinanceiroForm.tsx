@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,8 +31,8 @@ import { FormFields } from "./FormFields";
 import { formSchema, type FinanceiroFormProps, type FormValues } from "./types";
 import { useTransacoes } from "@/hooks/useTransacoes";
 
-export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps) {
-  const { createTransacao } = useTransacoes();
+export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess }: FinanceiroFormProps) {
+  const { createTransacao, updateTransacao } = useTransacoes();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -39,6 +40,22 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
       data: new Date(),
     },
   });
+
+  useEffect(() => {
+    if (transacao) {
+      form.reset({
+        data: new Date(transacao.created_at),
+        valor: transacao.value.toString(),
+        descricao: transacao.description,
+        metodo_pagamento: transacao.payment_method,
+        category: transacao.category,
+      });
+    } else {
+      form.reset({
+        data: new Date(),
+      });
+    }
+  }, [transacao, form]);
 
   async function onSubmit(values: FormValues) {
     try {
@@ -53,7 +70,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
         throw new Error(`Tipo inválido: ${tipo}`);
       }
 
-      const transacao = {
+      const transacaoData = {
         type: tipo,
         value: Number(values.valor),
         description: values.descricao,
@@ -61,19 +78,32 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
         category: values.category,
       };
 
-      console.log("Dados a serem enviados:", transacao);
+      console.log("Dados a serem enviados:", transacaoData);
 
-      await createTransacao.mutateAsync(transacao);
+      if (transacao) {
+        await updateTransacao.mutateAsync({
+          id: transacao.id,
+          ...transacaoData,
+        });
+        toast.success(
+          `${tipo === "receita" ? "Receita" : "Despesa"} atualizada com sucesso!`
+        );
+      } else {
+        await createTransacao.mutateAsync(transacaoData);
+        toast.success(
+          `${tipo === "receita" ? "Receita" : "Despesa"} cadastrada com sucesso!`
+        );
+      }
 
-      toast.success(
-        `${tipo === "receita" ? "Receita" : "Despesa"} cadastrada com sucesso!`
-      );
       onOpenChange(false);
       form.reset();
+      onSuccess?.();
     } catch (error) {
       console.error("Erro ao salvar transação:", error);
       toast.error(
-        `Erro ao cadastrar ${tipo === "receita" ? "receita" : "despesa"}. Verifique os dados e tente novamente.`
+        `Erro ao ${transacao ? "atualizar" : "cadastrar"} ${
+          tipo === "receita" ? "receita" : "despesa"
+        }. Verifique os dados e tente novamente.`
       );
     }
   }
@@ -83,11 +113,16 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {tipo === "receita" ? "Nova Receita" : "Nova Despesa"}
+            {transacao
+              ? `Editar ${tipo === "receita" ? "Receita" : "Despesa"}`
+              : `Nova ${tipo === "receita" ? "Receita" : "Despesa"}`}
           </DialogTitle>
           <DialogDescription>
-            Preencha os campos abaixo para cadastrar uma nova{" "}
-            {tipo === "receita" ? "receita" : "despesa"}.
+            {transacao
+              ? "Atualize os campos abaixo para editar a transação."
+              : `Preencha os campos abaixo para cadastrar uma nova ${
+                  tipo === "receita" ? "receita" : "despesa"
+                }.`}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -101,7 +136,9 @@ export function FinanceiroForm({ open, onOpenChange, tipo }: FinanceiroFormProps
               >
                 Cancelar
               </Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="submit">
+                {transacao ? "Atualizar" : "Salvar"}
+              </Button>
             </div>
           </form>
         </Form>

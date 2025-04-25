@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Calendar, Scissors } from "lucide-react";
+import { Plus, FileText, Calendar, Scissors, Pencil, Trash2 } from "lucide-react";
 import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
 import { Link } from "react-router-dom";
 import { useTransacoes } from "@/hooks/useTransacoes";
@@ -16,18 +16,43 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ComissoesDialog } from "@/components/comissoes/ComissoesDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
   const [openReceita, setOpenReceita] = useState(false);
   const [openComissoes, setOpenComissoes] = useState(false);
-  const { transacoes, isLoading, totais } = useTransacoes();
+  const [transacaoParaEditar, setTransacaoParaEditar] = useState<any>(null);
+  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<any>(null);
+  const { transacoes, isLoading, totais, updateTransacao, deleteTransacao } = useTransacoes();
+  const { toast } = useToast();
 
   const formatMoney = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
     }).format(value);
+  };
+
+  const handleEditarTransacao = (transacao: any) => {
+    setTransacaoParaEditar(transacao);
+    if (transacao.type === "receita") {
+      setOpenReceita(true);
+    } else {
+      setOpenDespesa(true);
+    }
+  };
+
+  const handleExcluirTransacao = async () => {
+    if (!transacaoParaExcluir) return;
+
+    try {
+      await deleteTransacao.mutateAsync(transacaoParaExcluir.id);
+      setTransacaoParaExcluir(null);
+    } catch (error) {
+      console.error("Erro ao excluir transação:", error);
+    }
   };
 
   return (
@@ -128,6 +153,7 @@ const Financeiro = () => {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Método de Pagamento</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -156,6 +182,24 @@ const Financeiro = () => {
                     >
                       {formatMoney(transacao.value)}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditarTransacao(transacao)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setTransacaoParaExcluir(transacao)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -168,16 +212,43 @@ const Financeiro = () => {
         open={openDespesa}
         onOpenChange={setOpenDespesa}
         tipo="despesa"
+        transacao={transacaoParaEditar}
+        onSuccess={() => setTransacaoParaEditar(null)}
       />
       <FinanceiroForm
         open={openReceita}
         onOpenChange={setOpenReceita}
         tipo="receita"
+        transacao={transacaoParaEditar}
+        onSuccess={() => setTransacaoParaEditar(null)}
       />
       <ComissoesDialog 
         open={openComissoes}
         onOpenChange={setOpenComissoes}
       />
+
+      <AlertDialog open={!!transacaoParaExcluir} onOpenChange={() => setTransacaoParaExcluir(null)}>
+        <AlertDialogContent className="bg-red-50 border-red-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 text-center">Excluir Lançamento Financeiro</AlertDialogTitle>
+            <AlertDialogDescription className="text-red-700 text-center">
+              <br />
+              Tem certeza que deseja excluir este lançamento?
+              <br /><br />
+              <span className="font-bold text-red-600">ATENÇÃO:</span> Esta ação não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleExcluirTransacao} 
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
