@@ -89,21 +89,24 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
     // Verifica se o horário já passou
     const horarioPassado = isHorarioPassado(horario);
     if (horarioPassado) {
-      console.log(`[DISPONIBILIDADE] Horário ${horario} está no passado.`);
       return false;
     }
 
     // Verifica se o barbeiro está indisponível para o horário
     const barbeiroId = form.getValues('barbeiroId');
     if (!barbeiroId) {
-      console.log(`[DISPONIBILIDADE] Barbeiro não selecionado para horário ${horario}`);
+      return false;
+    }
+
+    // NOVO: Se for novo agendamento e cliente não selecionado, todos horários ficam vermelhos
+    const clienteId = form.getValues('clienteId');
+    if (!agendamentoParaEditar && !clienteId) {
       return false;
     }
 
     const dataFormatada = format(date, "yyyy-MM-dd");
     const barbeiroIndisponivel = verificarIndisponibilidade(barbeiroId, date, horario);
     if (barbeiroIndisponivel) {
-      console.log(`[DISPONIBILIDADE] Barbeiro ${barbeiroId} indisponível para ${horario}`);
       return false;
     }
 
@@ -208,6 +211,10 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
     });
 
     if (agendamentoBarbeiro) {
+      // NOVO: Se o cliente selecionado for o mesmo do agendamento, mostra mensagem específica
+      if (agendamentoBarbeiro.client_id === clienteId) {
+        return "Cliente selecionado já agendado neste horário";
+      }
       const servicos = agendamentoBarbeiro.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado';
       return `Agendado para ${agendamentoBarbeiro.client_name} (${servicos})`;
     }
@@ -236,7 +243,7 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
     });
 
     if (agendamentoCliente) {
-      return "Cliente selecionado já agendado neste horário";
+      return "O Cliente já foi agendado neste horário";
     }
 
     return "";
@@ -287,7 +294,8 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
                 const selecionado = field.value === horario;
                 const horarioPassado = isHorarioPassado(horario);
                 const motivoIndisponibilidade = getMotivoIndisponibilidade(horario);
-                
+                // NOVO: vermelho mais forte se for conflito do próprio cliente
+                const vermelhoForte = motivoIndisponibilidade === 'Cliente selecionado já agendado neste horário';
                 return (
                   <TooltipProvider key={horario}>
                     <Tooltip>
@@ -301,7 +309,8 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
                           }}
                           className={cn(
                             "py-2 px-1 rounded-md text-center font-medium transition-colors",
-                            !disponivel && "bg-red-100 text-red-700 cursor-not-allowed opacity-75",
+                            !disponivel && vermelhoForte && "bg-red-500 text-white cursor-not-allowed opacity-90 border border-red-700",
+                            !disponivel && !vermelhoForte && "bg-red-100 text-red-700 cursor-not-allowed opacity-75",
                             disponivel && !selecionado && "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
                             selecionado && "bg-primary text-primary-foreground"
                           )}
