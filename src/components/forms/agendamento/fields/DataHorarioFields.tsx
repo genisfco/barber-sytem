@@ -89,118 +89,73 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
     // Verifica se o horário já passou
     const horarioPassado = isHorarioPassado(horario);
     if (horarioPassado) {
-      console.log(`Horário ${horario} está no passado`);
+      console.log(`[DISPONIBILIDADE] Horário ${horario} está no passado.`);
       return false;
     }
 
     // Verifica se o barbeiro está indisponível para o horário
     const barbeiroId = form.getValues('barbeiroId');
     if (!barbeiroId) {
-      console.log('Barbeiro não selecionado');
+      console.log(`[DISPONIBILIDADE] Barbeiro não selecionado para horário ${horario}`);
       return false;
     }
 
     const dataFormatada = format(date, "yyyy-MM-dd");
     const barbeiroIndisponivel = verificarIndisponibilidade(barbeiroId, date, horario);
     if (barbeiroIndisponivel) {
-      console.log(`Barbeiro ${barbeiroId} indisponível para ${horario}`);
+      console.log(`[DISPONIBILIDADE] Barbeiro ${barbeiroId} indisponível para ${horario}`);
       return false;
     }
 
-    // Verifica se o cliente já tem um agendamento para o mesmo horário
-    const clienteId = form.getValues('clienteId');
-    if (!clienteId) {
-      console.log('Cliente não selecionado');
-      return false;
+    // --- NOVA LÓGICA DE CONFLITO PARA EDIÇÃO ---
+    // Duração total do serviço selecionado
+    let duracaoTotal = 0;
+    try {
+      const servicosSelecionados = form.getValues('servicosSelecionados');
+      const servicos = agendamentos?.[0]?.servicos ? agendamentos[0].servicos : [];
+      if (servicosSelecionados && servicosSelecionados.length > 0 && servicos.length > 0) {
+        duracaoTotal = servicos
+          .filter((s: any) => servicosSelecionados.includes(s.service_id))
+          .reduce((sum: number, s: any) => sum + (s.service_duration || 0), 0);
+      } else if (agendamentoParaEditar && agendamentoParaEditar.servicos) {
+        duracaoTotal = agendamentoParaEditar.servicos.reduce((sum: number, s: any) => sum + (s.service_duration || 0), 0);
+      }
+    } catch (e) {
+      duracaoTotal = 30; // fallback
     }
+    if (!duracaoTotal) duracaoTotal = 30; // fallback padrão
 
-    const clienteJaAgendado = agendamentos?.some((agendamento) => {
-      // Se estiver editando, ignora o próprio agendamento
-      if (agendamentoParaEditar?.id && agendamento.id === agendamentoParaEditar.id) {
-        return false;
-      }
+    // Calcula início e fim do novo agendamento
+    const [horaVerificar, minutoVerificar] = horario.split(":").map(Number);
+    const minutosVerificar = horaVerificar * 60 + minutoVerificar;
+    const minutosVerificarFim = minutosVerificar + duracaoTotal;
 
-      if (agendamento.client_id !== clienteId || agendamento.date !== dataFormatada) {
-        return false;
-      }
-
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-      
-      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-      
-      const conflito = (
-        minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
+    // Filtra agendamentos do barbeiro, na data, status válido, exceto o próprio
+    const agendamentosBarbeiro = agendamentos?.filter((agendamento) => {
+      if (agendamentoParaEditar?.id && agendamento.id === agendamentoParaEditar.id) return false;
+      return (
+        agendamento.barber_id === barbeiroId &&
+        agendamento.date === dataFormatada &&
         ["pendente", "atendido", "confirmado"].includes(agendamento.status.toLowerCase())
       );
-
-      if (conflito) {
-        console.log('Conflito de cliente encontrado:', {
-          agendamentoId: agendamento.id,
-          horario: agendamento.time,
-          clienteId,
-          status: agendamento.status
-        });
-      }
-
-      return conflito;
-    });
-
-    if (clienteJaAgendado) {
-      console.log(`Cliente ${clienteId} já tem agendamento para ${horario}`);
-      return false;
-    }
+    }) || [];
 
     // Verifica se o horário está ocupado por algum agendamento do barbeiro
-    const horarioOcupado = agendamentos?.some((agendamento) => {
-      // Se estiver editando, ignora o próprio agendamento
-      if (agendamentoParaEditar?.id && agendamento.id === agendamentoParaEditar.id) {
-        console.log('Ignorando agendamento atual:', {
-          agendamentoId: agendamento.id,
-          horario: agendamento.time,
-          status: agendamento.status
-        });
-        return false;
-      }
-
-      // Verifica se é o mesmo barbeiro e a mesma data
-      if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
-        return false;
-      }
-
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-      
+    const conflito = agendamentosBarbeiro.some((agendamento) => {
+      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(":").map(Number);
       const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-      
-      const conflito = (
-        minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
-        ["pendente", "atendido", "confirmado"].includes(agendamento.status.toLowerCase())
-      );
-
-      if (conflito) {
-        console.log('Conflito encontrado:', {
-          agendamentoId: agendamento.id,
-          horario: agendamento.time,
-          minutosVerificar,
-          minutosAgendamento,
-          duracao: agendamento.total_duration,
-          status: agendamento.status
-        });
+      const minutosAgendamentoFim = minutosAgendamento + (agendamento.total_duration || 30);
+      const sobreposicao = (minutosVerificar < minutosAgendamentoFim && minutosVerificarFim > minutosAgendamento);
+      if (sobreposicao) {
+        console.log(`[DISPONIBILIDADE] CONFLITO: Horário ${horario} (${minutosVerificar}-${minutosVerificarFim}) conflita com agendamento ${agendamento.id} (${minutosAgendamento}-${minutosAgendamentoFim}) | Barbeiro: ${agendamento.barber_id}`);
       }
-
-      return conflito;
+      return sobreposicao;
     });
-
-    if (horarioOcupado) {
-      console.log(`Horário ${horario} está ocupado`);
+    if (conflito) {
+      console.log(`[DISPONIBILIDADE] Horário ${horario} está INDISPONÍVEL por conflito de barbeiro.`);
       return false;
     }
-
+    console.log(`[DISPONIBILIDADE] Horário ${horario} está DISPONÍVEL.`);
     return true;
   };
 

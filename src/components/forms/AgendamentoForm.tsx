@@ -77,6 +77,9 @@ export function AgendamentoForm({
 }: AgendamentoFormProps) {
   const { toast } = useToast();
   
+  // Estado para a data selecionada
+  const [dataSelecionada, setDataSelecionada] = useState<Date>(dataInicial || new Date());
+
   // Log inicial dos props
   console.log('AgendamentoForm - Props:', {
     agendamentoParaEditar: agendamentoParaEditar?.id,
@@ -85,7 +88,8 @@ export function AgendamentoForm({
     dataInicial: dataInicial?.toISOString()
   });
 
-  const { createAgendamento, updateAgendamento, agendamentos, verificarDisponibilidadeBarbeiro, verificarAgendamentoCliente } = useAgendamentos(dataInicial);
+  // Hook de agendamentos agora depende da data selecionada
+  const { createAgendamento, updateAgendamento, agendamentos, verificarDisponibilidadeBarbeiro, verificarAgendamentoCliente } = useAgendamentos(dataSelecionada);
   
   // Log dos agendamentos carregados
   console.log('AgendamentoForm - Agendamentos carregados:', {
@@ -501,8 +505,11 @@ export function AgendamentoForm({
 
             <DataHorarioFields 
               form={form} 
-              date={form.watch('data')} 
-              setDate={(date: Date | undefined) => form.setValue('data', date as Date)} 
+              date={form.watch('data')}
+              setDate={(date: Date | undefined) => {
+                form.setValue('data', date as Date);
+                if (date) setDataSelecionada(date);
+              }}
               agendamentos={agendamentos}
               agendamentoParaEditar={agendamentoParaEditar}
             />
