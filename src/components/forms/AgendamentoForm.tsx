@@ -76,7 +76,29 @@ export function AgendamentoForm({
   dataInicial,
 }: AgendamentoFormProps) {
   const { toast } = useToast();
+  
+  // Log inicial dos props
+  console.log('AgendamentoForm - Props:', {
+    agendamentoParaEditar: agendamentoParaEditar?.id,
+    horarioInicial,
+    barbeiroInicial,
+    dataInicial: dataInicial?.toISOString()
+  });
+
   const { createAgendamento, updateAgendamento, agendamentos, verificarDisponibilidadeBarbeiro, verificarAgendamentoCliente } = useAgendamentos(dataInicial);
+  
+  // Log dos agendamentos carregados
+  console.log('AgendamentoForm - Agendamentos carregados:', {
+    total: agendamentos?.length,
+    agendamentos: agendamentos?.map(a => ({
+      id: a.id,
+      date: a.date,
+      time: a.time,
+      barber_id: a.barber_id,
+      status: a.status
+    }))
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { clientes } = useClientes();
   const { barbeiros } = useBarbeiros();
@@ -85,6 +107,7 @@ export function AgendamentoForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(createFormSchema(agendamentos, servicos)),
     defaultValues: {
+      id: agendamentoParaEditar?.id,
       clienteId: "",
       barbeiroId: barbeiroInicial || "",
       servicosSelecionados: [],
@@ -118,11 +141,21 @@ export function AgendamentoForm({
   // Preenche o formulário quando recebe um agendamento para editar
   useEffect(() => {
     if (agendamentoParaEditar) {
+      console.log('Preenchendo formulário para edição:', {
+        id: agendamentoParaEditar.id,
+        date: agendamentoParaEditar.date,
+        time: agendamentoParaEditar.time,
+        client_id: agendamentoParaEditar.client_id,
+        barber_id: agendamentoParaEditar.barber_id,
+        servicos: agendamentoParaEditar.servicos?.map(s => s.service_id)
+      });
+
       // Corrige o problema do fuso horário
       const [year, month, day] = agendamentoParaEditar.date.split('-').map(Number);
       const data = new Date(year, month - 1, day);
       
       form.reset({
+        id: agendamentoParaEditar.id,
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
         servicosSelecionados: agendamentoParaEditar.servicos?.map(s => s.service_id) || [],
@@ -141,6 +174,7 @@ export function AgendamentoForm({
 
   async function onSubmit(values: FormValues) {
     try {
+      setIsSubmitting(true);
       // Valida todos os campos
       const isValid = await form.trigger();
       
@@ -157,6 +191,7 @@ export function AgendamentoForm({
             variant: "destructive",
           });
         }
+        setIsSubmitting(false);
         return;
       }
 
@@ -170,6 +205,7 @@ export function AgendamentoForm({
           description: "Dados inválidos. Por favor, verifique se todos os campos foram preenchidos.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -182,6 +218,7 @@ export function AgendamentoForm({
           description: "Este cliente já possui um agendamento para o dia selecionado. Por gentileza verifique a lista de agendamentos.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -224,6 +261,7 @@ export function AgendamentoForm({
           title: "Conflito de agendamento",
           description: "O barbeiro estará indisponível para a data e horário necessários. Por favor, escolha outro horário.",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -242,8 +280,6 @@ export function AgendamentoForm({
       }
 
       const agendamentosConflitantes = await query;
-
-      console.log('Agendamentos conflitantes encontrados:', agendamentosConflitantes.data);
 
       if (agendamentosConflitantes.data) {
         const verificarConflito = async (ag: any) => {
@@ -266,28 +302,11 @@ export function AgendamentoForm({
           const novoFim = new Date(novoInicio);
           novoFim.setMinutes(novoFim.getMinutes() + duracaoTotal);
 
-          // Logs para debug
-          console.log('Agendamento existente:', {
-            inicio: horarioAg.toISOString(),
-            fim: fimAg.toISOString(),
-            duracao: duracaoTotalAg
-          });
-
-          console.log('Novo agendamento:', {
-            inicio: novoInicio.toISOString(),
-            fim: novoFim.toISOString(),
-            duracao: duracaoTotal
-          });
-
           const temConflito = (
             (novoInicio >= horarioAg && novoInicio < fimAg) ||
             (novoFim > horarioAg && novoFim <= fimAg) ||
             (novoInicio <= horarioAg && novoFim >= fimAg)
           );
-
-          if (temConflito) {
-            console.log('Conflito detectado entre agendamentos');
-          }
 
           return temConflito;
         };
@@ -299,8 +318,9 @@ export function AgendamentoForm({
           toast({
             variant: "destructive",
             title: "Conflito de horários",
-            description: "Já existe um agendamento para execução de serviços neste horário. Por favor, escolha outro horário ou barbeiro.",
+            description: "Horário ocupado por outro cliente. Escolha outro horário ou barbeiro.",
           });
+          setIsSubmitting(false);
           return;
         }
       }
@@ -350,6 +370,7 @@ export function AgendamentoForm({
 
       onOpenChange(false);
       form.reset();
+      setIsSubmitting(false);
     } catch (error) {
       console.error("Erro ao processar o formulário:", error);
       toast({
@@ -357,6 +378,7 @@ export function AgendamentoForm({
         description: "Ocorreu um erro ao processar o formulário. Por favor, tente novamente mais tarde.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
     }
   }
 
@@ -481,7 +503,8 @@ export function AgendamentoForm({
               form={form} 
               date={form.watch('data')} 
               setDate={(date: Date | undefined) => form.setValue('data', date as Date)} 
-              agendamentos={agendamentos} 
+              agendamentos={agendamentos}
+              agendamentoParaEditar={agendamentoParaEditar}
             />
 
             <div className="flex justify-end space-x-2 pt-2">
@@ -489,10 +512,11 @@ export function AgendamentoForm({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSubmitting}>
                 {agendamentoParaEditar ? "Salvar" : "Agendar"}
               </Button>
             </div>

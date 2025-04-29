@@ -1,4 +1,4 @@
-import { Appointment } from "./appointment";
+import { Agendamento } from "./agendamento";
 
 export interface Comissao {
   id: string;
@@ -9,5 +9,5 @@ export interface Comissao {
   status: "pendente" | "pago" | "cancelado";
   created_at?: string;
   updated_at?: string;
-  appointment?: Appointment;
+  appointment?: Agendamento;
 } 

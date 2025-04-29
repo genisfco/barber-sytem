@@ -491,6 +491,7 @@ const Index = () => {
         open={openEditForm} 
         onOpenChange={setOpenEditForm}
         agendamentoParaEditar={agendamentoParaEditar}
+        dataInicial={agendamentoParaEditar ? new Date(agendamentoParaEditar.date) : undefined}
       />
 
       {agendamentoParaFinalizar && (

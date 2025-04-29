@@ -18,6 +18,7 @@ interface FormData {
 }
 
 export const createFormSchema = (agendamentos: Agendamento[] = [], servicos: any[] = []) => z.object({
+  id: z.string().optional(),
   clienteId: z.string({
     required_error: "Selecione o cliente",
   }),
