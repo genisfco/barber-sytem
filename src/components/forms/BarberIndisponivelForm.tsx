@@ -255,110 +255,114 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
 
           {/* Coluna da Direita - Horários */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <FormField
-                control={form.control}
-                name="todosHorarios"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 w-full">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        Todos Horários
-                      </FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={handleTodosHorariosChange}
-                        disabled={estaIndisponivel}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {!todosHorarios && (
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="horarioInicial"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Horário Inicial</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                        disabled={estaIndisponivel}
-                      >
+            {dataSelecionada && (
+              <>
+                <div className="flex items-center space-x-2">
+                  <FormField
+                    control={form.control}
+                    name="todosHorarios"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 w-full">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            Todos Horários
+                          </FormLabel>
+                        </div>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o horário inicial" />
-                          </SelectTrigger>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={handleTodosHorariosChange}
+                            disabled={estaIndisponivel}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {horarios.map((horario) => (
-                            <SelectItem key={horario} value={horario}>
-                              {horario}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="horarioFinal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Horário Final</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                        disabled={estaIndisponivel}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o horário final" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {horarios.map((horario) => (
-                            <SelectItem 
-                              key={horario} 
-                              value={horario}
-                              disabled={estaIndisponivel || (horarioInicial && horario <= horarioInicial)}
-                            >
-                              {horario}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-4 gap-1">
-              {horarios.map((horario) => (
-                <div
-                  key={horario}
-                  className={cn(
-                    "py-2 px-1 rounded-md text-center font-medium transition-colors",
-                    isHorarioSelecionado(horario)
-                      ? "bg-red-100 text-red-700"
-                      : "bg-emerald-50 text-emerald-700"
-                  )}
-                >
-                  {horario}
+                      </FormItem>
+                    )}
+                  />
                 </div>
-              ))}
-            </div>
+
+                {!todosHorarios && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="horarioInicial"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Horário Inicial</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                            disabled={estaIndisponivel}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o horário inicial" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {horarios.map((horario) => (
+                                <SelectItem key={horario} value={horario}>
+                                  {horario}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="horarioFinal"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Horário Final</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                            disabled={estaIndisponivel}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o horário final" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {horarios.map((horario) => (
+                                <SelectItem 
+                                  key={horario} 
+                                  value={horario}
+                                  disabled={estaIndisponivel || (horarioInicial && horario <= horarioInicial)}
+                                >
+                                  {horario}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-4 gap-1">
+                  {horarios.map((horario) => (
+                    <div
+                      key={horario}
+                      className={cn(
+                        "py-2 px-1 rounded-md text-center font-medium transition-colors",
+                        isHorarioSelecionado(horario)
+                          ? "bg-red-100 text-red-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      )}
+                    >
+                      {horario}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 

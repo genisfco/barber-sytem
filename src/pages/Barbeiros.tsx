@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Trash2, Calendar } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,8 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { useBarbeiros } from "@/hooks/useBarbeiros";
 import type { Barbeiro } from "@/types/barbeiro";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { IndisponivelForm } from "@/components/forms/BarberIndisponivelForm";
 
 type BarbeiroFormData = {
   name: string;
@@ -37,6 +39,8 @@ const Barbeiros = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBarbeiro, setSelectedBarbeiro] = useState<Barbeiro | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
+  const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
   const { register, handleSubmit, reset, setValue } = useForm<BarbeiroFormData>({
     defaultValues: {
       commission_rate: 30
@@ -81,6 +85,11 @@ const Barbeiros = () => {
   const handleOpenDeleteDialog = (barbeiro: Barbeiro) => {
     setSelectedBarbeiro(barbeiro);
     setDeleteDialogOpen(true);
+  };
+
+  const handleIndisponivelClick = (barbeiroId: string, barbeiroName: string) => {
+    setSelectedBarbeiroIndisponivel({ id: barbeiroId, name: barbeiroName });
+    setOpenIndisponivelForm(true);
   };
 
   const filteredBarbeiros = barbeiros?.filter((barbeiro) =>
@@ -208,6 +217,7 @@ const Barbeiros = () => {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="bottom-3 right-3"
                     onClick={() => handleEdit(barbeiro)}
                   >
                     <Pencil className="h-4 w-4" />
@@ -215,18 +225,36 @@ const Barbeiros = () => {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="bottom-3 right-3"
                     onClick={() => handleOpenDeleteDialog(barbeiro)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="text-sm text-muted-foreground">
                   <p>Email: {barbeiro.email}</p>
                   <p>Telefone: {barbeiro.phone}</p>
                   <p>Taxa de Comissão: {barbeiro.commission_rate}%</p>
                 </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute bottom-3 right-6"
+                        onClick={() => handleIndisponivelClick(barbeiro.id, barbeiro.name)}
+                      >
+                        <Calendar className="h-8 w-8 text-barber-dark" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Indisponibilidade na agenda</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardContent>
             </Card>
           ))
@@ -248,6 +276,20 @@ const Barbeiros = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={openIndisponivelForm} onOpenChange={setOpenIndisponivelForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Registrar Indisponibilidade na Agenda</DialogTitle>
+          </DialogHeader>
+          {selectedBarbeiroIndisponivel && (
+            <IndisponivelForm
+              barbeiroId={selectedBarbeiroIndisponivel.id}
+              barbeiroName={selectedBarbeiroIndisponivel.name}
+              onOpenChange={setOpenIndisponivelForm}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
