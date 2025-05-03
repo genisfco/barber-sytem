@@ -115,3 +115,18 @@ export function useClientes() {
     deleteCliente,
   };
 }
+
+export function useClientesAssinantesCount() {
+  return useQuery({
+    queryKey: ["clientes-assinantes-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("active", true)
+        .eq("subscriber", true);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+}
