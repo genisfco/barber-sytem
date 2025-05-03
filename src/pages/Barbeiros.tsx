@@ -217,7 +217,7 @@ const Barbeiros = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="bottom-3 right-3"
+                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                     onClick={() => handleEdit(barbeiro)}
                   >
                     <Pencil className="h-4 w-4" />
@@ -225,7 +225,7 @@ const Barbeiros = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="bottom-3 right-3"
+                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
                     onClick={() => handleOpenDeleteDialog(barbeiro)}
                   >
                     <Trash2 className="h-4 w-4" />
