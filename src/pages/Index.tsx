@@ -14,6 +14,7 @@ import { FinalizarAtendimentoForm } from "@/components/forms/FinalizarAtendiment
 import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Assinaturas from "./Assinaturas";
 
 const Index = () => {
   const today = new Date();

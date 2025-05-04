@@ -32,7 +32,6 @@ type ClienteFormData = {
   email: string;
   phone: string;
   notes: string | null;
-  subscriber: boolean;
   active: boolean;
 };
 
@@ -46,11 +45,9 @@ const Clientes = () => {
   const { register, handleSubmit, reset, setValue, watch } = useForm<ClienteFormData>({
     defaultValues: {
       active: true,
-      notes: null,
-      subscriber: false
+      notes: null
     }
   });
-  const subscriberValue = watch("subscriber");
   const { clientes, isLoading, createCliente, updateCliente, deleteCliente } = useClientes();
   const { data: assinantesCount, isLoading: isLoadingAssinantesCount, refetch: refetchAssinantesCount } = useClientesAssinantesCount();
 
@@ -72,7 +69,6 @@ const Clientes = () => {
     setValue("email", cliente.email);
     setValue("phone", cliente.phone);
     setValue("notes", cliente.notes || "");
-    setValue("subscriber", cliente.subscriber ?? false);
     setOpen(true);
   };
 
@@ -88,15 +84,10 @@ const Clientes = () => {
   };
 
   const handleSubscriberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.checked) {
-      setValue("subscriber", false);
-      return;
-    }
-    setSubscriberDialogOpen(true);
+    // Função removida pois não há mais campo subscriber
   };
 
   const filteredClientes = clientes?.filter((cliente) =>
-    (showOnlySubscribers ? cliente.subscriber : true) &&
     (
       cliente.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -162,18 +153,6 @@ const Clientes = () => {
                     {...register("notes")}
                   />
                 </div>
-                <div className="flex justify-center">
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="subscriber"
-                      type="checkbox"
-                      checked={subscriberValue}
-                      onChange={handleSubscriberChange}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="subscriber">Assinante?</Label>
-                  </div>
-                </div>
                 <div className="h-4" />
                 <div className="flex justify-end gap-2 mt-4">
                   <Button
@@ -201,24 +180,6 @@ const Clientes = () => {
                   </Button>
                 </div>
               </form>
-              <Dialog open={subscriberDialogOpen} onOpenChange={setSubscriberDialogOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirmar Assinante</DialogTitle>
-                  </DialogHeader>
-                  <p>Você está selecionando a opção <b>Assinante</b>. Tem certeza que deseja marcar este cliente como assinante?</p>
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" onClick={() => {
-                      setValue("subscriber", false);
-                      setSubscriberDialogOpen(false);
-                    }}>Não</Button>
-                    <Button onClick={() => {
-                      setValue("subscriber", true);
-                      setSubscriberDialogOpen(false);
-                    }}>Sim</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
             </DialogContent>
           </Dialog>
         </div>
@@ -285,14 +246,6 @@ const Clientes = () => {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">
                     {cliente.name}
-                    {cliente.subscriber && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Check className="h-5 w-5 text-yellow-500 cursor-pointer" />
-                        </TooltipTrigger>
-                        <TooltipContent>Assinatura ativa</TooltipContent>
-                      </Tooltip>
-                    )}
                   </CardTitle>
                   <div className="flex items-center space-x-2">
                     <Button

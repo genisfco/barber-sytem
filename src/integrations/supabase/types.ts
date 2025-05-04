@@ -168,7 +168,6 @@ export interface Database {
           email: string
           phone: string
           notes: string
-          subscriber: boolean
           active: boolean
           created_at: string
           updated_at: string
@@ -179,7 +178,6 @@ export interface Database {
           email: string
           phone: string
           notes?: string
-          subscriber?: boolean
           active?: boolean
           created_at?: string
           updated_at?: string
@@ -190,7 +188,6 @@ export interface Database {
           email?: string
           phone?: string
           notes?: string
-          subscriber?: boolean
           active?: boolean
           created_at?: string
           updated_at?: string
@@ -350,6 +347,70 @@ export interface Database {
           updated_at?: string
         }
       }
+      subscription_plans: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          price: number;
+          duration_months: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string;
+          price: number;
+          duration_months?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          price?: number;
+          duration_months?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      client_subscriptions: {
+        Row: {
+          id: string;
+          client_id: string;
+          subscription_plan_id: string;
+          start_date: string;
+          end_date: string | null;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          subscription_plan_id: string;
+          start_date: string;
+          end_date?: string | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          subscription_plan_id?: string;
+          start_date?: string;
+          end_date?: string | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     }
     Views: {
       [_ in never]: never

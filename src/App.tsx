@@ -17,6 +17,7 @@ import Financeiro from "./pages/Financeiro";
 import RelatorioMensal from "./pages/RelatorioMensal";
 import RelatorioAnual from "./pages/RelatorioAnual";
 import NotFound from "./pages/NotFound";
+import Assinaturas from "./pages/Assinaturas";
 
 const queryClient = new QueryClient();
 
@@ -119,6 +120,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Produtos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assinaturas"
+              element={
+                <ProtectedRoute>
+                  <Assinaturas />
                 </ProtectedRoute>
               }
             />

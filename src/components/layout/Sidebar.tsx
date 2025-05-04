@@ -11,6 +11,7 @@ import {
   LogOut,
   ListTodo,
   Package,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -23,12 +24,13 @@ export function Sidebar() {
   };
 
   const links = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/", label: "Dashboard Principal", icon: LayoutDashboard },
     { href: "/agendamentos", label: "Agendamentos", icon: Calendar },
     { href: "/clientes", label: "Clientes", icon: Users },
     { href: "/barbeiros", label: "Barbeiros", icon: Scissors },
     { href: "/servicos", label: "Serviços", icon: ListTodo },
     { href: "/produtos", label: "Produtos", icon: Package },
+    { href: "/assinaturas", label: "Assinaturas", icon: CreditCard },
     { href: "/financeiro", label: "Financeiro", icon: DollarSign },
     //{ href: "/relatorio-mensal", label: "Relatório Mensal", icon: BarChart },
     //{ href: "/relatorio-anual", label: "Relatório Anual", icon: TrendingUp },

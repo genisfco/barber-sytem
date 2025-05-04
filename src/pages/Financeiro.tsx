@@ -19,6 +19,8 @@ import { ComissoesDialog } from "@/components/comissoes/ComissoesDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
+type Categoria = "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "outros";
+
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
   const [openReceita, setOpenReceita] = useState(false);
@@ -168,6 +170,7 @@ const Financeiro = () => {
                     <TableCell>
                       {transacao.category === 'servicos' && 'Serviços'}
                       {transacao.category === 'produtos' && 'Produtos'}
+                      {transacao.category === 'assinaturas' && 'Assinaturas'}
                       {transacao.category === 'comissoes' && 'Comissões'}
                       {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
                       {transacao.category === 'outros' && 'Outros'}
