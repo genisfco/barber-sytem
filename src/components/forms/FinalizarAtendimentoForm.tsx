@@ -17,7 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { Agendamento } from "@/types/agendamento";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-type PaymentMethod = "dinheiro" | "cartao_credito" | "cartao_debito" | "pix";
+type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
 
 const formSchema = z.object({
   servicos: z.array(z.string()).min(1, "Selecione pelo menos um serviço"),
@@ -25,7 +25,7 @@ const formSchema = z.object({
     id: z.string(),
     quantity: z.number().min(1, "A quantidade deve ser maior que zero")
   })),
-  payment_method: z.enum(["dinheiro", "cartao_credito", "cartao_debito", "pix"], {
+  payment_method: z.enum(["Dinheiro", "cartao_credito", "cartao_debito", "PIX"], {
     required_error: "Selecione a forma de pagamento"
   })
 });
@@ -56,7 +56,7 @@ export function FinalizarAtendimentoForm({
         id: p.product_id,
         quantity: p.quantity
       })),
-      payment_method: "dinheiro" as PaymentMethod
+      payment_method: "Dinheiro" as PaymentMethod
     }
   });
 
@@ -319,10 +319,10 @@ export function FinalizarAtendimentoForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                           <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
                           <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                          <SelectItem value="pix">PIX</SelectItem>
+                          <SelectItem value="PIX">PIX</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

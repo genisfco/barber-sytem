@@ -31,8 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormValues } from "./types";
 
 const metodosPagamento = [
-  { id: "dinheiro", nome: "Dinheiro" },
-  { id: "pix", nome: "PIX" },
+  { id: "Dinheiro", nome: "Dinheiro" },
+  { id: "PIX", nome: "PIX" },
   { id: "cartao_credito", nome: "Cartão de Crédito" },
   { id: "cartao_debito", nome: "Cartão de Débito" },
   { id: "outro", nome: "Outro" },
