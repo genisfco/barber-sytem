@@ -8,6 +8,7 @@ import { Comissao } from "@/types/comissao";
 type PayComissaoParams = {
   id: string;
   isSingle?: boolean;
+  paymentMethod: string;
 }
 
 export function useComissoes(
@@ -134,6 +135,8 @@ export function useComissoes(
             value: comissao.total_commission,
             description: `Comissão: ${comissao.barbers.name} - Atendimento: ${comissao.appointment?.client_name}`,
             category: 'comissoes',
+            payment_method: params.paymentMethod,
+            payment_date: new Date().toISOString().slice(0, 10),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -178,6 +181,8 @@ export function useComissoes(
             value: totalComissao,
             description: `Comissão: ${comissoes[0].barbers.name} - Período: ${format(new Date(dataInicioFormatada), 'dd/MM/yyyy')} a ${format(new Date(dataFimFormatada), 'dd/MM/yyyy')}`,
             category: 'comissoes',
+            payment_method: params.paymentMethod,
+            payment_date: new Date().toISOString().slice(0, 10),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });

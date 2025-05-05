@@ -9,7 +9,13 @@ export const formSchema = z.object({
   category: z.enum(["servicos", "produtos", "comissoes", "despesas_fixas", "outros"]).default("outros"),
 });
 
-export type FormValues = z.infer<typeof formSchema>;
+export type FormValues = {
+  data: Date;
+  valor: string;
+  descricao: string;
+  metodo_pagamento?: string;
+  category: "servicos" | "produtos" | "comissoes" | "despesas_fixas" | "outros";
+};
 
 export interface FinanceiroFormProps {
   open: boolean;

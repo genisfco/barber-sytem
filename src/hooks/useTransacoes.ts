@@ -12,6 +12,7 @@ export type Transacao = {
   payment_method?: string;
   category: "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "outros";
   notes?: string;
+  payment_date: string;
   created_at: string;
   updated_at: string;
 };
@@ -27,7 +28,7 @@ export function useTransacoes() {
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("payment_date", { ascending: false });
 
       if (error) {
         toast.error("Erro ao carregar transações");
@@ -46,8 +47,8 @@ export function useTransacoes() {
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`);
+        .gte("payment_date", `${today}`)
+        .lte("payment_date", `${today}`);
 
       if (error) {
         toast.error("Erro ao carregar transações do dia");
@@ -71,6 +72,11 @@ export function useTransacoes() {
       // Validar o valor
       if (typeof transacao.value !== "number" || transacao.value <= 0) {
         throw new Error(`Valor inválido: ${transacao.value}`);
+      }
+
+      // Garantir que payment_date está presente
+      if (!transacao.payment_date) {
+        throw new Error("A data do pagamento é obrigatória.");
       }
 
       const { data, error } = await supabase
@@ -119,6 +125,11 @@ export function useTransacoes() {
       // Validar o valor se estiver sendo alterado
       if (transacao.value && (typeof transacao.value !== "number" || transacao.value <= 0)) {
         throw new Error(`Valor inválido: ${transacao.value}`);
+      }
+
+      // Garantir que payment_date está presente
+      if (!transacao.payment_date) {
+        throw new Error("A data do pagamento é obrigatória.");
       }
 
       const { data, error } = await supabase

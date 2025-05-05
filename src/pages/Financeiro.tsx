@@ -162,7 +162,7 @@ const Financeiro = () => {
                 {transacoes.map((transacao) => (
                   <TableRow key={transacao.id}>
                     <TableCell>
-                      {format(new Date(transacao.created_at), "dd/MM/yyyy", {
+                      {format(new Date(transacao.payment_date + 'T00:00:00'), "dd/MM/yyyy", {
                         locale: ptBR,
                       })}
                     </TableCell>

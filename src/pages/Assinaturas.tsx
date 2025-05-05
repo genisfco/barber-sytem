@@ -298,7 +298,8 @@ const Assinaturas = () => {
         value: Number(data.amount),
         description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
         payment_method: data.payment_method,
-        category: "assinaturas"
+        category: "assinaturas",
+        payment_date: data.payment_date
       }).select().single();
       if (errorTransacao) throw errorTransacao;
       // Atualizar o pagamento com o id da transação
@@ -392,7 +393,8 @@ const Assinaturas = () => {
           .update({
             value: Number(data.amount),
             payment_method: data.payment_method,
-            description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`
+            description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
+            payment_date: data.payment_date
           })
           .eq("id", pagamentoAntes.transaction_id);
       }
@@ -407,7 +409,8 @@ const Assinaturas = () => {
           value: Number(data.amount),
           description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
           payment_method: data.payment_method,
-          category: "assinaturas"
+          category: "assinaturas",
+          payment_date: data.payment_date
         }).select().single();
         if (errorTransacao) throw errorTransacao;
         if (transacaoCriada) {
@@ -583,7 +586,8 @@ const Assinaturas = () => {
       value: Number(pagamentoData.amount),
       description: `Pagamento de Pendência de Assinatura - ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
       payment_method: pagamentoData.payment_method,
-      category: "assinaturas"
+      category: "assinaturas",
+      payment_date: pagamentoData.payment_date
     }).select().single();
     if (errorTransacao) {
       toast.error("Erro ao lançar transação financeira");

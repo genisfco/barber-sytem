@@ -44,7 +44,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
   useEffect(() => {
     if (transacao) {
       form.reset({
-        data: new Date(transacao.created_at),
+        data: new Date(transacao.payment_date),
         valor: transacao.value.toString(),
         descricao: transacao.description,
         metodo_pagamento: transacao.payment_method,
@@ -76,6 +76,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         description: values.descricao,
         payment_method: values.metodo_pagamento,
         category: values.category,
+        payment_date: data.toISOString().slice(0, 10),
       };
 
       console.log("Dados a serem enviados:", transacaoData);

@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { useComissoes } from "@/hooks/useComissoes";
 import { Comissao } from "@/types/comissao";
+import { MetodoPagamentoDialog } from "./MetodoPagamentoDialog";
+import { useState } from "react";
 
 interface ComissoesListProps {
   barbeiroId: string;
@@ -46,6 +48,18 @@ export function ComissoesList({
     }).format(value);
   };
 
+  const [modalMetodoOpen, setModalMetodoOpen] = useState(false);
+  const [metodoSelecionado, setMetodoSelecionado] = useState<string | null>(null);
+
+  function handleMarcarPagas() {
+    setModalMetodoOpen(true);
+  }
+
+  function handleConfirmarMetodo(metodo: string) {
+    setMetodoSelecionado(metodo);
+    pagarComissao.mutate({ id: barbeiroId, paymentMethod: metodo });
+  }
+
   if (isLoading) {
     return <div className="py-4 text-center">Carregando...</div>;
   }
@@ -64,7 +78,7 @@ export function ComissoesList({
         <div className="text-lg font-semibold">
           Total de comissões: {formatMoney(totalComissao)}
         </div>
-        <Button onClick={() => pagarComissao.mutate({ id: barbeiroId })}>
+        <Button onClick={handleMarcarPagas}>
           Marcar todas como pagas
         </Button>
       </div>
@@ -112,6 +126,12 @@ export function ComissoesList({
           ))}
         </TableBody>
       </Table>
+
+      <MetodoPagamentoDialog
+        open={modalMetodoOpen}
+        onOpenChange={setModalMetodoOpen}
+        onConfirm={handleConfirmarMetodo}
+      />
     </div>
   );
 }

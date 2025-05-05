@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
+import React from "react";
 
 type PaymentMethod = "dinheiro" | "cartao_credito" | "cartao_debito" | "pix";
 
@@ -42,6 +44,8 @@ export function VenderProdutosForm({
   const { createTransacao } = useTransacoes();
   const [total, setTotal] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -108,7 +112,8 @@ export function VenderProdutosForm({
         value: total,
         description: `Venda para ${cliente}. Produtos: ${produtosVendidos}`,
         payment_method: values.payment_method,
-        category: "produtos"
+        category: "produtos",
+        payment_date: new Date().toISOString().slice(0, 10)
       });
 
       toast({
@@ -119,11 +124,11 @@ export function VenderProdutosForm({
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erro ao realizar venda",
-        description: error.message || "Ocorreu um erro ao tentar realizar a venda. Tente novamente.",
-      });
+      setErrorMessage(
+        (error.message ? error.message.toUpperCase() : "ERRO DESCONHECIDO") +
+        "\n\nATENÇÃO!\n\nSe o Produto já foi consumido ou entregue ao Cliente, o Estoque já foi atualizado, mas a venda não foi registrada.\nPor favor, registre manualmente a venda no Financeiro.\n\nMas se o Cliente ainda não consumiu ou levou o Produto, basta apenas conferir e atualizar o estoque na Seção Produtos. Não é necessário registrar a venda no Financeiro."
+      );
+      setShowErrorModal(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -290,6 +295,33 @@ export function VenderProdutosForm({
           </div>
         </form>
       </Form>
+      <AlertDialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">Erro ao realizar venda</AlertDialogTitle>
+            <AlertDialogDescription className="text-red-500">
+              {errorMessage.split('\n').map((line, idx) => (
+                <React.Fragment key={idx}>
+                  {line}
+                  <br />
+                </React.Fragment>
+              ))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => {
+                setShowErrorModal(false);
+                onOpenChange(false);
+              }}
+              autoFocus
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   );
 } 

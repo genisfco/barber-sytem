@@ -150,10 +150,11 @@ export function FinalizarAtendimentoForm({
         total_price: total,
         final_price: total,
         status: "atendido" as const,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        payment_date: new Date().toISOString().slice(0, 10),
       };
 
-      console.log("📤 Enviando dados para atualização...");
+      console.log("Enviando para o backend:", agendamentoAtualizado);
 
       // Marca como atendido e lança os valores no financeiro
       await marcarComoAtendido.mutateAsync(agendamentoAtualizado);
