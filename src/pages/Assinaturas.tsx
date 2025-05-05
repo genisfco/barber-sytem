@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { addMonths, parseISO, format, subDays, isAfter } from "date-fns";
 import { useClientes } from "@/hooks/useClientes";
-import { atualizarStatusAssinatura } from "@/lib/subscriptionStatusManager";
+import { atualizarStatusAssinatura, renovarCiclosAssinaturas } from "@/lib/subscriptionStatusManager";
+import { toast } from "sonner";
 
 interface SubscriptionWithDetails extends Subscription {
   client_name?: string;
@@ -81,7 +82,7 @@ const Assinaturas = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("subscription_payments")
-        .select("id, client_subscription_id, status, payment_date, amount, payment_method")
+        .select("id, client_subscription_id, status, payment_date, amount, payment_method, cycle_start_date, cycle_end_date")
         .order("payment_date", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -265,40 +266,47 @@ const Assinaturas = () => {
 
   const mutationPagamento = useMutation({
     mutationFn: async (data: any) => {
-      // 1. Registrar o pagamento
+      // 1. Registrar o pagamento sempre como 'pendente' (exceto se for 'falhou')
+      const statusPagamento = data.status === 'falhou' ? 'falhou' : 'pendente';
+      const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
+      const cliente = clientesAll?.find(c => c.id === assinatura?.client_id);
+      const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
+      // Calcular ciclo vigente
+      let cicloInicio = assinatura?.start_date ? parseISO(assinatura.start_date) : null;
+      let cicloFim = null;
+      if (cicloInicio && plano?.duration_months) {
+        cicloFim = subDays(addMonths(cicloInicio, Number(plano.duration_months)), 1);
+      }
       const { data: pagamentoCriado, error: errorPagamento } = await supabase
         .from("subscription_payments")
         .insert({
           client_subscription_id: data.client_subscription_id,
           payment_date: data.payment_date,
           amount: Number(data.amount),
-          status: data.status,
-          payment_method: data.payment_method
+          status: statusPagamento,
+          payment_method: data.payment_method,
+          cycle_start_date: cicloInicio ? cicloInicio.toISOString().slice(0, 10) : null,
+          cycle_end_date: cicloFim ? cicloFim.toISOString().slice(0, 10) : null
         })
         .select()
         .single();
       if (errorPagamento) throw errorPagamento;
 
-      // 2. Se status for 'pago', criar transação financeira e atualizar o pagamento com o id da transação
-      if (data.status === "pago") {
-        const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
-        const cliente = clientesAll?.find(c => c.id === assinatura?.client_id);
-        const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
-        const { data: transacaoCriada, error: errorTransacao } = await supabase.from("transactions").insert({
-          type: "receita",
-          value: Number(data.amount),
-          description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
-          payment_method: data.payment_method,
-          category: "assinaturas"
-        }).select().single();
-        if (errorTransacao) throw errorTransacao;
-        // Atualizar o pagamento com o id da transação
-        if (transacaoCriada && pagamentoCriado) {
-          await supabase.from("subscription_payments").update({ transaction_id: transacaoCriada.id }).eq("id", pagamentoCriado.id);
-        }
+      // 2. Lançar no financeiro normalmente
+      const { data: transacaoCriada, error: errorTransacao } = await supabase.from("transactions").insert({
+        type: "receita",
+        value: Number(data.amount),
+        description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
+        payment_method: data.payment_method,
+        category: "assinaturas"
+      }).select().single();
+      if (errorTransacao) throw errorTransacao;
+      // Atualizar o pagamento com o id da transação
+      if (transacaoCriada && pagamentoCriado) {
+        await supabase.from("subscription_payments").update({ transaction_id: transacaoCriada.id }).eq("id", pagamentoCriado.id);
       }
 
-      // Atualizar status da assinatura automaticamente
+      // Atualizar status da assinatura e dos pagamentos do ciclo
       const assinaturaAtualizada = assinaturas?.find(a => a.id === data.client_subscription_id);
       const planoAtualizado = planos?.find(p => p.id === assinaturaAtualizada?.subscription_plan_id);
       const { data: pagamentosAtualizados } = await supabase
@@ -317,7 +325,27 @@ const Assinaturas = () => {
       queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
     }
   });
+
+  function podeRegistrarPagamento(assinatura, pagamentosAssinatura, plano, valorNovoPagamento) {
+    if (!assinatura || !plano) return false;
+    // Filtrar pagamentos do ciclo atual usando os campos de ciclo
+    const pagamentosCicloAtual = pagamentosAssinatura.filter(
+      p => p.cycle_start_date === assinatura.start_date && p.cycle_end_date === assinatura.end_date
+    );
+    const somaPagamentos = pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+    // Não permitir se soma + novo pagamento ultrapassar o valor do ciclo
+    return somaPagamentos + Number(valorNovoPagamento) <= Number(plano.price);
+  }
+
   function onSubmitPagamento(data: any) {
+    // Buscar assinatura, plano e pagamentos do ciclo
+    const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
+    const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
+    const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === data.client_subscription_id) || [];
+    if (!podeRegistrarPagamento(assinatura, pagamentosAssinatura, plano, data.amount)) {
+      toast.error("O valor total dos pagamentos não pode ultrapassar o valor do ciclo da assinatura.");
+      return;
+    }
     mutationPagamento.mutate(data);
   }
 
@@ -335,6 +363,13 @@ const Assinaturas = () => {
   // Mutation para editar pagamento
   const mutationEditarPagamento = useMutation({
     mutationFn: async (data: any) => {
+      // Buscar o pagamento antes da edição
+      const { data: pagamentoAntes } = await supabase
+        .from("subscription_payments")
+        .select("*")
+        .eq("id", data.id)
+        .single();
+
       const { error } = await supabase
         .from("subscription_payments")
         .update({
@@ -345,6 +380,40 @@ const Assinaturas = () => {
         })
         .eq("id", data.id);
       if (error) throw error;
+
+      // Se o pagamento possui transaction_id, atualizar a transação financeira correspondente
+      if (pagamentoAntes?.transaction_id) {
+        // Buscar assinatura, cliente e plano para atualizar a descrição
+        const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
+        const cliente = clientes?.find(c => c.id === assinatura?.client_id);
+        const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
+        await supabase
+          .from("transactions")
+          .update({
+            value: Number(data.amount),
+            payment_method: data.payment_method,
+            description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`
+          })
+          .eq("id", pagamentoAntes.transaction_id);
+      }
+
+      // Se status foi alterado para 'pago' e não existe transaction_id, criar lançamento financeiro
+      if (data.status === 'pago' && (!pagamentoAntes?.transaction_id || pagamentoAntes.status !== 'pago')) {
+        const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
+        const cliente = clientes?.find(c => c.id === assinatura?.client_id);
+        const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
+        const { data: transacaoCriada, error: errorTransacao } = await supabase.from("transactions").insert({
+          type: "receita",
+          value: Number(data.amount),
+          description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
+          payment_method: data.payment_method,
+          category: "assinaturas"
+        }).select().single();
+        if (errorTransacao) throw errorTransacao;
+        if (transacaoCriada) {
+          await supabase.from("subscription_payments").update({ transaction_id: transacaoCriada.id }).eq("id", data.id);
+        }
+      }
 
       // Atualizar status da assinatura automaticamente
       const assinaturaAtualizada = assinaturas?.find(a => a.id === data.client_subscription_id);
@@ -360,6 +429,7 @@ const Assinaturas = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
       queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
     }
   });
 
@@ -417,6 +487,11 @@ const Assinaturas = () => {
 
   // Estado para controlar o pagamento a ser removido
   const [pagamentoParaRemover, setPagamentoParaRemover] = useState<any | null>(null);
+
+  // No início do componente Assinaturas
+  useEffect(() => {
+    renovarCiclosAssinaturas();
+  }, []);
 
   return (
     <div className="p-6 space-y-8">
@@ -679,46 +754,30 @@ const Assinaturas = () => {
               const plano = planos?.find(p => p.id === assinatura.subscription_plan_id);
               const hoje = new Date();
               
-              // Função para calcular o ciclo atual
-              function getCicloAtual(assinatura, plano) {
-                if (!assinatura.start_date || !plano?.duration_months) return null;
-                const start = parseISO(assinatura.start_date);
-                let cicloInicio = start;
-                let cicloFim = addMonths(start, Number(plano.duration_months));
-                // Se já passou do primeiro ciclo, avançar até encontrar o ciclo atual
-                while (isAfter(hoje, cicloFim)) {
-                  cicloInicio = cicloFim;
-                  cicloFim = addMonths(cicloInicio, Number(plano.duration_months));
-                }
-                return { inicio: cicloInicio, fim: subDays(cicloFim, 1) };
-              }
+              // Filtrar pagamentos do ciclo atual
+              const pagamentosCicloAtual = pagamentosAssinatura.filter(
+                p => p.cycle_start_date === assinatura.start_date && p.cycle_end_date === assinatura.end_date
+              );
 
-              const cicloAtual = getCicloAtual(assinatura, plano);
+              // Novo cálculo do status do pagamento do ciclo
               let statusPagamento = "Sem pagamento";
               let corStatus = "text-muted-foreground";
-
-              if (cicloAtual) {
-                // Verifica se existe pagamento "pago" para o ciclo atual
-                const pagamentoCiclo = pagamentosAssinatura.find(p => {
-                  if (!p.payment_date) return false;
-                  const dataPgto = parseISO(p.payment_date);
-                  return (
-                    isAfter(dataPgto, cicloAtual.inicio) || dataPgto.getTime() === cicloAtual.inicio.getTime()
-                  ) && (
-                    isAfter(cicloAtual.fim, dataPgto) || dataPgto.getTime() === cicloAtual.fim.getTime()
-                  ) && p.status === "pago";
-                });
-                if (pagamentoCiclo) {
+              if (pagamentosCicloAtual.length > 0) {
+                const somaPagamentosCiclo = pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount), 0);
+                if (somaPagamentosCiclo >= plano.price) {
                   statusPagamento = "Pago";
-                  corStatus = "text-green-600";
-                } else if (isAfter(hoje, cicloAtual.fim)) {
+                  corStatus = "text-green-600 font-bold";
+                } else if (somaPagamentosCiclo > 0) {
                   statusPagamento = "Pendente";
-                  corStatus = "text-yellow-600";
+                  corStatus = "text-yellow-600 font-bold";
                 } else {
                   statusPagamento = "Aguardando";
                   corStatus = "text-muted-foreground";
                 }
               }
+
+              // Valor que falta pagar
+              const valorFaltaPagar = Math.max(0, plano.price - pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount), 0));
 
               return (
                 <Card key={assinatura.id}>
@@ -728,8 +787,8 @@ const Assinaturas = () => {
                         <span>{assinatura.plan_name || 'Plano'}</span>
                         <span className="text-sm text-muted-foreground">{assinatura.client_name || 'Cliente'}</span>
                       </CardTitle>
-                      {/* Botão de registrar pagamento só aparece se status assinatura = ativa e statusPagamento = Pendente ou Aguardando */}
-                      {assinatura.status === 'ativa' && (statusPagamento === 'Pendente' || statusPagamento === 'Aguardando') && (
+                      {/* Botão de registrar pagamento só aparece se status assinatura = ativa ou inadimplente e statusPagamento = Pendente ou Aguardando ou Sem pagamento*/}
+                      {(assinatura.status === 'ativa' || assinatura.status === 'inadimplente') && (statusPagamento === 'Pendente' || statusPagamento === 'Aguardando' || statusPagamento === 'Sem pagamento') && podeRegistrarPagamento(assinatura, pagamentosAssinatura, plano, 1) && (
                         <Button
                           size="sm"
                           className="mt-2"
@@ -738,7 +797,7 @@ const Assinaturas = () => {
                             setOpenPagamento(true);
                           }}
                         >
-                          Registrar novo pagamento
+                          Registrar Pagamento
                         </Button>
                       )}
                     </div>
@@ -756,8 +815,28 @@ const Assinaturas = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-sm text-muted-foreground space-y-1">
+                      {assinatura.status === 'inadimplente' && (
+                        <div className="mb-2 p-2 rounded bg-orange-100 border border-orange-300 text-orange-700 font-semibold flex items-center gap-2">
+                          <span>⚠️ Assinatura inadimplente! Regularize os pagamentos para evitar expiração ou cancelamento.</span>
+                        </div>
+                      )}
                       <p>Status: <b>{assinatura.status}</b></p>
                       <p>Status do Pagamento: <b className={corStatus}>{statusPagamento}</b></p>
+                      {/* Valor restante ou total pago */}
+                      {(() => {
+                        if (!plano || pagamentosCicloAtual.length === 0) return null;
+                        const somaPagamentosCiclo = pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount), 0);
+                        if (somaPagamentosCiclo >= Number(plano.price)) {
+                          return (
+                            <p className="text-green-600 font-semibold">Total pago: R$ {Number(somaPagamentosCiclo).toFixed(2)}</p>
+                          );
+                        } else {
+                          const falta = Number(plano.price) - somaPagamentosCiclo;
+                          return (
+                            <p className="text-orange-500 font-semibold">Falta pagar: R$ {falta.toFixed(2)}</p>
+                          );
+                        }
+                      })()}
                       <p>Início: {assinatura.start_date ? format(parseISO(assinatura.start_date), "dd-MM-yyyy") : '-'}</p>
                       <p>Fim: {assinatura.end_date ? format(parseISO(assinatura.end_date), "dd-MM-yyyy") : '-'}</p>
                     </div>
@@ -771,16 +850,18 @@ const Assinaturas = () => {
                       </div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-xs text-left">
-                          <thead>
+                          {/*<thead>
                             <tr className="border-b border-muted">
                               <th className="py-1 pr-2 font-semibold">Data</th>
                               <th className="py-1 pr-2 font-semibold">Valor</th>
-                              <th className="py-1 pr-2 font-semibold">Status</th>
+                              <th className="py-1 pr-2 font-semibold">Pgto Total</th>
                               <th className="py-1 pr-2 font-semibold">Método</th>
+                              
+                              
                             </tr>
-                          </thead>
+                          </thead>*/}
                           <tbody>
-                            {pagamentosAssinatura
+                            {pagamentosCicloAtual
                               .sort((a, b) => (a.payment_date < b.payment_date ? 1 : -1))
                               .slice(0, 3)
                               .map((p) => (
@@ -795,6 +876,7 @@ const Assinaturas = () => {
                                     )
                                   }>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</td>
                                   <td className="py-1 pr-2">{p.payment_method || '-'}</td>
+                                  
                                 </tr>
                               ))}
                           </tbody>
@@ -854,18 +936,6 @@ const Assinaturas = () => {
                 <option value="Pix">Pix</option>                
               </select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                {...registerPagamento("status", { required: true })}
-              >
-                <option value="pago">Pago</option>
-                <option value="pendente">Pendente</option>
-                <option value="falhou">Falhou</option>
-              </select>
-            </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button type="button" variant="outline" onClick={() => { setOpenPagamento(false); setAssinaturaParaPagamento(null); resetPagamento(); }}>
                 Cancelar
@@ -893,19 +963,6 @@ const Assinaturas = () => {
             const assinatura = assinaturas?.find(a => a.id === modalPagamentos.assinaturaId);
             const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
             const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === assinatura?.id) || [];
-            // Função para calcular o ciclo de cada pagamento
-            function getPeriodoCiclo(assinatura, plano, paymentDate) {
-              if (!assinatura?.start_date || !plano?.duration_months || !paymentDate) return '-';
-              const start = parseISO(assinatura.start_date);
-              let cicloInicio = start;
-              let cicloFim = addMonths(start, Number(plano.duration_months));
-              const dataPgto = parseISO(paymentDate);
-              while (isAfter(dataPgto, cicloFim)) {
-                cicloInicio = cicloFim;
-                cicloFim = addMonths(cicloInicio, Number(plano.duration_months));
-              }
-              return `${format(cicloInicio, 'dd/MM/yyyy')} a ${format(subDays(cicloFim, 1), 'dd/MM/yyyy')}`;
-            }
             return (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-xs text-left">
@@ -913,7 +970,7 @@ const Assinaturas = () => {
                     <tr className="border-b border-muted">
                       <th className="py-1 pr-2 font-semibold">Data</th>
                       <th className="py-1 pr-2 font-semibold">Valor</th>
-                      <th className="py-1 pr-2 font-semibold">Status</th>
+                      <th className="py-1 pr-2 font-semibold">Pgto Total</th>
                       <th className="py-1 pr-2 font-semibold">Método</th>
                       <th className="py-1 pr-2 font-semibold">Ciclo</th>
                       <th className="py-1 pr-2 font-semibold">Ações</th>
@@ -937,7 +994,7 @@ const Assinaturas = () => {
                               )
                             }>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</td>
                             <td className="py-1 pr-2">{p.payment_method || '-'}</td>
-                            <td className="py-1 pr-2">{getPeriodoCiclo(assinatura, plano, p.payment_date)}</td>
+                            <td className="py-1 pr-2">{p.cycle_start_date && p.cycle_end_date ? `${format(parseISO(p.cycle_start_date), 'dd/MM/yyyy')} a ${format(parseISO(p.cycle_end_date), 'dd/MM/yyyy')}` : '-'}</td>
                             <td className="py-1 pr-2 flex gap-1">
                               <Button size="icon" variant="ghost" onClick={() => setPagamentoEditando(p)} title="Editar Pagamento"><Pencil className="h-4 w-4" /></Button>
                               <Button size="icon" variant="ghost" onClick={() => setPagamentoParaRemover(p)} title="Remover Pagamento"><Trash2 className="h-4 w-4" /></Button>
@@ -963,7 +1020,6 @@ const Assinaturas = () => {
                     ...pagamentoEditando,
                     amount: pagamentoEditando.amount,
                     payment_date: pagamentoEditando.payment_date,
-                    status: pagamentoEditando.status,
                     payment_method: pagamentoEditando.payment_method,
                     client_subscription_id: pagamentoEditando.client_subscription_id,
                     id: pagamentoEditando.id
@@ -977,14 +1033,6 @@ const Assinaturas = () => {
                   <div className="space-y-2">
                     <Label>Data do Pagamento</Label>
                     <Input type="date" value={pagamentoEditando.payment_date?.slice(0, 10)} onChange={e => setPagamentoEditando({ ...pagamentoEditando, payment_date: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" value={pagamentoEditando.status} onChange={e => setPagamentoEditando({ ...pagamentoEditando, status: e.target.value })}>
-                      <option value="pago">Pago</option>
-                      <option value="pendente">Pendente</option>
-                      <option value="falhou">Falhou</option>
-                    </select>
                   </div>
                   <div className="space-y-2">
                     <Label>Método de Pagamento</Label>

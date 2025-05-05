@@ -247,6 +247,11 @@ const Financeiro = () => {
                 <p><span className="font-semibold">Valor:</span> {formatMoney(transacaoParaExcluir?.value)}</p>
               </div>
               <br />
+              {transacaoParaExcluir?.category === 'assinaturas' && (
+                <div className="mb-2 p-2 rounded bg-orange-100 border border-orange-300 text-orange-700 font-semibold">
+                  Atenção: O pagamento de assinatura correspondente também será excluído!
+                </div>
+              )}
               <span className="font-bold text-red-600">ATENÇÃO:</span> Esta ação não poderá ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

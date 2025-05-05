@@ -141,6 +141,15 @@ export function useTransacoes() {
         throw error;
       }
 
+      // Se for uma transação de assinatura, atualize o pagamento vinculado
+      if (data?.category === 'assinaturas') {
+        await supabase.from('subscription_payments').update({
+          amount: data.value,
+          payment_method: data.payment_method,
+          // description não existe em subscription_payments, então não atualiza
+        }).eq('transaction_id', data.id);
+      }
+
       console.log("Transação atualizada com sucesso:", data);
       return data;
     },
@@ -159,12 +168,20 @@ export function useTransacoes() {
   const deleteTransacao = useMutation({
     mutationFn: async (id: string) => {
       console.log("Iniciando exclusão de transação:", id);
-      
+      // Buscar a transação para saber se é de assinatura
+      const { data: transacao } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', id)
+        .single();
+      // Se for de assinatura, exclua o pagamento vinculado
+      if (transacao?.category === 'assinaturas') {
+        await supabase.from('subscription_payments').delete().eq('transaction_id', id);
+      }
       const { error } = await supabase
         .from("transactions")
         .delete()
         .eq("id", id);
-
       if (error) {
         console.error("Erro detalhado do Supabase:", {
           code: error.code,
@@ -174,7 +191,6 @@ export function useTransacoes() {
         });
         throw error;
       }
-
       console.log("Transação excluída com sucesso");
     },
     onSuccess: () => {

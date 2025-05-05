@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { addDays, isAfter, parseISO, subDays } from "date-fns";
+import { addDays, isAfter, parseISO, subDays, addMonths } from "date-fns";
 
 /**
  * Atualiza o status de uma assinatura conforme os pagamentos e regras de negócio.
@@ -13,8 +13,8 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano) {
   const end = assinatura.end_date ? parseISO(assinatura.end_date) : null;
   const duration = Number(plano.duration_months);
 
-  // 1. Se status for 'suspensa' ou 'cancelada' manualmente, não altera automaticamente
-  if (assinatura.status === 'suspensa' || assinatura.status === 'cancelada') return;
+  // 1. Se status for 'suspensa' ou 'cancelada' manualmente, não altera automaticamente o status da assinatura para ativa, mas atualiza pagamentos normalmente
+  const podeAlterarStatusAssinatura = !(assinatura.status === 'suspensa' || assinatura.status === 'cancelada');
 
   // 2. Se já passou da data final
   if (end && isAfter(hoje, end)) {
@@ -25,8 +25,8 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano) {
       }
       return;
     }
-    // Se passaram mais de 14 dias, status = expirada
-    if (isAfter(hoje, addDays(end, 14))) {
+    // Se passaram mais de 7 dias, status = expirada
+    if (isAfter(hoje, addDays(end, 7))) {
       if (assinatura.status !== 'expirada') {
         await supabase.from('client_subscriptions').update({ status: 'expirada' }).eq('id', assinatura.id);
       }
@@ -42,28 +42,114 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano) {
     cicloFim = addDays(cicloInicio, duration * 30);
   }
 
-  // Pagamento do ciclo atual
-  const pagamentoCiclo = pagamentos.find(p => {
-    if (!p.payment_date) return false;
-    const dataPgto = parseISO(p.payment_date);
-    return (
-      (isAfter(dataPgto, cicloInicio) || dataPgto.getTime() === cicloInicio.getTime()) &&
-      (isAfter(cicloFim, dataPgto) || dataPgto.getTime() === cicloFim.getTime()) &&
-      p.status === "pago"
-    );
+  // Pagamentos do ciclo atual
+  const pagamentosCiclo = pagamentos.filter(p => {
+    // Se o pagamento tem um campo de ciclo explícito, use-o; caso contrário, considere todos os pagamentos da assinatura
+    // Aqui, assumimos que todos os pagamentos da assinatura são para o ciclo vigente
+    return true;
   });
+  const somaPagamentosCiclo = pagamentosCiclo.reduce((acc, p) => acc + Number(p.amount), 0);
 
-  // 4. Status conforme pagamento
-  if (pagamentoCiclo) {
-    if (assinatura.status !== 'ativa') {
+  // Atualizar status dos pagamentos do ciclo
+  if (pagamentosCiclo.length > 0) {
+    if (somaPagamentosCiclo >= Number(plano.price)) {
+      // Todos os pagamentos do ciclo ficam como 'pago'
+      for (const pagamento of pagamentosCiclo) {
+        if (pagamento.status !== 'pago') {
+          await supabase.from('subscription_payments').update({ status: 'pago' }).eq('id', pagamento.id);
+        }
+      }
+    } else {
+      // Todos os pagamentos do ciclo ficam como 'pendente' (exceto se já estiverem como 'falhou')
+      for (const pagamento of pagamentosCiclo) {
+        if (pagamento.status !== 'pendente' && pagamento.status !== 'falhou') {
+          await supabase.from('subscription_payments').update({ status: 'pendente' }).eq('id', pagamento.id);
+        }
+      }
+    }
+  }
+
+  // 4. Status da assinatura conforme soma dos pagamentos
+  if (somaPagamentosCiclo >= Number(plano.price)) {
+    if (podeAlterarStatusAssinatura && assinatura.status !== 'ativa') {
       await supabase.from('client_subscriptions').update({ status: 'ativa' }).eq('id', assinatura.id);
     }
+    // Chamar renovação de ciclos imediatamente após quitação
+    await renovarCiclosAssinaturas();
     return;
   } else {
-    // Se não tem pagamento do ciclo atual
-    if (assinatura.status !== 'inadimplente') {
+    // Se não atingiu o valor do ciclo
+    if (podeAlterarStatusAssinatura && assinatura.status !== 'inadimplente') {
       await supabase.from('client_subscriptions').update({ status: 'inadimplente' }).eq('id', assinatura.id);
     }
     return;
+  }
+}
+
+/**
+ * Renova automaticamente os ciclos de assinaturas ativas cujo ciclo terminou.
+ * Atualiza datas e gera pagamento pendente para o novo ciclo.
+ */
+export async function renovarCiclosAssinaturas() {
+  // Buscar todas as assinaturas ativas
+  const { data: assinaturas } = await supabase
+    .from('client_subscriptions')
+    .select('*')
+    .eq('status', 'ativa');
+  if (!assinaturas) return;
+
+  // Buscar todos os planos de uma vez
+  const { data: planos } = await supabase
+    .from('subscription_plans')
+    .select('*');
+  if (!planos) return;
+
+  // Buscar todos os pagamentos de todas as assinaturas ativas de uma vez
+  const assinaturaIds = assinaturas.map(a => a.id);
+  const { data: todosPagamentos } = await supabase
+    .from('subscription_payments')
+    .select('*')
+    .in('client_subscription_id', assinaturaIds)
+    .order('payment_date', { ascending: false });
+  if (!todosPagamentos) return;
+
+  // Processar renovações em lote
+  const updates = [];
+  for (const assinatura of assinaturas) {
+    const plano = planos.find(p => p.id === assinatura.subscription_plan_id);
+    if (!plano) continue;
+    const pagamentos = todosPagamentos.filter(p => p.client_subscription_id === assinatura.id);
+
+    // Descobrir o último ciclo (data de início e término)
+    const duration = Number(plano.duration_months);
+    let cicloInicio = parseISO(assinatura.start_date);
+    let cicloFim = assinatura.end_date ? parseISO(assinatura.end_date) : null;
+    if (!cicloFim) {
+      cicloFim = addDays(cicloInicio, duration * 30 - 1);
+    }
+    const hoje = new Date();
+    // Se o ciclo já terminou (hoje > cicloFim)
+    if (cicloFim && isAfter(hoje, cicloFim)) {
+      // Soma dos pagamentos do ciclo atual: considerar todos os pagamentos da assinatura para o ciclo vigente
+      const somaPagamentosCiclo = pagamentos.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      // Só renova se o ciclo anterior estiver quitado
+      if (somaPagamentosCiclo >= Number(plano.price)) {
+        // Atualiza as datas do ciclo na assinatura
+        const proximoCicloInicio = addDays(cicloFim, 1);
+        const proximoCicloFim = subDays(addMonths(proximoCicloInicio, duration), 1);
+        await supabase.from('client_subscriptions').update({
+          start_date: proximoCicloInicio.toISOString().slice(0, 10),
+          end_date: proximoCicloFim.toISOString().slice(0, 10)
+        }).eq('id', assinatura.id);
+      }
+      // Se não quitou, não renova, permitindo que a assinatura fique para trás
+    }
+  }
+  // Atualizar todas as assinaturas que precisam ser renovadas em lote
+  for (const up of updates) {
+    await supabase.from('client_subscriptions').update({
+      start_date: up.start_date,
+      end_date: up.end_date
+    }).eq('id', up.id);
   }
 } 
