@@ -84,13 +84,6 @@ export function FinalizarAtendimentoForm({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      console.log("🚀 Iniciando finalização do atendimento...", {
-        agendamento_id: agendamento.id,
-        status_atual: agendamento.status,
-        servicos_selecionados: values.servicos,
-        produtos_selecionados: values.produtos,
-      });
-      
       if (!servicos || !produtos) {
         throw new Error("Dados de serviços ou produtos não carregados");
       }
@@ -130,12 +123,6 @@ export function FinalizarAtendimentoForm({
         };
       });
 
-      console.log("📦 Dados preparados para atualização:", {
-        servicos: servicosSelecionados.length,
-        produtos: produtosSelecionados.length,
-        total,
-      });
-
       const totalDuration = servicosSelecionados.reduce((sum, servico) => {
         const servicoInfo = servicos?.find(s => s.id === servico.service_id);
         return sum + (servicoInfo?.duration || 0);
@@ -154,12 +141,8 @@ export function FinalizarAtendimentoForm({
         payment_date: new Date().toISOString().slice(0, 10),
       };
 
-      console.log("Enviando para o backend:", agendamentoAtualizado);
-
       // Marca como atendido e lança os valores no financeiro
       await marcarComoAtendido.mutateAsync(agendamentoAtualizado);
-
-      console.log("✅ Atendimento finalizado com sucesso!");
 
       toast({
         title: "Atendimento finalizado!",
@@ -168,7 +151,6 @@ export function FinalizarAtendimentoForm({
 
       onOpenChange(false);
     } catch (error) {
-      console.error("❌ Erro ao finalizar atendimento:", error);
       toast({
         variant: "destructive",
         title: "Erro ao finalizar atendimento",

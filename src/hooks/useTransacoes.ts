@@ -24,7 +24,6 @@ export function useTransacoes() {
   const { data: transacoes, isLoading } = useQuery({
     queryKey: ["transacoes"],
     queryFn: async () => {
-      console.log("Buscando todas as transações...");
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
@@ -35,7 +34,6 @@ export function useTransacoes() {
         throw error;
       }
 
-      console.log("Transações retornadas:", data);
       return data as Transacao[];
     },
   });
@@ -43,7 +41,6 @@ export function useTransacoes() {
   const { data: transacoesHoje } = useQuery({
     queryKey: ["transacoes-hoje"],
     queryFn: async () => {
-      console.log("Buscando transações do dia...", today);
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
@@ -55,15 +52,12 @@ export function useTransacoes() {
         throw error;
       }
 
-      console.log("Transações do dia retornadas:", data);
       return data as Transacao[];
     },
   });
 
   const createTransacao = useMutation({
     mutationFn: async (transacao: Omit<Transacao, "id" | "created_at" | "updated_at">) => {
-      console.log("Iniciando criação de transação:", transacao);
-      
       // Validar o tipo da transação
       if (transacao.type !== "receita" && transacao.type !== "despesa") {
         throw new Error(`Tipo de transação inválido: ${transacao.type}`);
@@ -86,37 +80,25 @@ export function useTransacoes() {
         .single();
 
       if (error) {
-        console.error("Erro detalhado do Supabase:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        
         if (error.code === "23514") { // Violação de check constraint
           throw new Error("Erro na validação do tipo de transação. Por favor, entre em contato com o suporte.");
         }
         throw error;
       }
 
-      console.log("Transação criada com sucesso:", data);
       return data;
     },
     onSuccess: () => {
-      console.log("Transação criada com sucesso, invalidando queries...");
       queryClient.invalidateQueries({ queryKey: ["transacoes"] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
     },
     onError: (error: Error) => {
-      console.error("Erro na mutação createTransacao:", error);
       toast.error(`Erro ao criar transação: ${error.message}`);
     }
   });
 
   const updateTransacao = useMutation({
     mutationFn: async (transacao: Partial<Transacao> & { id: string }) => {
-      console.log("Iniciando atualização de transação:", transacao);
-      
       // Validar o tipo da transação se estiver sendo alterado
       if (transacao.type && transacao.type !== "receita" && transacao.type !== "despesa") {
         throw new Error(`Tipo de transação inválido: ${transacao.type}`);
@@ -143,12 +125,6 @@ export function useTransacoes() {
         .single();
 
       if (error) {
-        console.error("Erro detalhado do Supabase:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
         throw error;
       }
 
@@ -161,24 +137,20 @@ export function useTransacoes() {
         }).eq('transaction_id', data.id);
       }
 
-      console.log("Transação atualizada com sucesso:", data);
       return data;
     },
     onSuccess: () => {
-      console.log("Transação atualizada com sucesso, invalidando queries...");
       queryClient.invalidateQueries({ queryKey: ["transacoes"] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
       toast.success("Transação atualizada com sucesso");
     },
     onError: (error: Error) => {
-      console.error("Erro na mutação updateTransacao:", error);
       toast.error(`Erro ao atualizar transação: ${error.message}`);
     }
   });
 
   const deleteTransacao = useMutation({
     mutationFn: async (id: string) => {
-      console.log("Iniciando exclusão de transação:", id);
       // Buscar a transação para saber se é de assinatura
       const { data: transacao } = await supabase
         .from('transactions')
@@ -194,24 +166,15 @@ export function useTransacoes() {
         .delete()
         .eq("id", id);
       if (error) {
-        console.error("Erro detalhado do Supabase:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
         throw error;
       }
-      console.log("Transação excluída com sucesso");
     },
     onSuccess: () => {
-      console.log("Transação excluída com sucesso, invalidando queries...");
       queryClient.invalidateQueries({ queryKey: ["transacoes"] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
       toast.success("Transação excluída com sucesso");
     },
     onError: (error: Error) => {
-      console.error("Erro na mutação deleteTransacao:", error);
       toast.error(`Erro ao excluir transação: ${error.message}`);
     }
   });

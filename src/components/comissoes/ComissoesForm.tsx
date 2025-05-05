@@ -108,16 +108,6 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
       };
     }
 
-    console.log("🔍 Dados do formulário:", {
-      barbeiro: barbeiros?.find(b => b.id === dataSubmit.barbeiroId)?.name,
-      barbeiroId: dataSubmit.barbeiroId,
-      tipoBusca: dataSubmit.tipoBusca,
-      dataEspecifica: dataSubmit.dataEspecifica ? format(dataSubmit.dataEspecifica, "yyyy-MM-dd") : null,
-      dataInicio: dataSubmit.dataInicio ? format(dataSubmit.dataInicio, "yyyy-MM-dd HH:mm:ss") : null,
-      dataFim: dataSubmit.dataFim ? format(dataSubmit.dataFim, "yyyy-MM-dd HH:mm:ss") : null,
-      status: dataSubmit.status
-    });
-
     onSubmit(dataSubmit);
   };
 

@@ -59,9 +59,6 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
 
   async function onSubmit(values: FormValues) {
     try {
-      console.log("Dados do formulário:", values);
-      console.log("Tipo da transação:", tipo);
-      
       const data = new Date(values.data);
       data.setHours(0, 0, 0, 0);
 
@@ -78,8 +75,6 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         category: values.category,
         payment_date: data.toISOString().slice(0, 10),
       };
-
-      console.log("Dados a serem enviados:", transacaoData);
 
       if (transacao) {
         await updateTransacao.mutateAsync({
@@ -100,7 +95,6 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
       form.reset();
       onSuccess?.();
     } catch (error) {
-      console.error("Erro ao salvar transação:", error);
       toast.error(
         `Erro ao ${transacao ? "atualizar" : "cadastrar"} ${
           tipo === "receita" ? "receita" : "despesa"

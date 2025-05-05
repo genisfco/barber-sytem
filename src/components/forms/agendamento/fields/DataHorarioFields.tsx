@@ -34,22 +34,6 @@ interface DataHorarioFieldsProps {
 export function DataHorarioFields({ form, date, setDate, agendamentos, agendamentoParaEditar }: DataHorarioFieldsProps) {
   const { verificarIndisponibilidade } = useIndisponibilidades();
 
-  // Log inicial dos props com tipagem melhorada
-  console.log('DataHorarioFields - Props:', {
-    date,
-    agendamentoParaEditar: agendamentoParaEditar?.id,
-    totalAgendamentos: agendamentos?.length,
-    agendamentos: agendamentos?.map(a => ({
-      id: a.id,
-      date: a.date,
-      time: a.time,
-      barber_id: a.barber_id,
-      client_id: a.client_id,
-      status: a.status,
-      total_duration: a.total_duration
-    }))
-  });
-
   const isHorarioPassado = (horario: string) => {
     if (!date) return false;
     
@@ -149,16 +133,11 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
       const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
       const minutosAgendamentoFim = minutosAgendamento + (agendamento.total_duration || 30);
       const sobreposicao = (minutosVerificar < minutosAgendamentoFim && minutosVerificarFim > minutosAgendamento);
-      if (sobreposicao) {
-        console.log(`[DISPONIBILIDADE] CONFLITO: Horário ${horario} (${minutosVerificar}-${minutosVerificarFim}) conflita com agendamento ${agendamento.id} (${minutosAgendamento}-${minutosAgendamentoFim}) | Barbeiro: ${agendamento.barber_id}`);
-      }
       return sobreposicao;
     });
     if (conflito) {
-      console.log(`[DISPONIBILIDADE] Horário ${horario} está INDISPONÍVEL por conflito de barbeiro.`);
       return false;
     }
-    console.log(`[DISPONIBILIDADE] Horário ${horario} está DISPONÍVEL.`);
     return true;
   };
 

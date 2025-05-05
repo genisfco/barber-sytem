@@ -12,27 +12,12 @@ const Agendamentos = () => {
   const [date, setDate] = useState<Date>(initialDate);
   const { agendamentos, isLoading } = useAgendamentos(date);
 
-  // Debug para verificar as datas
-  useEffect(() => {
-    console.log('Data selecionada:', format(date, 'yyyy-MM-dd'));
-    console.log('Agendamentos:', agendamentos?.map(ag => ({
-      date: ag.date,
-      time: ag.time,
-      client: ag.client_name
-    })));
-  }, [date, agendamentos]);
-  
   const formatDateForComparison = (date: Date) => {
     return format(date, 'yyyy-MM-dd');
   };
 
   const filteredAgendamentos = agendamentos?.filter(ag => {
     const dateMatches = ag.date === formatDateForComparison(date);
-    console.log('Comparando:', {
-      agendamentoDate: ag.date,
-      selectedDate: formatDateForComparison(date),
-      matches: dateMatches
-    });
     return dateMatches;
   });
   
@@ -46,7 +31,6 @@ const Agendamentos = () => {
           onDateSelect={(newDate) => {
             if (newDate) {
               const newDateStartOfDay = startOfDay(newDate);
-              console.log('Nova data selecionada:', format(newDateStartOfDay, 'yyyy-MM-dd'));
               setDate(newDateStartOfDay);
             }
           }} 

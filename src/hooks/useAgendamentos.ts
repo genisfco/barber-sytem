@@ -51,7 +51,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   const { data: agendamentos, isLoading } = useQuery({
     queryKey: ['agendamentos', formattedDate, barbeiro_id],
     queryFn: async () => {
-      console.log("Buscando agendamentos para:", formattedDate, "barbeiro:", barbeiro_id);
       const query = supabase
         .from('appointments')
         .select('*')
@@ -93,7 +92,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         })
       );
 
-      console.log("Agendamentos completos encontrados:", agendamentosCompletos);
       return agendamentosCompletos;
     },
     enabled: !!formattedDate, // Só executa a query se tiver uma data
@@ -298,15 +296,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       barber_id: string;
     }) => {
       try {
-        console.log('🚀 Iniciando processo de finalização do atendimento:', {
-          id: appointment.id,
-          cliente: appointment.client_name,
-          servicos: appointment.servicos.length,
-          produtos: appointment.produtos.length,
-          status_atual: appointment.status,
-          forma_pagamento: appointment.payment_method
-        });
-
         // 1. Primeiro atualizamos o status do agendamento para "atendido"
         const { data: statusUpdate, error: statusError } = await supabase
           .from('appointments')
@@ -323,8 +312,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           throw statusError;
         }
 
-        console.log('✅ Status atualizado para atendido');
-
         // 2. Removemos os serviços e produtos existentes
         const { error: deleteServicesError } = await supabase
           .from('appointment_services')
@@ -336,8 +323,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           throw deleteServicesError;
         }
 
-        console.log('✅ Serviços anteriores removidos');
-
         const { error: deleteProductsError } = await supabase
           .from('appointment_products')
           .delete()
@@ -347,8 +332,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           console.error('❌ Erro ao deletar produtos:', deleteProductsError);
           throw deleteProductsError;
         }
-
-        console.log('✅ Produtos anteriores removidos');
 
         // 3. Inserimos os novos serviços
         if (appointment.servicos.length > 0) {
@@ -365,8 +348,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             console.error('❌ Erro ao inserir serviços:', servicesError);
             throw servicesError;
           }
-
-          console.log('✅ Novos serviços inseridos:', appointment.servicos.length);
         }
 
         // 4. Inserimos os novos produtos
@@ -384,8 +365,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             console.error('❌ Erro ao inserir produtos:', productsError);
             throw productsError;
           }
-
-          console.log('✅ Novos produtos inseridos:', appointment.produtos.length);
 
           // 4.1 Atualizamos o estoque dos produtos vendidos
           for (const produto of appointment.produtos) {
@@ -417,8 +396,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               console.error(`❌ Erro ao atualizar estoque do produto ${produto.product_id}:`, updateError);
               throw updateError;
             }
-
-            console.log(`✅ Estoque do produto ${produto.product_id} atualizado: ${novoEstoque}`);
           }
         }
 
@@ -427,12 +404,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         const totalProductsAmount = appointment.produtos.reduce((sum, produto) => 
           sum + (produto.product_price * produto.quantity), 0);
         const finalPrice = totalServiceAmount + totalProductsAmount;
-
-        console.log('💰 Totais calculados:', {
-          servicos: totalServiceAmount,
-          produtos: totalProductsAmount,
-          final: finalPrice
-        });
 
         // 6. Atualizamos o agendamento com os valores finais
         const { data: updatedAppointment, error: updateError } = await supabase
@@ -453,8 +424,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           throw updateError;
         }
 
-        console.log('✅ Agendamento atualizado com valores finais');
-
         // 7. Buscamos as informações do barbeiro
         const { data: barber, error: barberError } = await supabase
           .from('barbers')
@@ -469,11 +438,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
         const commissionRate = barber.commission_rate;
         const commissionAmount = totalServiceAmount * (commissionRate / 100);
-
-        console.log('💼 Comissão calculada:', {
-          taxa: commissionRate,
-          valor: commissionAmount
-        });
 
         // 8. Verificamos se já existe uma comissão para este agendamento
         if (commissionAmount > 0) {
@@ -490,7 +454,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
           if (existingCommission) {
             // Atualiza a comissão existente
-            console.log('🔄 Atualizando comissão existente');
             const { error: updateError } = await supabase
               .from('barber_commissions')
               .update({
@@ -504,11 +467,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               console.error('❌ Erro ao atualizar comissão:', updateError);
               throw updateError;
             }
-
-            console.log('✅ Comissão atualizada');
           } else {
             // Cria uma nova comissão
-            console.log('📝 Criando nova comissão');
             const { error: commissionError } = await supabase
               .from('barber_commissions')
               .insert({
@@ -525,8 +485,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               console.error('❌ Erro ao registrar comissão:', commissionError);
               throw commissionError;
             }
-
-            console.log('✅ Nova comissão registrada');
           }
         }
 
@@ -550,8 +508,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             console.error('❌ Erro ao registrar receita de serviços:', receitaError);
             throw receitaError;
           }
-
-          console.log('✅ Receita de serviços lançada');
         }
 
         // 10. Se houver produtos, lançamos a receita
@@ -574,11 +530,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             console.error('❌ Erro ao registrar receita de produtos:', produtosError);
             throw produtosError;
           }
-
-          console.log('✅ Receita de produtos lançada');
         }
 
-        console.log('🎉 Processo de finalização concluído com sucesso!');
         return updatedAppointment;
       } catch (error) {
         console.error("❌ Erro ao marcar como atendido:", error);
@@ -638,16 +591,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       date: string; 
       status: string 
     }) => {
-      console.log('==================================');
-      console.log('🔍 INICIANDO BUSCA DE AGENDAMENTOS');
-      console.log('==================================');
-      console.log('Filtros:', {
-        client_id: data.client_id,
-        barber_id: data.barber_id,
-        date: data.date,
-        status: ['pendente', 'cancelado']
-      });
-
       // Busca todos os agendamentos relacionados com status pendente ou cancelado
       const { data: agendamentos, error } = await supabase
         .from('appointments')
@@ -658,31 +601,12 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         .in('status', ['pendente', 'cancelado']);
 
       if (error) {
-        console.error('❌ ERRO NA BUSCA:', error);
         throw error;
       }
 
-      console.log('==================================');
-      console.log('✨ AGENDAMENTOS ENCONTRADOS:', agendamentos?.length || 0);
-      console.log('==================================');
-      console.log(JSON.stringify(agendamentos, null, 2));
-
       // Atualiza o status de todos os agendamentos encontrados
       if (agendamentos && agendamentos.length > 0) {
-        console.log('==================================');
-        console.log('🔄 INICIANDO ATUALIZAÇÕES');
-        console.log('==================================');
-        
         const promises = agendamentos.map((agendamento) => {
-          console.log('📝 Atualizando:', {
-            id: agendamento.id,
-            cliente: agendamento.client_name,
-            barbeiro: agendamento.barber,
-            servico: agendamento.service,
-            de_status: agendamento.status,
-            para_status: data.status
-          });
-          
           return supabase
             .from('appointments')
             .update({ status: data.status })
@@ -690,17 +614,12 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         });
 
         await Promise.all(promises);
-        console.log('✅ TODAS AS ATUALIZAÇÕES CONCLUÍDAS COM SUCESSO');
-      } else {
-        console.log('⚠️ NENHUM AGENDAMENTO ENCONTRADO PARA ATUALIZAR');
       }
 
-      console.log('==================================');
       return agendamentos;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
-      console.log('🔄 CACHE ATUALIZADO');
     },
   });
 

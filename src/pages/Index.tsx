@@ -86,16 +86,11 @@ const Index = () => {
   };
 
   const handleConfirmar = async (id: string) => {
-    console.log('🎯 Iniciando confirmação do agendamento:', id);
-    
     // Encontra o agendamento para obter suas informações
     const agendamento = agendamentos?.find(a => a.id === id);
     if (!agendamento) {
-      console.log('❌ Agendamento não encontrado');
       return;
     }
-
-    console.log('📋 Dados do agendamento:', agendamento);
 
     try {
       // Atualiza todos os agendamentos relacionados
@@ -105,10 +100,7 @@ const Index = () => {
         date: agendamento.date,
         status: "confirmado" 
       });
-
-      console.log('✅ Atualização concluída com sucesso');
     } catch (error) {
-      console.error('❌ Erro ao atualizar agendamentos:', error);
     }
   };
 
@@ -223,10 +215,6 @@ const Index = () => {
     const agendamentosBarbeiro = agendamentosDoDia?.filter(
       a => a.barber_id === barbeiroId
     ) || [];
-    
-    // Para debug
-    console.log(`Barbeiro ${barbeiroId} - hora atual agenda: ${horarioAtualAgenda}, agendamentos:`, 
-                agendamentosBarbeiro.map(a => `${a.time.substring(0, 5)} (${a.status})`));
     
     // Encontrar o agendamento atual
     const agendamentoAtual = agendamentosBarbeiro.find(

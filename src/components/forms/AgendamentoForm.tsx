@@ -80,29 +80,9 @@ export function AgendamentoForm({
   // Estado para a data selecionada
   const [dataSelecionada, setDataSelecionada] = useState<Date>(dataInicial || new Date());
 
-  // Log inicial dos props
-  console.log('AgendamentoForm - Props:', {
-    agendamentoParaEditar: agendamentoParaEditar?.id,
-    horarioInicial,
-    barbeiroInicial,
-    dataInicial: dataInicial?.toISOString()
-  });
-
   // Hook de agendamentos agora depende da data selecionada
   const { createAgendamento, updateAgendamento, agendamentos, verificarDisponibilidadeBarbeiro, verificarAgendamentoCliente } = useAgendamentos(dataSelecionada);
   
-  // Log dos agendamentos carregados
-  console.log('AgendamentoForm - Agendamentos carregados:', {
-    total: agendamentos?.length,
-    agendamentos: agendamentos?.map(a => ({
-      id: a.id,
-      date: a.date,
-      time: a.time,
-      barber_id: a.barber_id,
-      status: a.status
-    }))
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { clientes } = useClientes();
   const { barbeiros } = useBarbeiros();
@@ -145,25 +125,12 @@ export function AgendamentoForm({
   // Preenche o formulário quando recebe um agendamento para editar
   useEffect(() => {
     if (agendamentoParaEditar) {
-      console.log('Preenchendo formulário para edição:', {
-        id: agendamentoParaEditar.id,
-        date: agendamentoParaEditar.date,
-        time: agendamentoParaEditar.time,
-        client_id: agendamentoParaEditar.client_id,
-        barber_id: agendamentoParaEditar.barber_id,
-        servicos: agendamentoParaEditar.servicos?.map(s => s.service_id)
-      });
-
-      // Corrige o problema do fuso horário
-      const [year, month, day] = agendamentoParaEditar.date.split('-').map(Number);
-      const data = new Date(year, month - 1, day);
-      
       form.reset({
         id: agendamentoParaEditar.id,
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
         servicosSelecionados: agendamentoParaEditar.servicos?.map(s => s.service_id) || [],
-        data: data,
+        data: new Date(agendamentoParaEditar.date),
         horario: agendamentoParaEditar.time,
       });
     }
@@ -376,7 +343,6 @@ export function AgendamentoForm({
       form.reset();
       setIsSubmitting(false);
     } catch (error) {
-      console.error("Erro ao processar o formulário:", error);
       toast({
         title: "Erro ao agendar",
         description: "Ocorreu um erro ao processar o formulário. Por favor, tente novamente mais tarde.",

@@ -18,7 +18,6 @@ export function ComissoesDialog({ open, onOpenChange }: ComissoesDialogProps) {
   const [selecionado, setSelecionado] = useState<ComissoesFormValues | null>(null);
   
   function handleSubmit(data: ComissoesFormValues) {
-    console.log("Buscando comissões para:", data);
     setSelecionado(data);
   }
 

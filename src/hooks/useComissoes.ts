@@ -32,14 +32,6 @@ export function useComissoes(
   const { data: comissoes, isLoading } = useQuery({
     queryKey: ["comissoes", barbeiroId, tipoBusca, dataInicioFormatada, dataFimFormatada, status],
     queryFn: async () => {
-      console.log("🔍 Buscando comissões:", {
-        barbeiroId,
-        tipoBusca,
-        dataInicio: dataInicioFormatada,
-        dataFim: dataFimFormatada,
-        status
-      });
-
       let query = supabase
         .from("barber_commissions")
         .select(`
@@ -67,7 +59,6 @@ export function useComissoes(
           .lte('date', format(dataFim!, 'yyyy-MM-dd'));
 
         if (appointmentError) {
-          console.error('❌ Erro ao buscar appointments:', appointmentError);
           throw appointmentError;
         }
 
@@ -87,12 +78,9 @@ export function useComissoes(
       const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) {
-        console.error("❌ Erro ao carregar comissões:", error);
         toast.error("Erro ao carregar comissões");
         throw error;
       }
-
-      console.log("✅ Comissões encontradas:", data);
 
       return data as Comissao[];
     },
@@ -206,7 +194,6 @@ export function useComissoes(
       }
     },
     onError: (error) => {
-      console.error("Erro ao pagar comissão:", error);
       toast.error("Erro ao atualizar status da comissão");
     },
   });

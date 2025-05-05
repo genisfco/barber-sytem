@@ -23,16 +23,12 @@ export function useRelatorios() {
     return useQuery({
       queryKey: ["relatorio-mensal", mes, ano],
       queryFn: async () => {
-        console.log("Buscando relatório mensal...", { mes, ano });
-        
         // Cria uma data do primeiro dia do mês
         const startDate = `${ano}-${mes.padStart(2, "0")}-01T00:00:00`;
         
         // Calcula o último dia do mês usando endOfMonth
         const lastDay = endOfMonth(new Date(Number(ano), Number(mes) - 1));
         const endDate = format(lastDay, "yyyy-MM-dd") + "T23:59:59";
-
-        console.log("Período da busca:", { startDate, endDate });
 
         const { data, error } = await supabase
           .from("transactions")
@@ -45,8 +41,6 @@ export function useRelatorios() {
           toast.error("Erro ao carregar relatório mensal");
           throw error;
         }
-
-        console.log("Dados do relatório mensal:", data);
 
         const totais = data.reduce(
           (acc, transacao) => {
@@ -71,8 +65,6 @@ export function useRelatorios() {
     return useQuery({
       queryKey: ["relatorio-anual", ano],
       queryFn: async () => {
-        console.log("Buscando relatório anual...", { ano });
-        
         const startDate = `${ano}-01-01T00:00:00`;
         const endDate = `${ano}-12-31T23:59:59`;
 
@@ -87,8 +79,6 @@ export function useRelatorios() {
           toast.error("Erro ao carregar relatório anual");
           throw error;
         }
-
-        console.log("Dados do relatório anual:", data);
 
         const totais = data.reduce(
           (acc, transacao) => {
