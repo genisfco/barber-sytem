@@ -5,7 +5,7 @@ import { Loader2, Pencil, Trash2, Eye, Edit, XCircle, PauseCircle } from "lucide
 import type { Subscription } from "@/types/subscription";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
@@ -488,10 +488,129 @@ const Assinaturas = () => {
   // Estado para controlar o pagamento a ser removido
   const [pagamentoParaRemover, setPagamentoParaRemover] = useState<any | null>(null);
 
-  // No início do componente Assinaturas
+  // Atualizar status de todas as assinaturas ao carregar a tela
   useEffect(() => {
-    renovarCiclosAssinaturas();
-  }, []);
+    async function atualizarTodosStatus() {
+      if (!assinaturas || !planos) return;
+      // 1. Atualizar status de todas as assinaturas
+      for (const assinatura of assinaturas) {
+        const plano = planos.find(p => p.id === assinatura.subscription_plan_id);
+        if (plano) {
+          const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === assinatura.id) || [];
+          await atualizarStatusAssinatura(assinatura, pagamentosAssinatura, plano);
+        }
+      }
+      // 2. Só depois, renovar ciclos das assinaturas
+      await renovarCiclosAssinaturas();
+      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    }
+    if (assinaturas && planos) {
+      atualizarTodosStatus();
+    }
+    // eslint-disable-next-line
+  }, [assinaturas, planos]);
+
+  const [modalRenovar, setModalRenovar] = useState<{ assinatura: any | null }>({ assinatura: null });
+  const [renovarCobranca, setRenovarCobranca] = useState<'cobrar' | 'perdoar' | null>(null);
+  const [valorCobranca, setValorCobranca] = useState<number>(0);
+
+  // Função para calcular valor devido do ciclo anterior
+  function calcularValorDevido(assinatura, pagamentosAssinatura, plano) {
+    if (!assinatura || !plano) return 0;
+    // Pagamentos do ciclo anterior (start_date e end_date atuais)
+    const pagamentosCiclo = pagamentosAssinatura.filter(
+      p => p.cycle_start_date === assinatura.start_date && p.cycle_end_date === assinatura.end_date
+    );
+    const somaPagamentos = pagamentosCiclo.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+    return Math.max(0, Number(plano.price) - somaPagamentos);
+  }
+
+  // Função para renovar assinatura (perdoar dívida)
+  async function handleRenovarPerdoar() {
+    const assinatura = modalRenovar.assinatura;
+    if (!assinatura) return;
+    const plano = planos?.find(p => p.id === assinatura.subscription_plan_id);
+    if (!plano) return;
+    const hoje = new Date();
+    const novoStart = hoje.toISOString().slice(0, 10);
+    const novoEnd = format(subDays(addMonths(hoje, Number(plano.duration_months)), 1), "yyyy-MM-dd");
+    // Atualizar assinatura para ativa e novo ciclo
+    await supabase.from('client_subscriptions').update({
+      status: 'ativa',
+      start_date: novoStart,
+      end_date: novoEnd
+    }).eq('id', assinatura.id);
+    setModalRenovar({ assinatura: null });
+    setRenovarCobranca(null);
+    // Abrir modal de pagamento do novo ciclo
+    setAssinaturaParaPagamento({ id: assinatura.id, valorPadrao: plano.price });
+    setOpenPagamento(true);
+    queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
+  }
+
+  // Função para renovar assinatura (cobrar dívida)
+  async function handleRenovarCobrarPagamento(pagamentoData) {
+    const assinatura = modalRenovar.assinatura;
+    if (!assinatura) return;
+    const plano = planos?.find(p => p.id === assinatura.subscription_plan_id);
+    if (!plano) return;
+    const cliente = clientes?.find(c => c.id === assinatura.client_id);
+    const hoje = new Date();
+    const novoStart = hoje.toISOString().slice(0, 10);
+    const novoEnd = format(subDays(addMonths(hoje, Number(plano.duration_months)), 1), "yyyy-MM-dd");
+    // 1. Registrar pagamento do ciclo anterior
+    const { data: pagamentoCriado, error: errorPagamento } = await supabase
+      .from("subscription_payments")
+      .insert({
+        client_subscription_id: assinatura.id,
+        payment_date: pagamentoData.payment_date,
+        amount: Number(pagamentoData.amount),
+        status: 'pago',
+        payment_method: pagamentoData.payment_method,
+        cycle_start_date: assinatura.start_date,
+        cycle_end_date: assinatura.end_date
+      })
+      .select()
+      .single();
+    if (errorPagamento) {
+      toast.error("Erro ao registrar pagamento do ciclo anterior");
+      return;
+    }
+    // 2. Lançar transação financeira
+    const { data: transacaoCriada, error: errorTransacao } = await supabase.from("transactions").insert({
+      type: "receita",
+      value: Number(pagamentoData.amount),
+      description: `Pagamento de Pendência de Assinatura - ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
+      payment_method: pagamentoData.payment_method,
+      category: "assinaturas"
+    }).select().single();
+    if (errorTransacao) {
+      toast.error("Erro ao lançar transação financeira");
+      return;
+    }
+    // 3. Atualizar pagamento com id da transação
+    if (transacaoCriada && pagamentoCriado) {
+      await supabase.from("subscription_payments").update({ transaction_id: transacaoCriada.id }).eq("id", pagamentoCriado.id);
+    }
+    // 4. Renovar assinatura para novo ciclo
+    await supabase.from('client_subscriptions').update({
+      status: 'ativa',
+      start_date: novoStart,
+      end_date: novoEnd
+    }).eq('id', assinatura.id);
+    setModalRenovar({ assinatura: null });
+    setRenovarCobranca(null);
+    toast.success("Assinatura renovada e pendência quitada!");
+    queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
+    queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+  }
+
+  // Utilitário para obter data de hoje no formato yyyy-MM-dd
+  function getHojeISO() {
+    return new Date().toISOString().slice(0, 10);
+  }
 
   return (
     <div className="p-6 space-y-8">
@@ -779,6 +898,9 @@ const Assinaturas = () => {
               // Valor que falta pagar
               const valorFaltaPagar = Math.max(0, plano.price - pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount), 0));
 
+              // Botão de Renovar Assinatura para expirada/cancelada
+              const podeRenovar = assinatura.status === 'expirada' || assinatura.status === 'cancelada';
+
               return (
                 <Card key={assinatura.id}>
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -798,6 +920,17 @@ const Assinaturas = () => {
                           }}
                         >
                           Registrar Pagamento
+                        </Button>
+                      )}
+                      {/* Botão de Renovar Assinatura */}
+                      {podeRenovar && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 text-blue-700 border-blue-400"
+                          onClick={() => setModalRenovar({ assinatura })}
+                        >
+                          Renovar Assinatura
                         </Button>
                       )}
                     </div>
@@ -920,7 +1053,17 @@ const Assinaturas = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="payment_date">Data do Pagamento</Label>
-              <Input id="payment_date" type="date" {...registerPagamento("payment_date", { required: true })} />
+              <Input
+                id="payment_date"
+                type="date"
+                {...registerPagamento("payment_date", { required: true })}
+                min={(() => {
+                  // Buscar assinatura para pegar start_date
+                  const assinatura = assinaturas?.find(a => a.id === assinaturaParaPagamento?.id);
+                  return assinatura?.start_date || getHojeISO();
+                })()}
+                max={getHojeISO()}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="payment_method">Método de Pagamento</Label>
@@ -1108,6 +1251,102 @@ const Assinaturas = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Renovação de Assinatura */}
+      <Dialog open={!!modalRenovar.assinatura} onOpenChange={(v) => { if (!v) { setModalRenovar({ assinatura: null }); setRenovarCobranca(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renovar Assinatura</DialogTitle>
+          </DialogHeader>
+          {modalRenovar.assinatura && !renovarCobranca && (
+            <div className="space-y-4">
+              <DialogDescription>
+                Deseja cobrar o valor do ciclo anterior (pendente) ou perdoar a dívida?<br />
+                Se escolher cobrar, será lançado o pagamento do ciclo anterior antes de renovar.<br />
+                Se escolher perdoar, o ciclo anterior será ignorado e a renovação será feita normalmente.
+              </DialogDescription>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setRenovarCobranca('perdoar'); }}>Perdoar Dívida</Button>
+                <Button onClick={() => { setRenovarCobranca('cobrar'); }}>Cobrar Ciclo Anterior</Button>
+              </div>
+            </div>
+          )}
+          {/* Fluxo de perdão: só renovar e abrir modal de pagamento do novo ciclo */}
+          {modalRenovar.assinatura && renovarCobranca === 'perdoar' && (
+            <div className="space-y-4">
+              <DialogDescription>
+                O ciclo anterior será ignorado. Um novo ciclo será iniciado a partir de hoje.<br />
+                Deseja continuar?
+              </DialogDescription>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setRenovarCobranca(null); }}>Cancelar</Button>
+                <Button onClick={handleRenovarPerdoar}>Renovar e Registrar Pagamento do Novo Ciclo</Button>
+              </div>
+            </div>
+          )}
+          {/* Fluxo de cobrança: mostrar valor devido e formulário de pagamento */}
+          {modalRenovar.assinatura && renovarCobranca === 'cobrar' && (() => {
+            const assinatura = modalRenovar.assinatura;
+            const plano = planos?.find(p => p.id === assinatura.subscription_plan_id);
+            const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === assinatura.id) || [];
+            const valorDevido = calcularValorDevido(assinatura, pagamentosAssinatura, plano);
+            if (valorDevido <= 0) {
+              return (
+                <div className="space-y-4">
+                  <DialogDescription>Não há valor pendente a ser cobrado do ciclo anterior.</DialogDescription>
+                  <div className="flex gap-2 justify-end">
+                    <Button onClick={handleRenovarPerdoar}>Renovar normalmente</Button>
+                  </div>
+                </div>
+              );
+            }
+            // Formulário de pagamento do ciclo anterior
+            return (
+              <form className="space-y-4" onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const payment_method = form.payment_method.value;
+                const payment_date = form.payment_date.value;
+                await handleRenovarCobrarPagamento({
+                  amount: valorDevido,
+                  payment_method,
+                  payment_date
+                });
+              }}>
+                <DialogDescription>
+                  Valor devido do ciclo anterior: <b>R$ {valorDevido.toFixed(2)}</b><br />
+                  Preencha os dados do pagamento para quitar a pendência e renovar a assinatura.
+                </DialogDescription>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Data do Pagamento</label>
+                  <Input
+                    name="payment_date"
+                    type="date"
+                    required
+                    min={assinatura.start_date}
+                    max={getHojeISO()}
+                    defaultValue={getHojeISO()}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Método de Pagamento</label>
+                  <select name="payment_method" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" required>
+                    <option value="">Selecione o método</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Pix">Pix</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" type="button" onClick={() => { setRenovarCobranca(null); }}>Cancelar</Button>
+                  <Button type="submit">Quitar Pendência e Renovar</Button>
+                </div>
+              </form>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
