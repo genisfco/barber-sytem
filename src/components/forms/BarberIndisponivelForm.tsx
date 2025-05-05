@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect } from "react";
 import { useToast } from '@/hooks/use-toast';
+import { logError } from "@/utils/logger";
 
 import {
   Form,
@@ -162,7 +163,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
 
       onOpenChange(false);
     } catch (error) {
-      console.error('Erro ao processar indisponibilidade:', error);
+      logError(error, 'Erro ao processar indisponibilidade:');
     }
   };
 

@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useServicos } from "@/hooks/useServicos";
 import { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
+import { logError } from "@/utils/logger";
 
 type Agendamento = Database['public']['Tables']['appointments']['Row'];
 type ServicoAgendamento = Database['public']['Tables']['appointment_services']['Row'];
@@ -39,7 +40,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         .select('*');
 
       if (error) {
-        console.error("Erro ao buscar indisponibilidades:", error);
+        logError(error, "Erro ao buscar indisponibilidades:");
         throw error;
       }
 
@@ -67,7 +68,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       const { data: appointments, error } = await query;
 
       if (error) {
-        console.error("Erro ao buscar agendamentos:", error);
+        logError(error, "Erro ao buscar agendamentos:");
         throw error;
       }
 
@@ -259,7 +260,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         if (error) throw error;
         return data;
       } catch (error) {
-        console.error("Erro ao atualizar agendamento:", error);
+        logError(error, "Erro ao atualizar agendamento:");
         throw error;
       }
     },
@@ -308,7 +309,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .single();
 
         if (statusError) {
-          console.error('❌ Erro ao atualizar status:', statusError);
+          logError(statusError, '❌ Erro ao atualizar status:');
           throw statusError;
         }
 
@@ -319,7 +320,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .eq('appointment_id', appointment.id);
 
         if (deleteServicesError) {
-          console.error('❌ Erro ao deletar serviços:', deleteServicesError);
+          logError(deleteServicesError, '❌ Erro ao deletar serviços:');
           throw deleteServicesError;
         }
 
@@ -329,7 +330,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .eq('appointment_id', appointment.id);
 
         if (deleteProductsError) {
-          console.error('❌ Erro ao deletar produtos:', deleteProductsError);
+          logError(deleteProductsError, '❌ Erro ao deletar produtos:');
           throw deleteProductsError;
         }
 
@@ -345,7 +346,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             })));
 
           if (servicesError) {
-            console.error('❌ Erro ao inserir serviços:', servicesError);
+            logError(servicesError, '❌ Erro ao inserir serviços:');
             throw servicesError;
           }
         }
@@ -362,7 +363,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             })));
 
           if (productsError) {
-            console.error('❌ Erro ao inserir produtos:', productsError);
+            logError(productsError, '❌ Erro ao inserir produtos:');
             throw productsError;
           }
 
@@ -376,7 +377,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               .single();
 
             if (fetchError) {
-              console.error(`❌ Erro ao buscar produto ${produto.product_id}:`, fetchError);
+              logError(fetchError, `❌ Erro ao buscar produto ${produto.product_id}:`);
               throw fetchError;
             }
 
@@ -393,7 +394,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               .eq('id', produto.product_id);
 
             if (updateError) {
-              console.error(`❌ Erro ao atualizar estoque do produto ${produto.product_id}:`, updateError);
+              logError(updateError, `❌ Erro ao atualizar estoque do produto ${produto.product_id}:`);
               throw updateError;
             }
           }
@@ -420,7 +421,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .single();
 
         if (updateError) {
-          console.error('❌ Erro ao atualizar agendamento:', updateError);
+          logError(updateError, '❌ Erro ao atualizar agendamento:');
           throw updateError;
         }
 
@@ -432,7 +433,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .single();
 
         if (barberError) {
-          console.error('❌ Erro ao buscar informações do barbeiro:', barberError);
+          logError(barberError, '❌ Erro ao buscar informações do barbeiro:');
           throw barberError;
         }
 
@@ -448,7 +449,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             .single();
 
           if (searchError && searchError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
-            console.error('❌ Erro ao buscar comissão existente:', searchError);
+            logError(searchError, '❌ Erro ao buscar comissão existente:');
             throw searchError;
           }
 
@@ -464,7 +465,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               .eq('id', existingCommission.id);
 
             if (updateError) {
-              console.error('❌ Erro ao atualizar comissão:', updateError);
+              logError(updateError, '❌ Erro ao atualizar comissão:');
               throw updateError;
             }
           } else {
@@ -482,7 +483,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               });
 
             if (commissionError) {
-              console.error('❌ Erro ao registrar comissão:', commissionError);
+              logError(commissionError, '❌ Erro ao registrar comissão:');
               throw commissionError;
             }
           }
@@ -505,7 +506,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             });
 
           if (receitaError) {
-            console.error('❌ Erro ao registrar receita de serviços:', receitaError);
+            logError(receitaError, '❌ Erro ao registrar receita de serviços:');
             throw receitaError;
           }
         }
@@ -527,14 +528,14 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             });
 
           if (produtosError) {
-            console.error('❌ Erro ao registrar receita de produtos:', produtosError);
+            logError(produtosError, '❌ Erro ao registrar receita de produtos:');
             throw produtosError;
           }
         }
 
         return updatedAppointment;
       } catch (error) {
-        console.error("❌ Erro ao marcar como atendido:", error);
+        logError(error, "❌ Erro ao marcar como atendido:");
         throw error;
       }
     },

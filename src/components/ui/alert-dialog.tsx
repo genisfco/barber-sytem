@@ -3,6 +3,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { useEffect, useState } from "react"
+import { logError } from "@/utils/logger"
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -35,7 +36,7 @@ const AlertDialogContent = React.forwardRef<
     // Tocar o som de alerta
     const audio = new Audio('/sounds/alert.mp3');
     audio.play().catch(error => {
-      console.error('Erro ao reproduzir som:', error);
+      logError(error, 'Erro ao reproduzir som:');
     });
 
     // Iniciar a animação de piscar

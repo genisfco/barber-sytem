@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { ComissoesDialog } from "@/components/comissoes/ComissoesDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { logError } from "@/utils/logger";
 
 type Categoria = "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "outros";
 
@@ -53,7 +54,7 @@ const Financeiro = () => {
       await deleteTransacao.mutateAsync(transacaoParaExcluir.id);
       setTransacaoParaExcluir(null);
     } catch (error) {
-      console.error("Erro ao excluir transação:", error);
+      logError(error, "Erro ao excluir transação:");
     }
   };
 

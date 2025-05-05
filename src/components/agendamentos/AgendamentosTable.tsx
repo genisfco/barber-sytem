@@ -18,6 +18,7 @@ import { Agendamento } from "@/types/agendamento";
 import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { logError } from "@/utils/logger";
 
 interface AgendamentosTableProps {
   agendamentos: Agendamento[] | undefined;
@@ -53,7 +54,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
         status: "confirmado"
       });
     } catch (error) {
-      console.error('❌ Erro ao atualizar agendamentos:', error);
+      logError(error, '❌ Erro ao atualizar agendamentos:');
     }
   };
 

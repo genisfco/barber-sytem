@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import { logError } from "@/utils/logger";
 
 type Barbeiro = Database['public']['Tables']['barbers']['Row'];
 
@@ -19,7 +20,7 @@ export function useBarbeiros() {
         .order('name');
 
       if (error) {
-        console.error("Erro ao buscar barbeiros:", error);
+        logError(error, "Erro ao buscar barbeiros:");
         throw error;
       }
 
