@@ -40,7 +40,7 @@ export function Sidebar() {
     <aside className="w-64 min-h-screen bg-secondary border-r border-primary/10">
       <div className="h-16 flex items-center px-6 border-b border-primary/10">
         <Link to="/" className="flex items-center gap-2">
-          <Scissors className="h-6 w-6 text-primary" />
+          <img src="https://barberpro.app/assets/image/LogoBS.png" alt="BarberPro Logo" className="h-12 w-auto" />
           <span className="font-display text-xl text-primary">BarberPro</span>
         </Link>
       </div>
