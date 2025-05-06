@@ -19,8 +19,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
 import { addMonths, parseISO, format, subDays, isAfter } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useClientes } from "@/hooks/useClientes";
 import { atualizarStatusAssinatura, renovarCiclosAssinaturas } from "@/lib/subscriptionStatusManager";
 import { toast } from "sonner";
@@ -338,11 +340,34 @@ const Assinaturas = () => {
     return somaPagamentos + Number(valorNovoPagamento) <= Number(plano.price);
   }
 
+  // Adicionar estados para modais de alerta/confirmacao
+  const [modalDuplicidade, setModalDuplicidade] = useState(false);
+  const [modalRetroativo, setModalRetroativo] = useState<{ open: boolean, data: any } | null>(null);
+
   function onSubmitPagamento(data: any) {
     // Buscar assinatura, plano e pagamentos do ciclo
     const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
     const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
     const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === data.client_subscription_id) || [];
+
+    // 1. Verificar duplicidade de pagamento
+    const existeDuplicado = pagamentosAssinatura.some(p =>
+      Number(p.amount) === Number(data.amount) &&
+      p.payment_date === data.payment_date &&
+      p.payment_method === data.payment_method
+    );
+    if (existeDuplicado) {
+      setModalDuplicidade(true);
+      return;
+    }
+
+    // 2. Alerta para data retroativa
+    const hoje = getHojeISO();
+    if (data.payment_date !== hoje) {
+      setModalRetroativo({ open: true, data });
+      return;
+    }
+
     if (!podeRegistrarPagamento(assinatura, pagamentosAssinatura, plano, data.amount)) {
       toast.error("O valor total dos pagamentos não pode ultrapassar o valor do ciclo da assinatura.");
       return;
@@ -616,6 +641,9 @@ const Assinaturas = () => {
     return new Date().toISOString().slice(0, 10);
   }
 
+  // Estado para controlar o modal de confirmação de status
+  const [confirmarStatus, setConfirmarStatus] = useState<{ id: string, status: 'suspensa' | 'cancelada' | 'ativa' | null } | null>(null);
+
   if (isLoading || isLoadingPlanos || isLoadingPagamentos) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /> Carregando...</div>;
   }
@@ -756,6 +784,22 @@ const Assinaturas = () => {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
+                    {/* Botão para ativar plano se estiver inativo */}
+                    {plano.active === false && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={async () => {
+                          await supabase.from('subscription_plans').update({ active: true }).eq('id', plano.id);
+                          refetchPlanos();
+                        }}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                        title="Ativar Plano"
+                      >
+                        <span className="sr-only">Ativar Plano</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -800,9 +844,16 @@ const Assinaturas = () => {
                     disabled={isLoadingClientes}
                   >
                     <option value="">Selecione o cliente</option>
-                    {clientes?.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {clientes?.map((c) => {
+                      const jaTemRestrita = assinaturas?.some(
+                        (ass) => ass.client_id === c.id && ['ativa', 'inadimplente', 'suspensa'].includes(ass.status)
+                      );
+                      return (
+                        <option key={c.id} value={c.id} disabled={jaTemRestrita}>
+                          {c.name} {jaTemRestrita ? '(Já possui uma Assinatura)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -815,7 +866,9 @@ const Assinaturas = () => {
                   >
                     <option value="">Selecione o plano</option>
                     {planos?.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id} disabled={!p.active}>
+                        {p.name} {p.active ? '' : '(Inativo)'}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -940,13 +993,17 @@ const Assinaturas = () => {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="icon" variant="ghost" onClick={() => setAssinaturaEditando(assinatura)} title="Editar Assinatura">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => atualizarStatusManual(assinatura.id, 'suspensa')} title="Suspender Assinatura" disabled={assinatura.status === 'suspensa' || loadingStatus === assinatura.id + 'suspensa'}>
+                      {/* Botão para ativar manualmente a assinatura */}
+                      {assinatura.status !== 'ativa' && assinatura.status !== 'inadimplente' && (
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'ativa' })} title="Ativar Assinatura" className="text-green-600 hover:text-green-700 hover:bg-green-100">
+                          <span className="sr-only">Ativar Assinatura</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'suspensa' })} title="Suspender Assinatura" disabled={assinatura.status === 'suspensa' || loadingStatus === assinatura.id + 'suspensa'}>
                         <PauseCircle className={assinatura.status === 'suspensa' ? 'text-yellow-600' : ''} />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => atualizarStatusManual(assinatura.id, 'cancelada')} title="Cancelar Assinatura" disabled={assinatura.status === 'cancelada' || loadingStatus === assinatura.id + 'cancelada'}>
+                      <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'cancelada' })} title="Cancelar Assinatura" disabled={assinatura.status === 'cancelada' || loadingStatus === assinatura.id + 'cancelada'}>
                         <XCircle className={assinatura.status === 'cancelada' ? 'text-red-600' : ''} />
                       </Button>
                     </div>
@@ -1035,7 +1092,7 @@ const Assinaturas = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Plano</AlertDialogTitle>
           </AlertDialogHeader>
-          <p>Tem certeza que deseja excluir o plano <b>{deletingPlano?.name}</b>? O plano será desativado.</p>
+          <p>Certeza que deseja excluir o Plano <b>{deletingPlano?.name}</b>? <br></br>Detalhe: O Plano será apenas desativado.</p>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => deletingPlano && mutationDeletePlano.mutate(deletingPlano.id)}>
@@ -1111,47 +1168,93 @@ const Assinaturas = () => {
             const assinatura = assinaturas?.find(a => a.id === modalPagamentos.assinaturaId);
             const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
             const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === assinatura?.id) || [];
+            // Agrupar pagamentos por ciclo
+            const ciclosMap = new Map();
+            pagamentosAssinatura.forEach(p => {
+              const cicloKey = `${p.cycle_start_date || ''}|${p.cycle_end_date || ''}`;
+              if (!ciclosMap.has(cicloKey)) {
+                ciclosMap.set(cicloKey, []);
+              }
+              ciclosMap.get(cicloKey).push(p);
+            });
+            // Ordenar ciclos do mais recente para o mais antigo
+            const ciclosOrdenados = Array.from(ciclosMap.entries()).sort((a, b) => {
+              // Ordenar pelo cycle_start_date decrescente
+              const aStart = a[1][0]?.cycle_start_date || '';
+              const bStart = b[1][0]?.cycle_start_date || '';
+              return bStart.localeCompare(aStart);
+            });
+            // Renderizar agrupamento
+            if (ciclosOrdenados.length === 0) {
+              return <div className="text-muted-foreground text-sm py-2">Nenhum pagamento registrado.</div>;
+            }
             return (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-xs text-left">
-                  <thead>
-                    <tr className="border-b border-muted">
-                      <th className="py-1 pr-2 font-semibold">Data</th>
-                      <th className="py-1 pr-2 font-semibold">Valor</th>
-                      <th className="py-1 pr-2 font-semibold">Pgto Total</th>
-                      <th className="py-1 pr-2 font-semibold">Método</th>
-                      <th className="py-1 pr-2 font-semibold">Ciclo</th>
-                      <th className="py-1 pr-2 font-semibold">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagamentosAssinatura.length === 0 ? (
-                      <tr><td colSpan={6} className="text-muted-foreground text-sm py-2">Nenhum pagamento registrado.</td></tr>
-                    ) : (
-                      pagamentosAssinatura
-                        .sort((a, b) => (a.payment_date < b.payment_date ? 1 : -1))
-                        .map((p) => (
-                          <tr key={p.id} className="border-b border-muted last:border-b-0">
-                            <td className="py-1 pr-2">{p.payment_date ? format(parseISO(p.payment_date), "dd-MM-yyyy") : '-'}</td>
-                            <td className="py-1 pr-2">R$ {p.amount ? Number(p.amount).toFixed(2) : '-'}</td>
-                            <td className={
-                              'py-1 pr-2 ' + (
-                                p.status === 'pago' ? 'text-green-600' :
-                                p.status === 'pendente' ? 'text-yellow-600' :
-                                p.status === 'falhou' ? 'text-red-600' : 'text-muted-foreground'
-                              )
-                            }>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</td>
-                            <td className="py-1 pr-2">{p.payment_method || '-'}</td>
-                            <td className="py-1 pr-2">{p.cycle_start_date && p.cycle_end_date ? `${format(parseISO(p.cycle_start_date), 'dd/MM/yyyy')} a ${format(parseISO(p.cycle_end_date), 'dd/MM/yyyy')}` : '-'}</td>
-                            <td className="py-1 pr-2 flex gap-1">
-                              <Button size="icon" variant="ghost" onClick={() => setPagamentoEditando(p)} title="Editar Pagamento"><Pencil className="h-4 w-4" /></Button>
-                              <Button size="icon" variant="ghost" onClick={() => setPagamentoParaRemover(p)} title="Remover Pagamento"><Trash2 className="h-4 w-4" /></Button>
-                            </td>
+                {ciclosOrdenados.map(([cicloKey, pagamentosCiclo]) => {
+                  const [cicloStart, cicloEnd] = cicloKey.split('|');
+                  // Ordenar pagamentos do ciclo por data de pagamento decrescente
+                  const pagamentosOrdenados = pagamentosCiclo.sort((a, b) => (b.payment_date > a.payment_date ? 1 : -1));
+                  // Calcular soma dos pagamentos do ciclo
+                  const somaPagamentosCiclo = pagamentosCiclo.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+                  // Descobrir valor do plano (pega do primeiro pagamento do ciclo)
+                  const valorPlano = plano?.price ? Number(plano.price) : 0;
+                  // Definir cor do ciclo
+                  let corCiclo = 'text-barber-dark';
+                  if (valorPlano > 0) {
+                    if (somaPagamentosCiclo >= valorPlano) {
+                      corCiclo = 'text-green-600';
+                    } else {
+                      corCiclo = 'text-orange-500';
+                    }
+                  }
+                  return (
+                    <div key={cicloKey} className="mb-6">
+                      <div className={`font-semibold text-sm mb-2 ${corCiclo} flex items-center gap-4`}>
+                        Ciclo: {cicloStart && cicloEnd ? (
+                          <span>
+                            {format(parseISO(cicloStart), 'dd MMM yyyy', { locale: ptBR }).toUpperCase()}
+                            {"\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0até\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0"}
+                            {format(parseISO(cicloEnd), 'dd MMM yyyy', { locale: ptBR }).toUpperCase()}
+                          </span>
+                        ) : 'Sem ciclo definido'}
+                        <span className={somaPagamentosCiclo >= valorPlano ? 'text-green-600 ml-8' : 'text-orange-500 ml-8'}>
+                          {somaPagamentosCiclo >= valorPlano ? 'Assinatura Paga' : 'Pagamento Pendente'}
+                        </span>
+                      </div>
+                      <table className="min-w-full text-xs text-left mb-2">
+                        <thead>
+                          <tr className="border-b border-muted">
+                            <th className="py-1 pr-2 font-semibold">Data</th>
+                            <th className="py-1 pr-2 font-semibold">Valor</th>
+                            <th className="py-1 pr-2 font-semibold">Pgto Total</th>
+                            <th className="py-1 pr-2 font-semibold">Método</th>
+                            <th className="py-1 pr-2 font-semibold">Ações</th>
                           </tr>
-                        ))
-                    )}
-                  </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                          {pagamentosOrdenados.map((p) => (
+                            <tr key={p.id} className="border-b border-muted last:border-b-0">
+                              <td className="py-1 pr-2">{p.payment_date ? format(parseISO(p.payment_date), "dd-MM-yyyy") : '-'}</td>
+                              <td className="py-1 pr-2">R$ {p.amount ? Number(p.amount).toFixed(2) : '-'}</td>
+                              <td className={
+                                'py-1 pr-2 ' + (
+                                  p.status === 'pago' ? 'text-green-600' :
+                                  p.status === 'pendente' ? 'text-yellow-600' :
+                                  p.status === 'falhou' ? 'text-red-600' : 'text-muted-foreground'
+                                )
+                              }>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</td>
+                              <td className="py-1 pr-2">{p.payment_method || '-'}</td>
+                              <td className="py-1 pr-2 flex gap-1">
+                                <Button size="icon" variant="ghost" onClick={() => setPagamentoEditando(p)} title="Editar Pagamento"><Pencil className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="ghost" onClick={() => setPagamentoParaRemover(p)} title="Remover Pagamento"><Trash2 className="h-4 w-4" /></Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
               </div>
             );
           })()}
@@ -1199,38 +1302,6 @@ const Assinaturas = () => {
               )}
             </DialogContent>
           </Dialog>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de edição de assinatura */}
-      <Dialog open={!!assinaturaEditando} onOpenChange={(v) => { if (!v) setAssinaturaEditando(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Assinatura</DialogTitle>
-          </DialogHeader>
-          {assinaturaEditando && (
-            <form className="space-y-4" onSubmit={async (e) => {
-              e.preventDefault();
-              await supabase.from('client_subscriptions').update({ status: assinaturaEditando.status }).eq('id', assinaturaEditando.id);
-              setAssinaturaEditando(null);
-              queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
-            }}>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" value={assinaturaEditando.status} onChange={e => setAssinaturaEditando({ ...assinaturaEditando, status: e.target.value })}>
-                  <option value="ativa">Ativa</option>
-                  <option value="suspensa">Suspensa</option>
-                  <option value="cancelada">Cancelada</option>
-                  <option value="expirada">Expirada</option>
-                  <option value="inadimplente">Inadimplente</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setAssinaturaEditando(null)}>Cancelar</Button>
-                <Button type="submit">Salvar</Button>
-              </div>
-            </form>
-          )}
         </DialogContent>
       </Dialog>
 
@@ -1352,6 +1423,100 @@ const Assinaturas = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de confirmação para suspender/cancelar/ativar assinatura */}
+      <AlertDialog open={!!confirmarStatus} onOpenChange={(v) => { if (!v) setConfirmarStatus(null); }}>
+        <AlertDialogContent className={confirmarStatus?.status === 'ativa' ? 'bg-white' : 'bg-white'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={confirmarStatus?.status === 'ativa' ? 'text-green-600' : 'text-red-600'}>
+              {confirmarStatus?.status === 'suspensa' && 'Suspender Assinatura'}
+              {confirmarStatus?.status === 'cancelada' && 'Cancelar Assinatura'}
+              {confirmarStatus?.status === 'ativa' && 'Ativar Assinatura'}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <div className={confirmarStatus?.status === 'ativa' ? 'mb-4 text-green-700' : 'mb-4 text-red-700'}>
+            {confirmarStatus?.status === 'suspensa' && (
+              <>
+                Tem certeza que deseja suspender esta assinatura?
+                <br />Esta ação pode ser revertida depois, mas pode impactar no uso do cliente.
+                <br />Faça isso apenas se o cliente solicitar a suspensão ou cancelamento.
+              </>
+            )}
+            {confirmarStatus?.status === 'cancelada' && (
+              <>
+                Tem certeza que deseja cancelar esta assinatura?
+                <br />Esta ação pode ser revertida depois, mas pode impactar no uso do cliente.
+                <br />Faça isso apenas se o cliente solicitar a suspensão ou cancelamento.
+              </>
+            )}
+            {confirmarStatus?.status === 'ativa' && (
+              <>
+                Tem certeza que deseja ativar esta assinatura manualmente?
+                <br />Esta ação reativa o acesso do cliente imediatamente.
+                <br />Faça isso apenas se o cliente solicitar a reativação.
+              </>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmarStatus(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className={confirmarStatus?.status === 'ativa' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'} onClick={async () => {
+              if (confirmarStatus) {
+                await atualizarStatusManual(confirmarStatus.id, confirmarStatus.status!);
+                setConfirmarStatus(null);
+              }
+            }}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de alerta de duplicidade de pagamento */}
+      <AlertDialog open={modalDuplicidade} onOpenChange={setModalDuplicidade}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pagamento Duplicado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Já existe um pagamento com os mesmos dados (valor, data e método) para esta assinatura.<br />
+              Por favor, verifique os dados antes de tentar novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setModalDuplicidade(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de confirmação para data retroativa */}
+      <AlertDialog open={!!modalRetroativo?.open} onOpenChange={(v) => { if (!v) setModalRetroativo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmação de Data Retroativa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está lançando um pagamento com data retroativa.<br />
+              Tem certeza que deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setModalRetroativo(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (modalRetroativo?.data) {
+                // Buscar assinatura, plano e pagamentos do ciclo novamente para garantir
+                const assinatura = assinaturas?.find(a => a.id === modalRetroativo.data.client_subscription_id);
+                const plano = planos?.find(p => p.id === assinatura?.subscription_plan_id);
+                const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === modalRetroativo.data.client_subscription_id) || [];
+                if (!podeRegistrarPagamento(assinatura, pagamentosAssinatura, plano, modalRetroativo.data.amount)) {
+                  toast.error("O valor total dos pagamentos não pode ultrapassar o valor do ciclo da assinatura.");
+                  setModalRetroativo(null);
+                  return;
+                }
+                mutationPagamento.mutate(modalRetroativo.data);
+              }
+              setModalRetroativo(null);
+            }}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
