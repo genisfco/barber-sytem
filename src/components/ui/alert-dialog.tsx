@@ -33,20 +33,12 @@ const AlertDialogContent = React.forwardRef<
   const [isBlinking, setIsBlinking] = useState(false);
 
   useEffect(() => {
-    // Tocar o som de alerta
-    const audio = new Audio('/sounds/alert.mp3');
-    audio.play().catch(error => {
-      logError(error, 'Erro ao reproduzir som:');
-    });
-
     // Iniciar a animação de piscar
     setIsBlinking(true);
     const timer = setTimeout(() => setIsBlinking(false), 1000);
 
     return () => {
       clearTimeout(timer);
-      audio.pause();
-      audio.currentTime = 0;
     };
   }, []);
 
