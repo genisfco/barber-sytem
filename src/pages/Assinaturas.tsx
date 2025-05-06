@@ -616,6 +616,10 @@ const Assinaturas = () => {
     return new Date().toISOString().slice(0, 10);
   }
 
+  if (isLoading || isLoadingPlanos || isLoadingPagamentos) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /> Carregando...</div>;
+  }
+
   return (
     <div className="p-6 space-y-8">
       {/* Planos de assinatura no topo */}
@@ -885,9 +889,9 @@ const Assinaturas = () => {
               // Novo cálculo do status do pagamento do ciclo
               let statusPagamento = "Sem pagamento";
               let corStatus = "text-muted-foreground";
-              if (pagamentosCicloAtual.length > 0) {
+              if (plano && pagamentosCicloAtual.length > 0) {
                 const somaPagamentosCiclo = pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount), 0);
-                if (somaPagamentosCiclo >= plano.price) {
+                if (somaPagamentosCiclo >= Number(plano.price)) {
                   statusPagamento = "Pago";
                   corStatus = "text-green-600 font-bold";
                 } else if (somaPagamentosCiclo > 0) {
@@ -898,9 +902,6 @@ const Assinaturas = () => {
                   corStatus = "text-muted-foreground";
                 }
               }
-
-              // Valor que falta pagar
-              const valorFaltaPagar = Math.max(0, plano.price - pagamentosCicloAtual.reduce((acc, p) => acc + Number(p.amount), 0));
 
               // Botão de Renovar Assinatura para expirada/cancelada
               const podeRenovar = assinatura.status === 'expirada' || assinatura.status === 'cancelada';
