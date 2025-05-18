@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useBarbers } from "@/hooks/useBarbers";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { horarios } from "@/constants/horarios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,9 +24,9 @@ interface AgendamentoGridProps {
 }
 
 export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGridProps) {
-  const { barbeiros } = useBarbeiros();
+  const { barbers } = useBarbers();
   const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
-  const [selectedBarbeiro, setSelectedBarbeiro] = useState<string | null>(null);
+  const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
@@ -36,7 +36,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const dataFormatada = format(date, "yyyy-MM-dd");
 
   const handleHorarioClick = (barbeiroId: string, horario: string) => {
-    setSelectedBarbeiro(barbeiroId);
+    setSelectedBarber(barbeiroId);
     setSelectedHorario(horario);
     setOpenForm(true);
   };
@@ -185,7 +185,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {barbeiros?.map((barbeiro) => (
+        {barbers?.map((barbeiro) => (
           <Card key={barbeiro.id} className="overflow-hidden bg-white border shadow-sm">
             <CardHeader className="bg-primary text-primary-foreground">
               <div className="flex justify-between items-center">
@@ -239,7 +239,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             open={openForm}
             onOpenChange={setOpenForm}
             horarioInicial={selectedHorario || ""}
-            barbeiroInicial={selectedBarbeiro || ""}
+            barbeiroInicial={selectedBarber || ""}
             dataInicial={date}
           />
         </DialogContent>

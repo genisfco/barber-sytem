@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2, Calendar } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Power, Calendar } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +22,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { useBarbeiros } from "@/hooks/useBarbeiros";
-import type { Barbeiro } from "@/types/barbeiro";
+import { useBarbers } from "@/hooks/useBarbers";
+import { Database } from "@/integrations/supabase/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IndisponivelForm } from "@/components/forms/BarberIndisponivelForm";
+import { Badge } from "@/components/ui/badge";
 
-type BarbeiroFormData = {
+type Barber = Database['public']['Tables']['barbers']['Row'];
+
+type BarberFormData = {
   name: string;
   email: string;
   phone: string;
@@ -37,63 +40,64 @@ type BarbeiroFormData = {
 const Barbeiros = () => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBarbeiro, setSelectedBarbeiro] = useState<Barbeiro | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
-  const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
-  const { register, handleSubmit, reset, setValue } = useForm<BarbeiroFormData>({
+  const [selectedBarberIndisponivel, setSelectedBarberIndisponivel] = useState<{id: string, name: string} | null>(null);
+  const { register, handleSubmit, reset, setValue } = useForm<BarberFormData>({
     defaultValues: {
       commission_rate: 30
     }
   });
-  const { barbeiros, isLoading, createBarbeiro, updateBarbeiro, deleteBarbeiro } = useBarbeiros();
+  const { barbers, isLoading, createBarber, updateBarber, toggleBarberStatus } = useBarbers();
 
-  const onSubmit = async (data: BarbeiroFormData) => {
-    const barbeiroData: Omit<Barbeiro, "id" | "created_at" | "updated_at"> = {
-      ...data,
-      active: true,
-      commission_rate: data.commission_rate || 30,
-    };
-
-    if (selectedBarbeiro) {
-      await updateBarbeiro.mutateAsync({ ...barbeiroData, id: selectedBarbeiro.id });
-    } else {
-      await createBarbeiro.mutateAsync(barbeiroData);
+  const onSubmit = async (data: BarberFormData) => {
+    try {
+      if (selectedBarber) {
+        await updateBarber.mutateAsync({ id: selectedBarber.id, barber: data });
+      } else {
+        await createBarber.mutateAsync(data);
+      }
+      setOpen(false);
+      reset();
+    } catch (error) {
+      // Erro já tratado pelo hook
     }
-    setOpen(false);
-    setSelectedBarbeiro(null);
-    reset();
   };
 
-  const handleEdit = (barbeiro: Barbeiro) => {
-    setSelectedBarbeiro(barbeiro);
-    setValue("name", barbeiro.name);
-    setValue("email", barbeiro.email);
-    setValue("phone", barbeiro.phone);
-    setValue("commission_rate", barbeiro.commission_rate);
+  const handleEdit = (barber: Barber) => {
+    setSelectedBarber(barber);
+    setValue("name", barber.name);
+    setValue("email", barber.email || "");
+    setValue("phone", barber.phone || "");
+    setValue("commission_rate", barber.commission_rate);
     setOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (selectedBarbeiro) {
-      await deleteBarbeiro.mutateAsync(selectedBarbeiro.id);
-      setDeleteDialogOpen(false);
-      setSelectedBarbeiro(null);
+  const handleToggleStatus = async (barber: Barber) => {
+    try {
+      await toggleBarberStatus.mutateAsync({ id: barber.id, active: !barber.active });
+      setStatusDialogOpen(false);
+      setSelectedBarber(null);
+    } catch (error) {
+      // Erro já tratado pelo hook
     }
   };
 
-  const handleOpenDeleteDialog = (barbeiro: Barbeiro) => {
-    setSelectedBarbeiro(barbeiro);
-    setDeleteDialogOpen(true);
+  const handleOpenStatusDialog = (barber: Barber) => {
+    setSelectedBarber(barber);
+    setStatusDialogOpen(true);
   };
 
-  const handleIndisponivelClick = (barbeiroId: string, barbeiroName: string) => {
-    setSelectedBarbeiroIndisponivel({ id: barbeiroId, name: barbeiroName });
+  const handleIndisponivelClick = (barberId: string, barberName: string) => {
+    setSelectedBarberIndisponivel({ id: barberId, name: barberName });
     setOpenIndisponivelForm(true);
   };
 
-  const filteredBarbeiros = barbeiros?.filter((barbeiro) =>
-    barbeiro.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredBarbers = barbers?.filter(barber =>
+    barber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (barber.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (barber.phone || "").includes(searchTerm)
   );
 
   return (
@@ -102,7 +106,7 @@ const Barbeiros = () => {
         <h1 className="text-2xl font-display text-barber-dark">Barbeiros</h1>
         <Dialog open={open} onOpenChange={(newOpen) => {
           if (!newOpen) {
-            setSelectedBarbeiro(null);
+            setSelectedBarber(null);
             reset();
           }
           setOpen(newOpen);
@@ -116,7 +120,7 @@ const Barbeiros = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {selectedBarbeiro ? "Editar Barbeiro" : "Cadastrar Novo Barbeiro"}
+                {selectedBarber ? "Editar Barbeiro" : "Cadastrar Novo Barbeiro"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -163,7 +167,7 @@ const Barbeiros = () => {
                   variant="outline"
                   onClick={() => {
                     setOpen(false);
-                    setSelectedBarbeiro(null);
+                    setSelectedBarber(null);
                     reset();
                   }}
                 >
@@ -172,14 +176,14 @@ const Barbeiros = () => {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={createBarbeiro.isPending || updateBarbeiro.isPending}
+                  disabled={createBarber.isPending || updateBarber.isPending}
                 >
-                  {(createBarbeiro.isPending || updateBarbeiro.isPending) ? (
+                  {(createBarber.isPending || updateBarber.isPending) ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Plus className="mr-2 h-4 w-4" />
                   )}
-                  {selectedBarbeiro ? "Salvar" : "Cadastrar"}
+                  {selectedBarber ? "Salvar" : "Cadastrar"}
                 </Button>
               </div>
             </form>
@@ -202,41 +206,53 @@ const Barbeiros = () => {
           <div className="col-span-full flex justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : filteredBarbeiros?.length === 0 ? (
+        ) : filteredBarbers?.length === 0 ? (
           <div className="col-span-full text-center text-muted-foreground">
             Nenhum barbeiro encontrado
           </div>
         ) : (
-          filteredBarbeiros?.map((barbeiro) => (
-            <Card key={barbeiro.id}>
+          filteredBarbers?.map((barber) => (
+            <Card key={barber.id} className={!barber.active ? "opacity-70" : ""}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg font-medium">
-                  {barbeiro.name}
+                <CardTitle className="text-lg font-medium flex items-center gap-2">
+                  {barber.name}
+                  {!barber.active && (
+                    <Badge variant="destructive">Inativo</Badge>
+                  )}
                 </CardTitle>
                 <div className="flex items-center space-x-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenStatusDialog(barber)}
+                          className={barber.active ? "text-red-500 hover:text-red-700 hover:bg-red-100" : "text-green-500 hover:text-green-700 hover:bg-green-100"}
+                        >
+                          <Power className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {barber.active ? "Desativar barbeiro" : "Reativar barbeiro"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                    onClick={() => handleEdit(barbeiro)}
+                    onClick={() => handleEdit(barber)}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                   >
                     <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
-                    onClick={() => handleOpenDeleteDialog(barbeiro)}
-                  >
-                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="relative">
                 <div className="text-sm text-muted-foreground">
-                  <p>Email: {barbeiro.email}</p>
-                  <p>Telefone: {barbeiro.phone}</p>
-                  <p>Taxa de Comissão: {barbeiro.commission_rate}%</p>
+                  <p>Email: {barber.email}</p>
+                  <p>Telefone: {barber.phone}</p>
+                  <p>Taxa de Comissão: {barber.commission_rate}%</p>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -245,7 +261,7 @@ const Barbeiros = () => {
                         variant="ghost"
                         size="icon"
                         className="absolute bottom-3 right-6"
-                        onClick={() => handleIndisponivelClick(barbeiro.id, barbeiro.name)}
+                        onClick={() => handleIndisponivelClick(barber.id, barber.name)}
                       >
                         <Calendar className="h-8 w-8 text-barber-dark" />
                       </Button>
@@ -260,31 +276,59 @@ const Barbeiros = () => {
           ))
         )}
       </div>
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Barbeiro</AlertDialogTitle>
+            <AlertDialogTitle>
+              {selectedBarber?.active ? "Desativar Barbeiro" : "Reativar Barbeiro"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este barbeiro? Esta ação não pode ser desfeita.
+              {selectedBarber?.active 
+                ? "Tem certeza que deseja desativar este barbeiro? Esta ação pode ser revertida posteriormente."
+                : "Tem certeza que deseja reativar este barbeiro?"
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(selectedBarbeiro?.id || "")}>
-              Excluir
+            <AlertDialogCancel onClick={() => {
+              setStatusDialogOpen(false);
+              setSelectedBarber(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedBarber && handleToggleStatus(selectedBarber)}
+              className={selectedBarber?.active 
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : "bg-green-600 text-white hover:bg-green-700"
+              }
+            >
+              {toggleBarberStatus.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Power className="mr-2 h-4 w-4" />
+              )}
+              {selectedBarber?.active ? "Desativar" : "Reativar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog open={openIndisponivelForm} onOpenChange={setOpenIndisponivelForm}>
+
+      <Dialog open={openIndisponivelForm} onOpenChange={(open) => {
+        setOpenIndisponivelForm(open);
+        if (!open) {
+          setSelectedBarberIndisponivel(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Registrar Indisponibilidade na Agenda</DialogTitle>
           </DialogHeader>
-          {selectedBarbeiroIndisponivel && (
+          {selectedBarberIndisponivel && (
             <IndisponivelForm
-              barbeiroId={selectedBarbeiroIndisponivel.id}
-              barbeiroName={selectedBarbeiroIndisponivel.name}
+              barbeiroId={selectedBarberIndisponivel.id}
+              barbeiroName={selectedBarberIndisponivel.name}
               onOpenChange={setOpenIndisponivelForm}
             />
           )}

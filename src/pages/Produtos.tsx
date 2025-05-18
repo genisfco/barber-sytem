@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2, ShoppingCart } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Power, ShoppingCart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { useForm } from "react-hook-form";
 import { useProdutos } from "@/hooks/useProdutos";
 import type { Produto } from "@/types/produto";
 import { VenderProdutosForm } from "@/components/forms/VenderProdutosForm";
+import { Badge } from "@/components/ui/badge";
 
 type ProdutoFormData = {
   name: string;
@@ -38,9 +39,9 @@ const Produtos = () => {
   const [openVenda, setOpenVenda] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm<ProdutoFormData>();
-  const { produtos, isLoading, createProduto, updateProduto, deleteProduto } = useProdutos();
+  const { produtos, isLoading, createProduto, updateProduto } = useProdutos();
 
   const onSubmit = async (data: ProdutoFormData) => {
     const produtoData: Omit<Produto, "id" | "created_at" | "updated_at"> = {
@@ -67,17 +68,29 @@ const Produtos = () => {
     setOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (selectedProduto) {
-      await deleteProduto.mutateAsync(selectedProduto.id);
-      setDeleteDialogOpen(false);
-      setSelectedProduto(null);
+  const handleToggleActive = async (produto: Produto) => {
+    if (produto.active) {
+      // Se estiver ativo, mostra diálogo de confirmação para desativar
+      setSelectedProduto(produto);
+      setConfirmDialogOpen(true);
+    } else {
+      // Se estiver inativo, ativa diretamente sem confirmação
+      await updateProduto.mutateAsync({
+        id: produto.id,
+        active: true
+      });
     }
   };
 
-  const handleOpenDeleteDialog = (produto: Produto) => {
-    setSelectedProduto(produto);
-    setDeleteDialogOpen(true);
+  const confirmDeactivate = async () => {
+    if (selectedProduto) {
+      await updateProduto.mutateAsync({
+        id: selectedProduto.id,
+        active: false
+      });
+      setConfirmDialogOpen(false);
+      setSelectedProduto(null);
+    }
   };
 
   const filteredProdutos = produtos?.filter((produto) =>
@@ -172,6 +185,18 @@ const Produtos = () => {
               </form>
             </DialogContent>
           </Dialog>
+          <Dialog open={openVenda} onOpenChange={setOpenVenda}>
+            <DialogTrigger asChild>
+              <Button>
+                <ShoppingCart className="mr-2" />
+                Vender Produtos
+              </Button>
+            </DialogTrigger>
+            <VenderProdutosForm 
+              open={openVenda}
+              onOpenChange={setOpenVenda}
+            />
+          </Dialog>
         </div>
       </div>
 
@@ -204,10 +229,15 @@ const Produtos = () => {
               {filteredProdutos?.map((produto) => (
                 <div
                   key={produto.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
+                  className={`flex items-center justify-between p-4 rounded-lg border ${!produto.active ? 'opacity-60' : ''}`}
                 >
                   <div>
-                    <h3 className="font-medium">{produto.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">{produto.name}</h3>
+                      {!produto.active && (
+                        <Badge variant="destructive">Inativo</Badge>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {produto.description}
                     </div>
@@ -219,16 +249,17 @@ const Produtos = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleEdit(produto)}
+                      onClick={() => handleToggleActive(produto)}
+                      title={produto.active ? "Desativar produto" : "Ativar produto"}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Power className={`h-4 w-4 ${produto.active ? 'text-red-500' : 'text-green-500'}`} />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleOpenDeleteDialog(produto)}
+                      onClick={() => handleEdit(produto)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -238,47 +269,34 @@ const Produtos = () => {
         </CardContent>
       </Card>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar desativação</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o produto {selectedProduto?.name}? Esta ação não pode ser desfeita.
+              Tem certeza que deseja desativar o produto {selectedProduto?.name}? Ele não poderá ser selecionado para vendas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
-              setDeleteDialogOpen(false);
+              setConfirmDialogOpen(false);
               setSelectedProduto(null);
             }}>
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => selectedProduto && handleDelete(selectedProduto.id)}
+              onClick={confirmDeactivate}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteProduto.isPending ? (
+              {updateProduto.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Excluir"
+                "Desativar"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={openVenda} onOpenChange={setOpenVenda}>
-        <DialogTrigger asChild>
-          <Button>
-            <ShoppingCart className="mr-2" />
-            Vender Produtos
-          </Button>
-        </DialogTrigger>
-        <VenderProdutosForm 
-          open={openVenda}
-          onOpenChange={setOpenVenda}
-        />
-      </Dialog>
     </div>
   );
 };

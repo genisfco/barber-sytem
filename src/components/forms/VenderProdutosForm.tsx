@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useClientes } from "@/hooks/useClientes";
 import { useTransacoes } from "@/hooks/useTransacoes";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -42,10 +43,12 @@ export function VenderProdutosForm({
   const { produtos, updateProduto } = useProdutos();
   const { clientes } = useClientes();
   const { createTransacao } = useTransacoes();
+  const { selectedBarberShop } = useBarberShopContext();
   const [total, setTotal] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasProdutosSelecionados, setHasProdutosSelecionados] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,6 +66,7 @@ export function VenderProdutosForm({
     }, 0);
 
     setTotal(totalProdutos);
+    setHasProdutosSelecionados(produtosSelecionados.length > 0);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -74,11 +78,14 @@ export function VenderProdutosForm({
         throw new Error("Selecione pelo menos um produto para vender");
       }
 
-      // Validar estoque
+      // Validar estoque e status
       for (const produtoVenda of values.produtos) {
         const produto = produtos?.find(p => p.id === produtoVenda.id);
         if (!produto) {
           throw new Error("Produto não encontrado");
+        }
+        if (!produto.active) {
+          throw new Error(`O produto ${produto.name} está inativo e não pode ser vendido`);
         }
         if (produto.stock < produtoVenda.quantity) {
           throw new Error(`Estoque insuficiente para o produto ${produto.name}`);
@@ -197,13 +204,16 @@ export function VenderProdutosForm({
                             }
                             calcularTotal();
                           }}
-                          disabled={produto.stock === 0}
+                          disabled={produto.stock === 0 || !produto.active}
                         />
                       </FormControl>
-                      <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
+                      <FormLabel className={`font-normal ${(produto.stock === 0 || !produto.active) ? 'text-muted-foreground' : ''}`}>
                         {produto.name} - R$ {produto.price.toFixed(2)}
                         <span className="ml-2 text-sm text-muted-foreground">
                           (Estoque: {produto.stock})
+                          {!produto.active && (
+                            <span className="ml-2 text-destructive">(Inativo)</span>
+                          )}
                         </span>
                       </FormLabel>
                       {field.value?.some(p => p.id === produto.id) && (
@@ -278,11 +288,15 @@ export function VenderProdutosForm({
               onClick={() => {
                 onOpenChange(false);
                 form.reset();
+                setHasProdutosSelecionados(false);
               }}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !hasProdutosSelecionados}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

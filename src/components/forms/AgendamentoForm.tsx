@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useClientes } from "@/hooks/useClientes";
-import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useBarbers } from "@/hooks/useBarbers";
 import { useServicos } from "@/hooks/useServicos";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { FormValues, createFormSchema } from "./agendamento/schema";
@@ -85,7 +85,7 @@ export function AgendamentoForm({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { clientes } = useClientes();
-  const { barbeiros } = useBarbeiros();
+  const { barbers } = useBarbers();
   const { servicos } = useServicos();
 
   const form = useForm<FormValues>({
@@ -167,7 +167,7 @@ export function AgendamentoForm({
       }
 
       const cliente = clientes?.find((c) => c.id === values.clienteId);
-      const barbeiro = barbeiros?.find((b) => b.id === values.barbeiroId);
+      const barbeiro = barbers?.find((b) => b.id === values.barbeiroId);
       const servicosSelecionados = servicos?.filter((s) => values.servicosSelecionados.includes(s.id));
 
       if (!cliente || !barbeiro || !servicosSelecionados?.length) {
@@ -406,7 +406,7 @@ export function AgendamentoForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {barbeiros?.map((barbeiro) => (
+                        {barbers?.map((barbeiro) => (
                           <SelectItem key={barbeiro.id} value={barbeiro.id}>
                             {barbeiro.name}
                           </SelectItem>

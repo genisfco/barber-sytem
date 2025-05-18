@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useBarbers } from "@/hooks/useBarbers";
 
 const formSchema = z.object({
   barbeiroId: z.string({ required_error: "Selecione um barbeiro" }),
@@ -60,7 +60,7 @@ interface ComissoesFormProps {
 }
 
 export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
-  const { barbeiros } = useBarbeiros();
+  const { barbeiros } = useBarbers();
   
   const form = useForm<ComissoesFormValues>({
     resolver: zodResolver(formSchema),

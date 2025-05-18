@@ -2,51 +2,100 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useBarberShopContext } from "./BarberShopContext";
+import { barberShopService } from "../services/barberShopService";
 
 interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  signIn: (params: { email: string; password: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
   signOut: async () => {},
+  signIn: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { setSelectedBarberShop } = useBarberShopContext();
+
+  // Função auxiliar para buscar e setar a barbearia do usuário
+  const setUserBarberShop = async (user: any) => {
+    let barberShopId = user?.user_metadata?.barberShopId;
+    
+    if (!barberShopId && user?.id) {
+      try {
+        const allShops = await barberShopService.getAllBarberShops();
+        const found = allShops.find((shop) => shop['admin_id'] === user.id);
+        if (found) barberShopId = found.id;
+      } catch (e) {}
+    }
+    
+    if (barberShopId) {
+      try {
+        const barberShop = await barberShopService.getBarberShopById(barberShopId);
+        setSelectedBarberShop(barberShop);
+      } catch (e) {
+        setSelectedBarberShop(null);
+        navigate("/cadastro-barbearia");
+      }
+    } else {
+      setSelectedBarberShop(null);
+      navigate("/cadastro-barbearia");
+    }
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setSelectedBarberShop(null);
     navigate("/auth");
   };
 
+  const signIn = async ({ email, password }: { email: string; password: string }) => {
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("Retorno do Supabase:", { error, data });
+    if (error) throw error;
+    if (!data.session) {
+      throw new Error("Email ou senha incorretos.");
+    }
+    await setUserBarberShop(data.session.user);
+    navigate("/");
+  };
+
   useEffect(() => {
-    // Fetch initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setIsLoading(false);
+      if (session) {
+        await setUserBarberShop(session.user);
+      } else {
+        setSelectedBarberShop(null);
+      }
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (!session) {
-        navigate("/auth");
+        setSelectedBarberShop(null);
+        if (window.location.pathname !== '/cadastro-barbearia') {
+          navigate("/auth");
+        }
+      } else {
+        await setUserBarberShop(session.user);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, setSelectedBarberShop]);
 
   return (
-    <AuthContext.Provider value={{ session, isLoading, signOut }}>
+    <AuthContext.Provider value={{ session, isLoading, signOut, signIn }}>
       {children}
     </AuthContext.Provider>
   );

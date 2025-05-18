@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Power } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,27 +24,23 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { useServicos } from "@/hooks/useServicos";
 import type { Servico } from "@/types/servico";
+import { Badge } from "@/components/ui/badge";
 
-type ServicoFormData = Omit<Servico, "id" | "created_at" | "updated_at"> & {
-  created_at?: string;
-  updated_at?: string;
-};
+type ServicoFormData = Omit<Servico, "id" | "created_at" | "updated_at" | "active" | "barber_shop_id">;
 
 const Servicos = () => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm<ServicoFormData>();
-  const { servicos, isLoading, createServico, updateServico, deleteServico } = useServicos();
+  const { servicos, isLoading, createServico, updateServico } = useServicos();
 
   const onSubmit = async (data: ServicoFormData) => {
     if (selectedServico) {
       await updateServico.mutateAsync({
         ...data,
         id: selectedServico.id,
-        created_at: selectedServico.created_at,
-        updated_at: new Date().toISOString()
       });
     } else {
       await createServico.mutateAsync(data);
@@ -62,15 +58,29 @@ const Servicos = () => {
     setOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteServico.mutateAsync(id);
-    setDeleteDialogOpen(false);
-    setSelectedServico(null);
+  const handleToggleActive = async (servico: Servico) => {
+    if (servico.active) {
+      // Se estiver ativo, mostra diálogo de confirmação para desativar
+      setSelectedServico(servico);
+      setConfirmDialogOpen(true);
+    } else {
+      // Se estiver inativo, ativa diretamente sem confirmação
+      await updateServico.mutateAsync({
+        id: servico.id,
+        active: true
+      });
+    }
   };
 
-  const handleOpenDeleteDialog = (servico: Servico) => {
-    setSelectedServico(servico);
-    setDeleteDialogOpen(true);
+  const confirmDeactivate = async () => {
+    if (selectedServico) {
+      await updateServico.mutateAsync({
+        id: selectedServico.id,
+        active: false
+      });
+      setConfirmDialogOpen(false);
+      setSelectedServico(null);
+    }
   };
 
   const filteredServicos = servicos?.filter((servico) =>
@@ -192,10 +202,15 @@ const Servicos = () => {
               {filteredServicos?.map((servico) => (
                 <div
                   key={servico.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
+                  className={`flex items-center justify-between p-4 rounded-lg border ${!servico.active ? 'opacity-60' : ''}`}
                 >
                   <div>
-                    <h3 className="font-medium">{servico.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">{servico.name}</h3>
+                      {!servico.active && (
+                        <Badge variant="destructive">Inativo</Badge>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       R$ {servico.price.toFixed(2)} • {servico.duration} minutos
                     </div>
@@ -204,16 +219,17 @@ const Servicos = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleEdit(servico)}
+                      onClick={() => handleToggleActive(servico)}
+                      title={servico.active ? "Desativar serviço" : "Ativar serviço"}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Power className={`h-4 w-4 ${servico.active ? 'text-red-500' : 'text-green-500'}`} />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleOpenDeleteDialog(servico)}
+                      onClick={() => handleEdit(servico)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -223,29 +239,29 @@ const Servicos = () => {
         </CardContent>
       </Card>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar desativação</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o serviço {selectedServico?.name}? Esta ação não pode ser desfeita.
+              Tem certeza que deseja desativar o serviço {selectedServico?.name}? Ele não poderá ser selecionado para novos agendamentos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
-              setDeleteDialogOpen(false);
+              setConfirmDialogOpen(false);
               setSelectedServico(null);
             }}>
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => selectedServico && handleDelete(selectedServico.id)}
+              onClick={confirmDeactivate}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteServico.isPending ? (
+              {updateServico.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Excluir"
+                "Desativar"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

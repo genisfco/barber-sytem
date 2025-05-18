@@ -3,20 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
 import { logError } from "@/utils/logger";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type Cliente = Database['public']['Tables']['clients']['Row'];
 
 export function useClientes() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { selectedBarberShop } = useBarberShopContext();
 
   const { data: clientes, isLoading } = useQuery({
-    queryKey: ['clientes'],
+    queryKey: ['clientes', selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('active', true)
+        .eq('barber_shop_id', selectedBarberShop.id)
         .order('name');
 
       if (error) {
@@ -25,14 +31,23 @@ export function useClientes() {
       }
 
       return data as Cliente[];
-    }
+    },
+    enabled: !!selectedBarberShop
   });
 
   const createCliente = useMutation({
-    mutationFn: async (cliente: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (cliente: Omit<Cliente, 'id' | 'created_at' | 'updated_at' | 'barber_shop_id' | 'active'>) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { data, error } = await supabase
         .from('clients')
-        .insert(cliente)
+        .insert({
+          ...cliente,
+          barber_shop_id: selectedBarberShop.id,
+          active: true
+        })
         .select()
         .single();
 
@@ -40,7 +55,7 @@ export function useClientes() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes', selectedBarberShop?.id] });
       toast({
         title: "Cliente criado com sucesso!",
         description: "O cliente foi adicionado ao sistema.",
@@ -57,10 +72,18 @@ export function useClientes() {
 
   const updateCliente = useMutation({
     mutationFn: async (cliente: Partial<Cliente> & { id: string }) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { data, error } = await supabase
         .from('clients')
-        .update(cliente)
+        .update({
+          ...cliente,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', cliente.id)
+        .eq('barber_shop_id', selectedBarberShop.id)
         .select()
         .single();
 
@@ -68,7 +91,7 @@ export function useClientes() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes', selectedBarberShop?.id] });
       toast({
         title: "Cliente atualizado com sucesso!",
         description: "As informações do cliente foram atualizadas.",
@@ -83,27 +106,37 @@ export function useClientes() {
     },
   });
 
-  const deleteCliente = useMutation({
-    mutationFn: async (id: string) => {
+  const toggleClienteStatus = useMutation({
+    mutationFn: async (cliente: { id: string; active: boolean }) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { error } = await supabase
         .from('clients')
-        .update({ active: false })
-        .eq('id', id);
+        .update({ 
+          active: cliente.active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cliente.id)
+        .eq('barber_shop_id', selectedBarberShop.id);
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['clientes', selectedBarberShop?.id] });
       toast({
-        title: "Cliente desativado com sucesso!",
-        description: "O cliente foi marcado como inativo no sistema.",
+        title: variables.active ? "Cliente ativado com sucesso!" : "Cliente desativado com sucesso!",
+        description: variables.active 
+          ? "O cliente foi reativado no sistema."
+          : "O cliente foi marcado como inativo no sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao desativar cliente",
-        description: error.message || "Ocorreu um erro ao tentar desativar o cliente. Tente novamente.",
+        title: "Erro ao alterar status do cliente",
+        description: error.message || "Ocorreu um erro ao tentar alterar o status do cliente. Tente novamente.",
       });
     },
   });
@@ -113,17 +146,24 @@ export function useClientes() {
     isLoading,
     createCliente,
     updateCliente,
-    deleteCliente,
+    toggleClienteStatus,
   };
 }
 
 export function useClientesAssinantesCount() {
+  const { selectedBarberShop } = useBarberShopContext();
+
   return useQuery({
-    queryKey: ["clientes-assinantes-count"],
+    queryKey: ["clientes-assinantes-count", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       // Ajustar para buscar assinantes de outra fonte futuramente
       // Por ora, retorna 0
       return 0;
     },
+    enabled: !!selectedBarberShop
   });
 }

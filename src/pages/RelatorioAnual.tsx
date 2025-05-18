@@ -15,6 +15,12 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DetalhesDialog } from "@/components/financeiro/DetalhesDialog";
 
+type DadosCategoria = {
+  valor: number;
+  quantidade: number;
+  metodosPagamento: Record<string, { valor: number; quantidade: number }>;
+};
+
 const RelatorioAnual = () => {
   const [ano, setAno] = useState<string>("");
   const { getRelatorioAnual } = useRelatorios();
@@ -35,7 +41,7 @@ const RelatorioAnual = () => {
     });
   };
 
-  const agruparPorCategoria = (transacoes: any[], tipo: 'receita' | 'despesa') => {
+  const agruparPorCategoria = (transacoes: any[], tipo: 'receita' | 'despesa'): Record<string, DadosCategoria> => {
     return transacoes
       .filter(t => t.type === tipo)
       .reduce((acc, curr) => {
@@ -63,11 +69,7 @@ const RelatorioAnual = () => {
         acc[categoria].metodosPagamento[metodoPagamento].quantidade += 1;
 
         return acc;
-      }, {} as Record<string, { 
-        valor: number, 
-        quantidade: number,
-        metodosPagamento: Record<string, { valor: number, quantidade: number }>
-      }>);
+      }, {} as Record<string, DadosCategoria>);
   };
 
   const formatarCategoria = (categoria: string) => {

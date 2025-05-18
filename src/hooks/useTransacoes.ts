@@ -2,9 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 export type Transacao = {
   id: string;
+  barber_shop_id: string;
   appointment_id?: string;
   type: "receita" | "despesa";
   value: number;
@@ -20,13 +22,19 @@ export type Transacao = {
 export function useTransacoes() {
   const queryClient = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
+  const { selectedBarberShop } = useBarberShopContext();
 
   const { data: transacoes, isLoading } = useQuery({
-    queryKey: ["transacoes"],
+    queryKey: ["transacoes", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
+        .eq("barber_shop_id", selectedBarberShop.id)
         .order("payment_date", { ascending: false });
 
       if (error) {
@@ -36,14 +44,20 @@ export function useTransacoes() {
 
       return data as Transacao[];
     },
+    enabled: !!selectedBarberShop
   });
 
   const { data: transacoesHoje } = useQuery({
-    queryKey: ["transacoes-hoje"],
+    queryKey: ["transacoes-hoje", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
+        .eq("barber_shop_id", selectedBarberShop.id)
         .gte("payment_date", `${today}`)
         .lte("payment_date", `${today}`);
 
@@ -54,10 +68,15 @@ export function useTransacoes() {
 
       return data as Transacao[];
     },
+    enabled: !!selectedBarberShop
   });
 
   const createTransacao = useMutation({
-    mutationFn: async (transacao: Omit<Transacao, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (transacao: Omit<Transacao, "id" | "created_at" | "updated_at" | "barber_shop_id">) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       // Validar o tipo da transação
       if (transacao.type !== "receita" && transacao.type !== "despesa") {
         throw new Error(`Tipo de transação inválido: ${transacao.type}`);
@@ -75,7 +94,10 @@ export function useTransacoes() {
 
       const { data, error } = await supabase
         .from("transactions")
-        .insert(transacao)
+        .insert({
+          ...transacao,
+          barber_shop_id: selectedBarberShop.id
+        })
         .select()
         .single();
 
@@ -89,8 +111,8 @@ export function useTransacoes() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
-      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
     },
     onError: (error: Error) => {
       toast.error(`Erro ao criar transação: ${error.message}`);
@@ -99,6 +121,10 @@ export function useTransacoes() {
 
   const updateTransacao = useMutation({
     mutationFn: async (transacao: Partial<Transacao> & { id: string }) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       // Validar o tipo da transação se estiver sendo alterado
       if (transacao.type && transacao.type !== "receita" && transacao.type !== "despesa") {
         throw new Error(`Tipo de transação inválido: ${transacao.type}`);
@@ -121,6 +147,7 @@ export function useTransacoes() {
           updated_at: new Date().toISOString()
         })
         .eq("id", transacao.id)
+        .eq("barber_shop_id", selectedBarberShop.id)
         .select()
         .single();
 
@@ -140,8 +167,8 @@ export function useTransacoes() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
-      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
       toast.success("Transação atualizada com sucesso");
     },
     onError: (error: Error) => {
@@ -151,27 +178,36 @@ export function useTransacoes() {
 
   const deleteTransacao = useMutation({
     mutationFn: async (id: string) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       // Buscar a transação para saber se é de assinatura
       const { data: transacao } = await supabase
         .from('transactions')
         .select('*')
         .eq('id', id)
+        .eq('barber_shop_id', selectedBarberShop.id)
         .single();
+
       // Se for de assinatura, exclua o pagamento vinculado
       if (transacao?.category === 'assinaturas') {
         await supabase.from('subscription_payments').delete().eq('transaction_id', id);
       }
+
       const { error } = await supabase
         .from("transactions")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("barber_shop_id", selectedBarberShop.id);
+
       if (error) {
         throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
-      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
       toast.success("Transação excluída com sucesso");
     },
     onError: (error: Error) => {

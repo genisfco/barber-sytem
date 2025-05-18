@@ -1,5 +1,13 @@
+import { DayOfWeek } from '../types/barberShop';
+
+export interface HorarioFuncionamento {
+  dia: DayOfWeek;
+  horarios: string[];
+  ativo: boolean;
+}
+
+// Lista de todos os horários possíveis (30 em 30 minutos)
 export const horarios = [
-  
   "08:00",
   "08:30",
   "09:00",
@@ -32,5 +40,27 @@ export const horarios = [
   "22:30",
   "23:00",
   "23:30",
-    
 ] as const;
+
+// Função auxiliar para gerar horários entre dois horários
+export function gerarHorariosEntre(inicio: string, fim: string): string[] {
+  const horariosDisponiveis = horarios.filter(horario => 
+    horario >= inicio && horario <= fim
+  );
+  return horariosDisponiveis;
+}
+
+// Função para verificar se um horário está dentro do período de funcionamento
+export function verificarHorarioFuncionamento(
+  horario: string,
+  horariosFuncionamento: HorarioFuncionamento[]
+): boolean {
+  const diaAtual = new Date().getDay() as DayOfWeek;
+  const configuracaoDia = horariosFuncionamento.find(h => h.dia === diaAtual);
+  
+  if (!configuracaoDia || !configuracaoDia.ativo) {
+    return false;
+  }
+
+  return configuracaoDia.horarios.includes(horario);
+}

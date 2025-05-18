@@ -1,19 +1,24 @@
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BarberShopSelector } from '../BarberShopSelector';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 export function Header() {
+  const { signOut } = useAuth();
+
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-between px-6">
-      <div>
-        <h1 className="text-2xl font-display text-barber-dark">Dashboard</h1>
-      </div>
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
+    <header className="border-b">
+      <div className="flex h-16 items-center px-4 gap-4">
+        <div className="flex-1" />
+        <BarberShopSelector />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={signOut}
+          className="ml-auto"
+        >
+          <LogOut className="h-5 w-5" />
         </Button>
-        <div className="h-8 w-8 rounded-full bg-barber-brown text-white flex items-center justify-center font-medium">
-          A
-        </div>
       </div>
     </header>
   );

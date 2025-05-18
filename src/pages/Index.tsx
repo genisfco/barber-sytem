@@ -3,7 +3,7 @@ import { Calendar, DollarSign, Users, Clock, Scissors, Check, X, Pencil } from "
 import { cn } from "@/lib/utils";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useTransacoes } from "@/hooks/useTransacoes";
-import { useBarbeiros } from "@/hooks/useBarbeiros";
+import { useBarbers } from "@/hooks/useBarbers";
 import { useServicos } from "@/hooks/useServicos";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,7 +20,7 @@ const Index = () => {
   const today = new Date();
   const { agendamentos, updateAgendamento, updateAgendamentosRelacionados } = useAgendamentos(today);
   const { totais } = useTransacoes();
-  const { barbeiros } = useBarbeiros();
+  const { barbers } = useBarbers();
   const { servicos } = useServicos();
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>();
@@ -434,7 +434,7 @@ const Index = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {barbeiros?.map((barbeiro) => {
+            {barbers?.map((barbeiro) => {
               const status = getBarbeiroStatus(barbeiro.id);
               return (
                 <div key={barbeiro.id} className="flex items-center justify-between p-4 bg-background/50 rounded-lg">

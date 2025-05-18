@@ -1,16 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Pencil, Trash2, Eye, Edit, XCircle, PauseCircle } from "lucide-react";
+import { Loader2, Pencil, Trash2, Eye, Edit, XCircle, PauseCircle, Plus, Power } from "lucide-react";
 import type { Subscription } from "@/types/subscription";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
+import { atualizarStatusAssinatura, renovarCiclosAssinaturas } from "@/lib/subscriptionStatusManager";
+import { toast } from "sonner";
+import { addMonths, parseISO, format, subDays, isAfter } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useClientes } from "@/hooks/useClientes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,25 +25,49 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
-import { addMonths, parseISO, format, subDays, isAfter } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useClientes } from "@/hooks/useClientes";
-import { atualizarStatusAssinatura, renovarCiclosAssinaturas } from "@/lib/subscriptionStatusManager";
-import { toast } from "sonner";
 
 interface SubscriptionWithDetails extends Subscription {
   client_name?: string;
   plan_name?: string;
 }
 
+interface PlanoType {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration_months: number;
+  active: boolean;
+  barber_shop_id: string;
+}
+
 const Assinaturas = () => {
+  const { selectedBarberShop } = useBarberShopContext();
+  const queryClient = useQueryClient();
+  const [openSubscription, setOpenSubscription] = useState(false);
+  const [openPlano, setOpenPlano] = useState(false);
+  const [editingPlano, setEditingPlano] = useState<PlanoType | null>(null);
+  const [deletingPlano, setDeletingPlano] = useState<PlanoType | null>(null);
+  const [confirmDesativarPlano, setConfirmDesativarPlano] = useState<PlanoType | null>(null);
+
   const { data: assinaturas, isLoading } = useQuery<SubscriptionWithDetails[]>({
-    queryKey: ["assinaturas"],
+    queryKey: ["assinaturas", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
       // Busca assinaturas com detalhes do cliente e do plano
       const { data, error } = await supabase
         .from("client_subscriptions")
-        .select(`*, clients(name), subscription_plans(name)`) // join
+        .select(`
+          *,
+          clients(name),
+          subscription_plans!inner(
+            name,
+            barber_shop_id
+          )
+        `) // join
+        .eq('subscription_plans.barber_shop_id', selectedBarberShop.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       // Ajusta para facilitar o uso no front
@@ -49,20 +77,26 @@ const Assinaturas = () => {
         plan_name: row.subscription_plans?.name,
       }));
     },
+    enabled: !!selectedBarberShop
   });
 
   // Buscar clientes ativos
   const { data: clientes, isLoading: isLoadingClientes } = useQuery<any[]>({
-    queryKey: ["clientes-ativos"],
+    queryKey: ["clientes-ativos", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
       const { data, error } = await supabase
         .from("clients")
         .select("id, name")
         .eq("active", true)
+        .eq("barber_shop_id", selectedBarberShop.id)
         .order("name");
       if (error) throw error;
       return data || [];
     },
+    enabled: !!selectedBarberShop
   });
 
   // Buscar planos ativos (já existe, mas vamos buscar todos para exibir no topo)
@@ -72,28 +106,47 @@ const Assinaturas = () => {
       const { data, error } = await supabase
         .from("subscription_plans")
         .select("*")
+        .eq('barber_shop_id', selectedBarberShop?.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
+    enabled: !!selectedBarberShop
   });
 
   // Buscar pagamentos das assinaturas
   const { data: pagamentos, isLoading: isLoadingPagamentos } = useQuery<any[]>({
-    queryKey: ["pagamentos-assinaturas"],
+    queryKey: ["pagamentos-assinaturas", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
       const { data, error } = await supabase
         .from("subscription_payments")
-        .select("id, client_subscription_id, status, payment_date, amount, payment_method, cycle_start_date, cycle_end_date")
+        .select(`
+          id,
+          client_subscription_id,
+          status,
+          payment_date,
+          amount,
+          payment_method,
+          cycle_start_date,
+          cycle_end_date,
+          client_subscriptions!inner(
+            subscription_plans!inner(
+              barber_shop_id
+            )
+          )
+        `)
+        .eq('client_subscriptions.subscription_plans.barber_shop_id', selectedBarberShop.id)
         .order("payment_date", { ascending: false });
       if (error) throw error;
       return data || [];
     },
+    enabled: !!selectedBarberShop
   });
 
-  const [open, setOpen] = useState(false);
-
-  // Formulário
+  // Formulário principal
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm({
     defaultValues: {
       client_id: "",
@@ -101,6 +154,17 @@ const Assinaturas = () => {
       start_date: new Date().toISOString().slice(0, 10),
       end_date: "",
       status: "ativa"
+    }
+  });
+
+  // Formulário do plano
+  const { register: registerPlano, handleSubmit: handleSubmitPlano, reset: resetPlano, setValue: setValuePlano, formState: { isSubmitting: isSubmittingPlano } } = useForm({
+    defaultValues: {
+      name: "",
+      description: "",
+      price: "",
+      duration_months: "1",
+      active: true
     }
   });
 
@@ -117,7 +181,6 @@ const Assinaturas = () => {
     }
   }, [selectedPlanId, startDate, planos, setValue]);
 
-  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const { data: assinaturaCriada, error } = await supabase
@@ -136,7 +199,7 @@ const Assinaturas = () => {
     },
     onSuccess: (assinaturaCriada) => {
       queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
-      setOpen(false);
+      setOpenSubscription(false);
       reset();
       // Buscar valor padrão do plano
       const plano = planos?.find((p) => p.id === assinaturaCriada.subscription_plan_id);
@@ -152,19 +215,12 @@ const Assinaturas = () => {
     mutation.mutate(data);
   }
 
-  // Modal e formulário para novo plano
-  const [openPlano, setOpenPlano] = useState(false);
-  const { register: registerPlano, handleSubmit: handleSubmitPlano, reset: resetPlano, formState: { isSubmitting: isSubmittingPlano } } = useForm({
-    defaultValues: {
-      name: "",
-      description: "",
-      price: "",
-      duration_months: "1",
-      active: true
-    }
-  });
   const mutationPlano = useMutation({
     mutationFn: async (data: any) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { error } = await supabase
         .from("subscription_plans")
         .insert({
@@ -172,7 +228,8 @@ const Assinaturas = () => {
           description: data.description,
           price: Number(data.price),
           duration_months: Number(data.duration_months),
-          active: data.active
+          active: data.active,
+          barber_shop_id: selectedBarberShop.id
         });
       if (error) throw error;
     },
@@ -187,26 +244,12 @@ const Assinaturas = () => {
     mutationPlano.mutate(data);
   }
 
-  // Estado para edição de plano
-  const [editingPlano, setEditingPlano] = useState<any | null>(null);
-  // Estado para exclusão
-  const [deletingPlano, setDeletingPlano] = useState<any | null>(null);
-
-  // Edição de plano
-  useEffect(() => {
-    if (editingPlano) {
-      resetPlano({
-        name: editingPlano.name,
-        description: editingPlano.description,
-        price: editingPlano.price,
-        duration_months: editingPlano.duration_months,
-        active: editingPlano.active
-      });
-    }
-  }, [editingPlano, resetPlano]);
-
   const mutationEditPlano = useMutation({
     mutationFn: async (data: any) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { error } = await supabase
         .from("subscription_plans")
         .update({
@@ -216,7 +259,8 @@ const Assinaturas = () => {
           duration_months: Number(data.duration_months),
           active: data.active
         })
-        .eq("id", editingPlano.id);
+        .eq("id", editingPlano?.id)
+        .eq("barber_shop_id", selectedBarberShop.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -231,13 +275,17 @@ const Assinaturas = () => {
     mutationEditPlano.mutate(data);
   }
 
-  // Exclusão (soft delete)
   const mutationDeletePlano = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (plano: PlanoType) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       const { error } = await supabase
         .from("subscription_plans")
         .update({ active: false })
-        .eq("id", id);
+        .eq("id", plano.id)
+        .eq("barber_shop_id", selectedBarberShop.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -256,7 +304,7 @@ const Assinaturas = () => {
   const { register: registerPagamento, handleSubmit: handleSubmitPagamento, reset: resetPagamento, setValue: setValuePagamento, formState: { isSubmitting: isSubmittingPagamento } } = useForm({
     defaultValues: {
       client_subscription_id: "",
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: getHojeISO(),
       amount: "",
       status: "pago",
       payment_method: ""
@@ -268,6 +316,10 @@ const Assinaturas = () => {
 
   const mutationPagamento = useMutation({
     mutationFn: async (data: any) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       // 1. Registrar o pagamento sempre como 'pendente' (exceto se for 'falhou')
       const statusPagamento = data.status === 'falhou' ? 'falhou' : 'pendente';
       const assinatura = assinaturas?.find(a => a.id === data.client_subscription_id);
@@ -301,7 +353,8 @@ const Assinaturas = () => {
         description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
         payment_method: data.payment_method,
         category: "assinaturas",
-        payment_date: data.payment_date
+        payment_date: data.payment_date,
+        barber_shop_id: selectedBarberShop.id
       }).select().single();
       if (errorTransacao) throw errorTransacao;
       // Atualizar o pagamento com o id da transação
@@ -316,16 +369,18 @@ const Assinaturas = () => {
         .from("subscription_payments")
         .select("*")
         .eq("client_subscription_id", data.client_subscription_id);
-      if (assinaturaAtualizada && planoAtualizado && pagamentosAtualizados) {
-        await atualizarStatusAssinatura(assinaturaAtualizada, pagamentosAtualizados, planoAtualizado);
+      if (assinaturaAtualizada && planoAtualizado && pagamentosAtualizados && selectedBarberShop) {
+        await atualizarStatusAssinatura(assinaturaAtualizada, pagamentosAtualizados, planoAtualizado, selectedBarberShop.id);
       }
     },
     onSuccess: () => {
       setOpenPagamento(false);
       setAssinaturaParaPagamento(null);
       resetPagamento();
-      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
-      queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
+      queryClient.invalidateQueries({ queryKey: ["assinaturas", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
     }
   });
 
@@ -389,6 +444,10 @@ const Assinaturas = () => {
   // Mutation para editar pagamento
   const mutationEditarPagamento = useMutation({
     mutationFn: async (data: any) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
       // Buscar o pagamento antes da edição
       const { data: pagamentoAntes } = await supabase
         .from("subscription_payments")
@@ -421,7 +480,8 @@ const Assinaturas = () => {
             description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
             payment_date: data.payment_date
           })
-          .eq("id", pagamentoAntes.transaction_id);
+          .eq("id", pagamentoAntes.transaction_id)
+          .eq("barber_shop_id", selectedBarberShop.id);
       }
 
       // Se status foi alterado para 'pago' e não existe transaction_id, criar lançamento financeiro
@@ -435,7 +495,8 @@ const Assinaturas = () => {
           description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
           payment_method: data.payment_method,
           category: "assinaturas",
-          payment_date: data.payment_date
+          payment_date: data.payment_date,
+          barber_shop_id: selectedBarberShop.id
         }).select().single();
         if (errorTransacao) throw errorTransacao;
         if (transacaoCriada) {
@@ -450,14 +511,15 @@ const Assinaturas = () => {
         .from("subscription_payments")
         .select("*")
         .eq("client_subscription_id", data.client_subscription_id);
-      if (assinaturaAtualizada && planoAtualizado && pagamentosAtualizados) {
-        await atualizarStatusAssinatura(assinaturaAtualizada, pagamentosAtualizados, planoAtualizado);
+      if (assinaturaAtualizada && planoAtualizado && pagamentosAtualizados && selectedBarberShop) {
+        await atualizarStatusAssinatura(assinaturaAtualizada, pagamentosAtualizados, planoAtualizado, selectedBarberShop.id);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
-      queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
-      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["assinaturas", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
     }
   });
 
@@ -489,8 +551,8 @@ const Assinaturas = () => {
         .from("subscription_payments")
         .select("*")
         .eq("client_subscription_id", data.client_subscription_id);
-      if (assinaturaAtualizada && planoAtualizado && pagamentosAtualizados) {
-        await atualizarStatusAssinatura(assinaturaAtualizada, pagamentosAtualizados, planoAtualizado);
+      if (assinaturaAtualizada && planoAtualizado && pagamentosAtualizados && selectedBarberShop) {
+        await atualizarStatusAssinatura(assinaturaAtualizada, pagamentosAtualizados, planoAtualizado, selectedBarberShop.id);
       }
     },
     onSuccess: () => {
@@ -507,10 +569,27 @@ const Assinaturas = () => {
 
   // Função para atualizar status manualmente
   async function atualizarStatusManual(assinaturaId: string, status: string) {
+    if (!selectedBarberShop) {
+      toast.error("Barbearia não selecionada");
+      return;
+    }
     setLoadingStatus(assinaturaId + status);
+    // Primeiro, verificar se a assinatura pertence à barbearia
+    const { data: assinatura } = await supabase
+      .from('client_subscriptions')
+      .select('*, subscription_plans!inner(barber_shop_id)')
+      .eq('id', assinaturaId)
+      .single();
+
+    if (!assinatura || assinatura.subscription_plans.barber_shop_id !== selectedBarberShop.id) {
+      toast.error("Assinatura não encontrada ou não pertence a esta barbearia");
+      setLoadingStatus(null);
+      return;
+    }
+
     await supabase.from('client_subscriptions').update({ status }).eq('id', assinaturaId);
     setLoadingStatus(null);
-    queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    queryClient.invalidateQueries({ queryKey: ["assinaturas", selectedBarberShop?.id] });
   }
 
   // Estado para controlar o pagamento a ser removido
@@ -519,24 +598,24 @@ const Assinaturas = () => {
   // Atualizar status de todas as assinaturas ao carregar a tela
   useEffect(() => {
     async function atualizarTodosStatus() {
-      if (!assinaturas || !planos) return;
+      if (!assinaturas || !planos || !selectedBarberShop) return;
       // 1. Atualizar status de todas as assinaturas
       for (const assinatura of assinaturas) {
         const plano = planos.find(p => p.id === assinatura.subscription_plan_id);
         if (plano) {
           const pagamentosAssinatura = pagamentos?.filter(p => p.client_subscription_id === assinatura.id) || [];
-          await atualizarStatusAssinatura(assinatura, pagamentosAssinatura, plano);
+          await atualizarStatusAssinatura(assinatura, pagamentosAssinatura, plano, selectedBarberShop.id);
         }
       }
       // 2. Só depois, renovar ciclos das assinaturas
-      await renovarCiclosAssinaturas();
-      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+      await renovarCiclosAssinaturas(selectedBarberShop.id);
+      queryClient.invalidateQueries({ queryKey: ["assinaturas", selectedBarberShop.id] });
     }
     if (assinaturas && planos) {
       atualizarTodosStatus();
     }
     // eslint-disable-next-line
-  }, [assinaturas, planos]);
+  }, [assinaturas, planos, selectedBarberShop]);
 
   const [modalRenovar, setModalRenovar] = useState<{ assinatura: any | null }>({ assinatura: null });
   const [renovarCobranca, setRenovarCobranca] = useState<'cobrar' | 'perdoar' | null>(null);
@@ -579,6 +658,11 @@ const Assinaturas = () => {
 
   // Função para renovar assinatura (cobrar dívida)
   async function handleRenovarCobrarPagamento(pagamentoData) {
+    if (!selectedBarberShop) {
+      toast.error("Barbearia não selecionada");
+      return;
+    }
+
     const assinatura = modalRenovar.assinatura;
     if (!assinatura) return;
     const plano = planos?.find(p => p.id === assinatura.subscription_plan_id);
@@ -612,7 +696,8 @@ const Assinaturas = () => {
       description: `Pagamento de Pendência de Assinatura - ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
       payment_method: pagamentoData.payment_method,
       category: "assinaturas",
-      payment_date: pagamentoData.payment_date
+      payment_date: pagamentoData.payment_date,
+      barber_shop_id: selectedBarberShop.id
     }).select().single();
     if (errorTransacao) {
       toast.error("Erro ao lançar transação financeira");
@@ -631,21 +716,52 @@ const Assinaturas = () => {
     setModalRenovar({ assinatura: null });
     setRenovarCobranca(null);
     toast.success("Assinatura renovada e pendência quitada!");
-    queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
-    queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas"] });
-    queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+    queryClient.invalidateQueries({ queryKey: ["assinaturas", selectedBarberShop?.id] });
+    queryClient.invalidateQueries({ queryKey: ["pagamentos-assinaturas", selectedBarberShop?.id] });
+    queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
+    queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
   }
 
   // Utilitário para obter data de hoje no formato yyyy-MM-dd
   function getHojeISO() {
-    return new Date().toISOString().slice(0, 10);
+    const hoje = new Date();
+    return hoje.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
   }
 
   // Estado para controlar o modal de confirmação de status
   const [confirmarStatus, setConfirmarStatus] = useState<{ id: string, status: 'suspensa' | 'cancelada' | 'ativa' | null } | null>(null);
 
+  const handleOpenPlanoDialog = (plano?: PlanoType) => {
+    setEditingPlano(plano || null);
+    setOpenPlano(true);
+  };
+
+  const handleClosePlanoDialog = () => {
+    setOpenPlano(false);
+    setEditingPlano(null);
+    resetPlano();
+  };
+
+  // Efeito para preencher o formulário quando um plano é selecionado para edição
+  useEffect(() => {
+    if (editingPlano) {
+      setValuePlano("name", editingPlano.name);
+      setValuePlano("description", editingPlano.description || "");
+      setValuePlano("price", editingPlano.price.toString());
+      setValuePlano("duration_months", editingPlano.duration_months.toString());
+      setValuePlano("active", editingPlano.active);
+    } else {
+      resetPlano();
+    }
+  }, [editingPlano, setValuePlano, resetPlano]);
+
+  // Renderização condicional para loading
   if (isLoading || isLoadingPlanos || isLoadingPagamentos) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /> Carregando...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" /> Carregando...
+      </div>
+    );
   }
 
   return (
@@ -784,29 +900,14 @@ const Assinaturas = () => {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {/* Botão para ativar plano se estiver inativo */}
-                    {plano.active === false && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={async () => {
-                          await supabase.from('subscription_plans').update({ active: true }).eq('id', plano.id);
-                          refetchPlanos();
-                        }}
-                        className="text-green-600 hover:text-green-700 hover:bg-green-100"
-                        title="Ativar Plano"
-                      >
-                        <span className="sr-only">Ativar Plano</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      </Button>
-                    )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDeletingPlano(plano)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                      onClick={() => setConfirmDesativarPlano(plano)}
+                      className={plano.active ? "text-red-500 hover:text-red-700 hover:bg-red-100" : "text-green-500 hover:text-green-700 hover:bg-green-100"}
+                      title={plano.active ? "Desativar Plano" : "Ativar Plano"}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Power className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardHeader>
@@ -826,7 +927,7 @@ const Assinaturas = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-display text-barber-dark">Assinaturas de Clientes</h1>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={openSubscription} onOpenChange={setOpenSubscription}>
             <DialogTrigger asChild>
               <Button><Plus className="mr-2 h-4 w-4" />Nova Adesão de Assinatura</Button>
             </DialogTrigger>
@@ -902,7 +1003,7 @@ const Assinaturas = () => {
                   </select>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => setOpenSubscription(false)}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isSubmitting || mutation.isPending}>
@@ -1095,7 +1196,7 @@ const Assinaturas = () => {
           <p>Certeza que deseja excluir o Plano <b>{deletingPlano?.name}</b>? <br></br>Detalhe: O Plano será apenas desativado.</p>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingPlano && mutationDeletePlano.mutate(deletingPlano.id)}>
+            <AlertDialogAction onClick={() => deletingPlano && mutationDeletePlano.mutate(deletingPlano)}>
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1514,6 +1615,48 @@ const Assinaturas = () => {
               }
               setModalRetroativo(null);
             }}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de confirmação para desativar/ativar plano */}
+      <AlertDialog open={!!confirmDesativarPlano} onOpenChange={(v) => { if (!v) setConfirmDesativarPlano(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDesativarPlano?.active ? 'Desativar' : 'Ativar'} Plano</AlertDialogTitle>
+          </AlertDialogHeader>
+          <p>
+            {confirmDesativarPlano?.active ? (
+              <>
+                Tem certeza que deseja desativar o plano <b>{confirmDesativarPlano.name}</b>?<br/>
+                Planos desativados não poderão ser selecionados para novas assinaturas.
+              </>
+            ) : (
+              <>
+                Tem certeza que deseja ativar o plano <b>{confirmDesativarPlano?.name}</b>?<br/>
+                Planos ativos podem ser selecionados para novas assinaturas.
+              </>
+            )}
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmDesativarPlano(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                if (confirmDesativarPlano) {
+                  await supabase
+                    .from('subscription_plans')
+                    .update({ active: !confirmDesativarPlano.active })
+                    .eq('id', confirmDesativarPlano.id)
+                    .eq('barber_shop_id', selectedBarberShop?.id);
+                  queryClient.invalidateQueries({ queryKey: ["planos-ativos"] });
+                  refetchPlanos();
+                  setConfirmDesativarPlano(null);
+                }
+              }}
+              className={confirmDesativarPlano?.active ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+            >
+              {confirmDesativarPlano?.active ? 'Desativar' : 'Ativar'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

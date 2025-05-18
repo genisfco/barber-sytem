@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2, Check } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Trash2, Check, Power } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import { useClientes } from "@/hooks/useClientes";
 import type { Cliente } from "@/types/cliente";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useClientesAssinantesCount } from "@/hooks/useClientes";
+import { Badge } from "@/components/ui/badge";
 
 type ClienteFormData = {
   name: string;
@@ -40,6 +41,7 @@ const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [subscriberDialogOpen, setSubscriberDialogOpen] = useState(false);
   const [showOnlySubscribers, setShowOnlySubscribers] = useState(false);
   const { register, handleSubmit, reset, setValue, watch } = useForm<ClienteFormData>({
@@ -48,7 +50,7 @@ const Clientes = () => {
       notes: null
     }
   });
-  const { clientes, isLoading, createCliente, updateCliente, deleteCliente } = useClientes();
+  const { clientes, isLoading, createCliente, updateCliente, toggleClienteStatus } = useClientes();
   const { data: assinantesCount, isLoading: isLoadingAssinantesCount, refetch: refetchAssinantesCount } = useClientesAssinantesCount();
 
   const onSubmit = async (data: ClienteFormData) => {
@@ -73,8 +75,14 @@ const Clientes = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteCliente.mutateAsync(id);
+    await toggleClienteStatus.mutateAsync({ id, active: false });
     setDeleteDialogOpen(false);
+    setSelectedClient(null);
+  };
+
+  const handleToggleStatus = async (cliente: Cliente) => {
+    await toggleClienteStatus.mutateAsync({ id: cliente.id, active: !cliente.active });
+    setStatusDialogOpen(false);
     setSelectedClient(null);
   };
 
@@ -85,6 +93,11 @@ const Clientes = () => {
 
   const handleSubscriberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Função removida pois não há mais campo subscriber
+  };
+
+  const handleOpenStatusDialog = (cliente: Cliente) => {
+    setSelectedClient(cliente);
+    setStatusDialogOpen(true);
   };
 
   const filteredClientes = clientes?.filter((cliente) =>
@@ -242,12 +255,32 @@ const Clientes = () => {
             </div>
           ) : (
             filteredClientes?.map((cliente) => (
-              <Card key={cliente.id}>
+              <Card key={cliente.id} className={!cliente.active ? "opacity-70" : ""}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">
                     {cliente.name}
+                    {!cliente.active && (
+                      <Badge variant="destructive">Inativo</Badge>
+                    )}
                   </CardTitle>
                   <div className="flex items-center space-x-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenStatusDialog(cliente)}
+                            className={cliente.active ? "text-red-500 hover:text-red-700 hover:bg-red-100" : "text-green-500 hover:text-green-700 hover:bg-green-100"}
+                          >
+                            <Power className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {cliente.active ? "Desativar cliente" : "Reativar cliente"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -255,14 +288,6 @@ const Clientes = () => {
                       className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                     >
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenDeleteDialog(cliente)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-100"
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardHeader>
@@ -281,15 +306,66 @@ const Clientes = () => {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir Cliente</AlertDialogTitle>
+              <AlertDialogTitle>Desativar Cliente</AlertDialogTitle>
               <AlertDialogDescription>
-                Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
+                Tem certeza que deseja desativar este cliente? Esta ação pode ser revertida posteriormente.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => selectedClient && handleDelete(selectedClient.id)}>
-                Excluir
+              <AlertDialogCancel onClick={() => {
+                setDeleteDialogOpen(false);
+                setSelectedClient(null);
+              }}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => selectedClient && handleDelete(selectedClient.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {toggleClienteStatus.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Desativar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {selectedClient?.active ? "Desativar Cliente" : "Reativar Cliente"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {selectedClient?.active 
+                  ? "Tem certeza que deseja desativar este cliente? Esta ação pode ser revertida posteriormente."
+                  : "Tem certeza que deseja reativar este cliente?"
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setStatusDialogOpen(false);
+                setSelectedClient(null);
+              }}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => selectedClient && handleToggleStatus(selectedClient)}
+                className={selectedClient?.active 
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : "bg-green-600 text-white hover:bg-green-700"
+                }
+              >
+                {toggleClienteStatus.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Power className="mr-2 h-4 w-4" />
+                )}
+                {selectedClient?.active ? "Desativar" : "Reativar"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
