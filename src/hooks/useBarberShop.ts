@@ -1,51 +1,40 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { barberShopService, BarberShop, BarberShopHours } from '../services/barberShopService';
+import { useQuery } from '@tanstack/react-query';
+import { Database } from '@/integrations/supabase/types';
+import { useBarberShops } from './useBarberShops';
+
+type BarberShop = Database['public']['Tables']['barber_shops']['Row'];
+type BarberShopHours = Database['public']['Tables']['barber_shop_hours']['Row'];
 
 export function useBarberShop(barberShopId: string) {
-  const queryClient = useQueryClient();
+  const { 
+    getBarberShopById, 
+    getBarberShopHours, 
+    updateBarberShop, 
+    updateBarberShopHours, 
+    toggleBarberShopStatus 
+  } = useBarberShops();
 
   const { data: barberShop, isLoading: isLoadingBarberShop } = useQuery({
     queryKey: ['barberShop', barberShopId],
-    queryFn: () => barberShopService.getBarberShopById(barberShopId),
+    queryFn: () => getBarberShopById(barberShopId),
     enabled: !!barberShopId,
   });
 
   const { data: barberShopHours, isLoading: isLoadingHours } = useQuery({
     queryKey: ['barberShopHours', barberShopId],
-    queryFn: () => barberShopService.getBarberShopHours(barberShopId),
+    queryFn: () => getBarberShopHours(barberShopId),
     enabled: !!barberShopId,
-  });
-
-  const updateBarberShop = useMutation({
-    mutationFn: (data: Partial<Omit<BarberShop, 'id' | 'created_at' | 'updated_at'>>) =>
-      barberShopService.updateBarberShop(barberShopId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['barberShop', barberShopId] });
-    },
-  });
-
-  const updateBarberShopHours = useMutation({
-    mutationFn: (hours: Omit<BarberShopHours, 'id' | 'barber_shop_id' | 'created_at' | 'updated_at'>[]) =>
-      barberShopService.updateBarberShopHours(barberShopId, hours),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['barberShopHours', barberShopId] });
-    },
-  });
-
-  const toggleBarberShopStatus = useMutation({
-    mutationFn: (active: boolean) =>
-      barberShopService.toggleBarberShopStatus(barberShopId, active),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['barberShop', barberShopId] });
-    },
   });
 
   return {
     barberShop,
     barberShopHours,
     isLoading: isLoadingBarberShop || isLoadingHours,
-    updateBarberShop,
-    updateBarberShopHours,
-    toggleBarberShopStatus,
+    updateBarberShop: (data: Partial<Omit<BarberShop, 'id' | 'created_at' | 'updated_at'>>) => 
+      updateBarberShop.mutateAsync({ id: barberShopId, data }),
+    updateBarberShopHours: (hours: Omit<BarberShopHours, 'id' | 'barber_shop_id' | 'created_at' | 'updated_at'>[]) => 
+      updateBarberShopHours.mutateAsync({ barberShopId, hours }),
+    toggleBarberShopStatus: (active: boolean) => 
+      toggleBarberShopStatus.mutateAsync({ id: barberShopId, active }),
   };
 } 

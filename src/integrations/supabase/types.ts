@@ -1,14 +1,81 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+import { Database as DatabaseGenerated } from './types.generated';
 
-export interface Database {
+export interface Database extends DatabaseGenerated {
   public: {
     Tables: {
+      barber_shops: {
+        Row: {
+          id: string;
+          name: string;
+          cnpj: string | null;
+          address: string | null;
+          phone: string | null;
+          email: string | null;
+          logo_url: string | null;
+          active: boolean;
+          admin_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          cnpj?: string | null;
+          address?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          logo_url?: string | null;
+          active?: boolean;
+          admin_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          cnpj?: string | null;
+          address?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          logo_url?: string | null;
+          active?: boolean;
+          admin_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      barber_shop_hours: {
+        Row: {
+          id: string;
+          barber_shop_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          barber_shop_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          barber_shop_id?: string;
+          day_of_week?: number;
+          start_time?: string;
+          end_time?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       appointments: {
         Row: {
           id: string

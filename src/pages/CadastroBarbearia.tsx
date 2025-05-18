@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useNavigate, Link } from 'react-router-dom';
-import { api } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useBarberShops } from '@/hooks/useBarberShops';
 
 interface FormData {
   barberShopName: string;
@@ -51,13 +51,16 @@ export default function CadastroBarbearia() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const { createBarberShop } = useBarberShops();
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Primeiro, tenta criar o usuário no Supabase sem confirmar
+      console.log('Iniciando processo de cadastro...');
+      
+      // 1. Primeiro, tenta criar o usuário no Supabase
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: data.adminEmail,
         password: data.adminPassword,
@@ -66,32 +69,59 @@ export default function CadastroBarbearia() {
         }
       });
 
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error('Erro ao criar usuário');
+      if (signUpError) {
+        console.error('Erro ao criar usuário:', signUpError);
+        throw signUpError;
+      }
+      
+      if (!signUpData.user) {
+        console.error('Usuário não foi criado corretamente');
+        throw new Error('Erro ao criar usuário');
+      }
+
+      console.log('Usuário criado com sucesso:', signUpData.user.id);
 
       try {
-        // 2. Tenta criar a barbearia
-        await api.post('/barber-shops/onboarding', {
-          barber_shop: {
-            name: data.barberShopName,
-            cnpj: data.barberShopCnpj,
-            phone: data.barberShopPhone,
-            address: data.barberShopAddress,
-            email: data.barberShopEmail,
-            admin_id: signUpData.user.id,
-          },
-          admin: {
-            email: data.adminEmail,
-            user_id: signUpData.user.id,
-          },
-        });
+        // 2. Cria a barbearia usando o novo hook
+        const barberShopData = {
+          name: data.barberShopName,
+          cnpj: data.barberShopCnpj,
+          phone: data.barberShopPhone,
+          address: data.barberShopAddress,
+          email: data.barberShopEmail,
+          admin_id: signUpData.user.id,
+          active: true,
+          logo_url: null,
+        };
+
+        console.log('Tentando criar barbearia com dados:', barberShopData);
+
+        // Tentar criar a barbearia diretamente com o Supabase primeiro
+        const { data: directBarberShop, error: directError } = await supabase
+          .from('barber_shops')
+          .insert(barberShopData)
+          .select()
+          .single();
+
+        if (directError) {
+          console.error('Erro ao criar barbearia diretamente:', directError);
+          throw directError;
+        }
+
+        console.log('Barbearia criada com sucesso:', directBarberShop);
 
         // Se chegou aqui, tudo deu certo
         setSuccess(true);
         reset();
       } catch (err) {
+        console.error('Erro detalhado ao criar barbearia:', err);
         // Se falhou ao criar a barbearia, tenta deletar o usuário criado
-        await supabase.auth.admin.deleteUser(signUpData.user.id);
+        try {
+          await supabase.auth.admin.deleteUser(signUpData.user.id);
+          console.log('Usuário deletado após falha na criação da barbearia');
+        } catch (deleteError) {
+          console.error('Erro ao tentar deletar usuário:', deleteError);
+        }
         throw new Error('Erro ao salvar os dados da barbearia. Por favor, tente novamente.');
       }
     } catch (err: any) {

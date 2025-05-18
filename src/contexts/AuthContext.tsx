@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarberShopContext } from "./BarberShopContext";
-import { barberShopService } from "../services/barberShopService";
+import { useBarberShops } from "@/hooks/useBarberShops";
 
 interface AuthContextType {
   session: Session | null;
@@ -24,22 +24,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { setSelectedBarberShop } = useBarberShopContext();
+  const { barberShops, getBarberShopById } = useBarberShops();
 
   // Função auxiliar para buscar e setar a barbearia do usuário
   const setUserBarberShop = async (user: any) => {
     let barberShopId = user?.user_metadata?.barberShopId;
     
     if (!barberShopId && user?.id) {
-      try {
-        const allShops = await barberShopService.getAllBarberShops();
-        const found = allShops.find((shop) => shop['admin_id'] === user.id);
-        if (found) barberShopId = found.id;
-      } catch (e) {}
+      const found = barberShops?.find((shop) => shop.admin_id === user.id);
+      if (found) barberShopId = found.id;
     }
     
     if (barberShopId) {
       try {
-        const barberShop = await barberShopService.getBarberShopById(barberShopId);
+        const barberShop = await getBarberShopById(barberShopId);
         setSelectedBarberShop(barberShop);
       } catch (e) {
         setSelectedBarberShop(null);
@@ -103,7 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
