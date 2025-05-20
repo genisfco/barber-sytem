@@ -315,10 +315,10 @@ export function VenderProdutosForm({
             <AlertDialogTitle className="text-red-600">Erro ao realizar venda</AlertDialogTitle>
             <AlertDialogDescription className="text-red-500">
               {errorMessage.split('\n').map((line, idx) => (
-                <React.Fragment key={idx}>
+                <span key={idx}>
                   {line}
                   <br />
-                </React.Fragment>
+                </span>                
               ))}
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -42,7 +42,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!session) {
-    return <Navigate to="/auth" />;
+    return (
+      <Navigate
+        to="/auth"
+        state={{ sessionExpired: true, from: location.pathname }}
+        replace
+      />
+    );
   }
 
   // Se não tiver barbearia, redireciona para o cadastro de barbearia

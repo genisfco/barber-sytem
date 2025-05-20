@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -12,6 +12,9 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
+  const sessionExpired = location.state?.sessionExpired;
+  const loggedOut = location.state?.loggedOut;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +43,16 @@ export default function Auth() {
           <p className="mt-2 text-sm text-gray-600">
             Entre com suas credenciais para acessar o sistema
           </p>
+          {sessionExpired && (
+            <div className="mt-4 p-2 bg-yellow-100 text-yellow-800 rounded">
+              Sua sessão expirou. Por favor, faça login novamente.
+            </div>
+          )}
+          {loggedOut && (
+            <div className="mt-4 p-2 bg-green-100 text-green-800 rounded">
+              Você saiu do sistema com sucesso.
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">

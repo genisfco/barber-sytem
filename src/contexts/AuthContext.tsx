@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setSelectedBarberShop(null);
-    navigate("/auth");
+    navigate("/auth", { state: { loggedOut: true }, replace: true });
   };
 
   const signIn = async ({ email, password }: { email: string; password: string }) => {
@@ -74,6 +74,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await setUserBarberShop(session.user);
       } else {
         setSelectedBarberShop(null);
+        if (window.location.pathname !== '/cadastro-barbearia') {
+          navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
+        }
       }
     });
 
@@ -82,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!session) {
         setSelectedBarberShop(null);
         if (window.location.pathname !== '/cadastro-barbearia') {
-          navigate("/auth");
+          navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
         }
       } else {
         await setUserBarberShop(session.user);
