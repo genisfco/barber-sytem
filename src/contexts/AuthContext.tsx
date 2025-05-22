@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async ({ email, password }: { email: string; password: string }) => {
     const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-    console.log("Retorno do Supabase:", { error, data });
+    //console.log("Retorno do Supabase:", { error, data });
     if (error) throw error;
     if (!data.session) {
       throw new Error("Email ou senha incorretos.");
@@ -67,32 +67,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    let ignore = false;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setIsLoading(false);
-      if (session) {
-        await setUserBarberShop(session.user);
-      } else {
-        setSelectedBarberShop(null);
-        if (window.location.pathname !== '/cadastro-barbearia') {
-          navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
+      try {
+        if (session) {
+           await setUserBarberShop(session.user); // Comentado para isolar problema
+        } else {
+          setSelectedBarberShop(null);
+          if (
+            window.location.pathname !== '/cadastro-barbearia' &&
+            window.location.pathname !== '/auth'
+          ) {
+            navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
+          }
         }
+        setSession(session);
+        //console.log('Finalizando loading (getSession)');
+      } catch (e) {
+        console.error("Erro no carregamento da sessão:", e);
+      } finally {
+        if (!ignore) setIsLoading(false);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (!session) {
-        setSelectedBarberShop(null);
-        if (window.location.pathname !== '/cadastro-barbearia') {
-          navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
+      try {
+        if (session) {
+          // await setUserBarberShop(session.user); // Comentado para isolar problema
+        } else {
+          setSelectedBarberShop(null);
+          if (
+            window.location.pathname !== '/cadastro-barbearia' &&
+            window.location.pathname !== '/auth'
+          ) {
+            navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
+          }
         }
-      } else {
-        await setUserBarberShop(session.user);
+        setSession(session);
+        //console.log('Finalizando loading (onAuthStateChange)');
+      } catch (e) {
+        console.error("Erro no onAuthStateChange:", e);
+      } finally {
+        if (!ignore) setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
   }, [navigate, setSelectedBarberShop]);
 
   return (

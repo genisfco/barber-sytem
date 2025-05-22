@@ -25,15 +25,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { selectedBarberShop } = useBarberShopContext();
   const location = useLocation();
 
-  // Log para depuração
-  console.log('ProtectedRoute', {
-    session,
-    selectedBarberShop,
-    pathname: location.pathname
-  });
+  console.log("session", session);
 
-  if (isAuthLoading) {
-    return <div>Carregando...</div>;
+  const isAuthLoadingTest = false; // só para teste
+
+  if (isAuthLoadingTest) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Carregando...</h2>
+          <p className="text-gray-500">Aguarde um momento</p>
+        </div>
+      </div>
+    );
   }
 
   // Não redireciona se estiver na página de cadastro
@@ -41,7 +45,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
   }
 
-  if (!session) {
+  // Se não houver sessão e não estiver na página de login
+  if (!session && location.pathname !== '/auth') {
     return (
       <Navigate
         to="/auth"
@@ -51,9 +56,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Se não tiver barbearia, redireciona para o cadastro de barbearia
-  if (!selectedBarberShop) {
-    return <Navigate to="/cadastro-barbearia" />;
+  // Se tiver sessão mas não tiver barbearia selecionada
+  if (session && !selectedBarberShop && location.pathname !== '/cadastro-barbearia') {
+    return <Navigate to="/cadastro-barbearia" replace />;
+  }
+
+  // Se tiver sessão e estiver tentando acessar a página de login
+  if (session && location.pathname === '/auth') {
+    return <Navigate to="/" replace />;
   }
 
   return (

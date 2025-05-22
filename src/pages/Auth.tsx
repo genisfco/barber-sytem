@@ -20,9 +20,9 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      console.log("Tentando fazer login com:", { email });
+      //console.log("Tentando fazer login com:", { email });
       await signIn({ email, password });
-      console.log("Login realizado com sucesso");
+      //console.log("Login realizado com sucesso");
     } catch (error) {
       console.error("Erro durante o login:", error);
       toast({
