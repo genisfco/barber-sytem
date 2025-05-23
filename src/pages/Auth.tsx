@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -13,6 +13,7 @@ export default function Auth() {
   const { signIn } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   const sessionExpired = location.state?.sessionExpired;
   const loggedOut = location.state?.loggedOut;
 
@@ -20,11 +21,12 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      //console.log("Tentando fazer login com:", { email });
+      console.log("Auth.tsx: Tentando fazer login com:", { email });
       await signIn({ email, password });
-      //console.log("Login realizado com sucesso");
+      console.log("Auth.tsx: Login realizado com sucesso.");
+      navigate("/");
     } catch (error) {
-      console.error("Erro durante o login:", error);
+      console.error("Auth.tsx: Erro durante o login:", error);
       toast({
         title: "Erro ao fazer login",
         description: error instanceof Error ? error.message : "Verifique suas credenciais e tente novamente.",
@@ -32,6 +34,7 @@ export default function Auth() {
       });
     } finally {
       setIsLoading(false);
+      console.log("Auth.tsx: Finalizando loading.");
     }
   };
 

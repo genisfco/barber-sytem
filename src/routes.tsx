@@ -18,6 +18,7 @@ import RelatorioAnual from "./pages/RelatorioAnual";
 import NotFound from "./pages/NotFound";
 import Assinaturas from "./pages/Assinaturas";
 import CadastroBarbearia from "./pages/CadastroBarbearia";
+import ConfiguracaoBarbearia from "./pages/ConfiguracaoBarbearia";
 //import PrivateLayout from "./pages/PrivateLayout";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -25,11 +26,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { selectedBarberShop } = useBarberShopContext();
   const location = useLocation();
 
-  console.log("session", session);
+  console.log("ProtectedRoute:", {
+    pathname: location.pathname,
+    session: !!session, // Convert to boolean for cleaner log
+    selectedBarberShop: !!selectedBarberShop, // Convert to boolean
+    isAuthLoading
+  });
 
-  const isAuthLoadingTest = false; // só para teste
+  // Verifica se é uma URL de confirmação de email
+  const isEmailConfirmation = location.search.includes('type=recovery') || 
+                            location.search.includes('type=signup');
 
-  if (isAuthLoadingTest) {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -40,13 +48,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Não redireciona se estiver na página de cadastro
-  if (location.pathname === '/cadastro-barbearia') {
+  // Se for uma URL de confirmação de email, permite o acesso direto
+  if (isEmailConfirmation) {
+    console.log("ProtectedRoute: É URL de confirmação de email, permitindo acesso.");
     return <>{children}</>;
   }
 
-  // Se não houver sessão e não estiver na página de login
-  if (!session && location.pathname !== '/auth') {
+  // Se estiver na página de login, permite acesso direto
+  if (location.pathname === '/auth') {
+     console.log("ProtectedRoute: Está na página de login, permitindo acesso.");
+    return <>{children}</>;
+  }
+
+  // Se não houver sessão, redireciona para login
+  if (!session) {
+     console.log("ProtectedRoute: Sem sessão, redirecionando para /auth.");
     return (
       <Navigate
         to="/auth"
@@ -56,16 +72,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Se tiver sessão mas não tiver barbearia selecionada
-  if (session && !selectedBarberShop && location.pathname !== '/cadastro-barbearia') {
-    return <Navigate to="/cadastro-barbearia" replace />;
+  // Se tiver sessão mas não tiver barbearia selecionada E NÃO ESTIVER NA PÁGINA DE CONFIGURAÇÃO
+  if (session && !selectedBarberShop && location.pathname !== '/configuracao-barbearia') {
+     console.log("ProtectedRoute: Usuário logado sem barbearia, redirecionando para /configuracao-barbearia.");
+    return <Navigate to="/configuracao-barbearia" replace />;
   }
 
-  // Se tiver sessão e estiver tentando acessar a página de login
-  if (session && location.pathname === '/auth') {
-    return <Navigate to="/" replace />;
-  }
+  // Se tiver sessão e estiver tentando acessar a página de login (já tratada acima, mas deixamos aqui por segurança)
+   if (session && location.pathname === '/auth') {
+      console.log("ProtectedRoute: Usuário logado tentando acessar /auth, redirecionando para /.");
+      return <Navigate to="/" replace />; // Redireciona auth para / se logado
+   }
 
+  // Se chegou aqui, o usuário está logado, tem barbearia selecionada (ou está na página de config)
+  // e não está tentando acessar /auth ou URL de confirmação.
+  // Permite acesso à rota solicitada.
+   console.log("ProtectedRoute: Usuário logado com barbearia, permitindo acesso a", location.pathname);
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
@@ -85,6 +107,14 @@ export function AppRoutes() {
       <Route path="/cadastro-barbearia" element={<CadastroBarbearia />} />
 
       {/* Rotas protegidas */}
+      <Route
+        path="/configuracao-barbearia"
+        element={
+          <ProtectedRoute>
+            <ConfiguracaoBarbearia />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/"
         element={

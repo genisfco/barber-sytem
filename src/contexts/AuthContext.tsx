@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarberShopContext } from "./BarberShopContext";
@@ -23,100 +23,171 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { setSelectedBarberShop } = useBarberShopContext();
+  const location = useLocation();
+  const { selectedBarberShop, setSelectedBarberShop } = useBarberShopContext();
   const { barberShops, getBarberShopById } = useBarberShops();
 
   // Função auxiliar para buscar e setar a barbearia do usuário
-  const setUserBarberShop = async (user: any) => {
-    let barberShopId = user?.user_metadata?.barberShopId;
-    
-    if (!barberShopId && user?.id) {
-      const found = barberShops?.find((shop) => shop.admin_id === user.id);
-      if (found) barberShopId = found.id;
-    }
-    
-    if (barberShopId) {
-      try {
-        const barberShop = await getBarberShopById(barberShopId);
-        setSelectedBarberShop(barberShop);
-      } catch (e) {
-        setSelectedBarberShop(null);
-        navigate("/cadastro-barbearia");
-      }
-    } else {
+  const setUserBarberShop = async (user: any, isAuthFlow = false) => {
+    if (!user?.id) {
       setSelectedBarberShop(null);
-      navigate("/cadastro-barbearia");
+      return;
+    }
+
+    try {
+      console.log("AuthContext: Buscando barbearia para o usuário:", user.id);
+      // Primeiro, verifica se a barbearia já está no contexto
+      if (selectedBarberShop && selectedBarberShop.admin_id === user.id) {
+         console.log("AuthContext: Barbearia já no contexto.", selectedBarberShop.id);
+         return; // Barbearia já carregada, não precisa buscar novamente
+      }
+
+      const { data: barberShop, error } = await supabase
+        .from('barber_shops')
+        .select('*')
+        .eq('admin_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+         console.error("AuthContext: Erro ao buscar barbearia:", error);
+         throw error; // Propaga o erro para ser tratado
+      }
+
+      if (barberShop) {
+        console.log("AuthContext: Barbearia encontrada:", barberShop.id);
+        setSelectedBarberShop(barberShop);
+        // Só redireciona para / se não estiver em uma página de autenticação E não for um fluxo de auth
+        if (!location.pathname.includes('/auth') && !isAuthFlow) {
+             navigate("/");
+        }
+      } else {
+        console.log("AuthContext: Nenhuma barbearia encontrada para este usuário.");
+        setSelectedBarberShop(null);
+        // Redireciona para configuração APENAS se não estiver já na página de configuração E não for um fluxo de auth
+         if (location.pathname !== '/configuracao-barbearia' && !isAuthFlow) {
+             navigate("/configuracao-barbearia");
+         }
+      }
+    } catch (error: any) {
+      console.error("AuthContext: Erro no setUserBarberShop:", error);
+      setSelectedBarberShop(null);
+       // Redireciona para configuração em caso de erro APENAS se não estiver já na página de configuração E não for um fluxo de auth
+        if (location.pathname !== '/configuracao-barbearia' && !isAuthFlow) {
+             navigate("/configuracao-barbearia");
+        }
+      throw error; // Re-lança o erro após logar e tratar
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setSelectedBarberShop(null);
-    navigate("/auth", { state: { loggedOut: true }, replace: true });
+    try {
+      console.log("AuthContext: Iniciando logout...");
+      await supabase.auth.signOut();
+      setSelectedBarberShop(null);
+      setSession(null);
+      console.log("AuthContext: Logout bem sucedido, redirecionando para /auth");
+      navigate("/auth", { state: { loggedOut: true }, replace: true });
+    } catch (error) {
+      console.error("AuthContext: Erro ao fazer logout:", error);
+      // Considerar exibir uma mensagem de erro para o usuário, mas não travar
+    }
   };
 
   const signIn = async ({ email, password }: { email: string; password: string }) => {
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-    //console.log("Retorno do Supabase:", { error, data });
-    if (error) throw error;
-    if (!data.session) {
-      throw new Error("Email ou senha incorretos.");
+    try {
+      console.log("AuthContext: Iniciando login para", email);
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        console.error("AuthContext: Erro no login:", error);
+        throw error;
+      }
+
+      if (!data.session) {
+        console.error("AuthContext: Nenhuma sessão retornada após login");
+        throw new Error("Email ou senha incorretos.");
+      }
+
+      console.log("AuthContext: Login bem sucedido, session data:", data.session);
+      setSession(data.session);
+      
+      // Buscar e setar barbearia APENAS após login bem sucedido, marcando como fluxo de auth
+      await setUserBarberShop(data.session.user, true); // Passa true para isAuthFlow
+      
+      console.log("AuthContext: Login processado. Redirecionamento será tratado por setUserBarberShop ou ProtectedRoute.");
+      // Não redirecionar aqui, deixar o setUserBarberShop ou o ProtectedRoute lidar com isso
+
+    } catch (error: any) {
+      console.error("AuthContext: Erro durante o login:", error);
+      // Propaga o erro para o componente de login tratar e exibir para o usuário
+      throw new Error(error.message || "Erro ao fazer login. Tente novamente.");
     }
-    await setUserBarberShop(data.session.user);
-    navigate("/");
   };
 
   useEffect(() => {
     let ignore = false;
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+
+    const initializeAuth = async () => {
+      console.log("AuthContext: useEffect - Inicializando autenticação...");
       try {
-        if (session) {
-           await setUserBarberShop(session.user); // Comentado para isolar problema
-        } else {
-          setSelectedBarberShop(null);
-          if (
-            window.location.pathname !== '/cadastro-barbearia' &&
-            window.location.pathname !== '/auth'
-          ) {
-            navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!ignore) {
+          setSession(currentSession);
+          
+          if (currentSession) {
+            console.log("AuthContext: useEffect - Sessão encontrada, buscando barbearia...");
+             // Buscar e setar barbearia, mas não redirecionar automaticamente do useEffect de inicialização
+            await setUserBarberShop(currentSession.user, true); // Passa true para isAuthFlow
+          } else {
+            console.log("AuthContext: useEffect - Nenhuma sessão encontrada.");
+            setSelectedBarberShop(null);
+            // Se não há sessão E não estamos em uma página de autenticação, redirecionar para login
+             if (!location.pathname.includes('/auth') && location.pathname !== '/cadastro-barbearia') {
+                 console.log("AuthContext: useEffect - Sem sessão e fora de páginas de auth, redirecionando para /auth");
+                 navigate("/auth", { state: { sessionExpired: true, from: location.pathname }, replace: true });
+             }
           }
         }
-        setSession(session);
-        //console.log('Finalizando loading (getSession)');
-      } catch (e) {
-        console.error("Erro no carregamento da sessão:", e);
+      } catch (error) {
+        console.error("AuthContext: useEffect - Erro ao inicializar autenticação:", error);
+        if (!ignore) setIsLoading(false);
       } finally {
         if (!ignore) setIsLoading(false);
+        console.log("AuthContext: useEffect - Inicialização finalizada.");
       }
-    });
+    };
+
+    initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      try {
-        if (session) {
-          // await setUserBarberShop(session.user); // Comentado para isolar problema
-        } else {
-          setSelectedBarberShop(null);
-          if (
-            window.location.pathname !== '/cadastro-barbearia' &&
-            window.location.pathname !== '/auth'
-          ) {
-            navigate("/auth", { state: { sessionExpired: true, from: window.location.pathname }, replace: true });
-          }
-        }
+      console.log("AuthContext: onAuthStateChange - Mudança no estado de autenticação detectada", _event);
+      if (!ignore) {
         setSession(session);
-        //console.log('Finalizando loading (onAuthStateChange)');
-      } catch (e) {
-        console.error("Erro no onAuthStateChange:", e);
-      } finally {
-        if (!ignore) setIsLoading(false);
+        
+        if (session) {
+          console.log("AuthContext: onAuthStateChange - Nova sessão ou refresh, buscando barbearia...");
+           // Buscar e setar barbearia no estado de mudança, marcando como fluxo de auth
+          await setUserBarberShop(session.user, true); // Passa true para isAuthFlow
+        } else {
+          console.log("AuthContext: onAuthStateChange - Sessão removida.");
+          setSelectedBarberShop(null);
+          // Se a sessão foi removida E não estamos em uma página de autenticação, redirecionar para login
+           if (!location.pathname.includes('/auth') && location.pathname !== '/cadastro-barbearia') {
+               console.log("AuthContext: onAuthStateChange - Sem sessão e fora de páginas de auth, redirecionando para /auth");
+               navigate("/auth", { state: { sessionExpired: true, from: location.pathname }, replace: true });
+           }
+        }
       }
     });
 
     return () => {
       ignore = true;
+      console.log("AuthContext: useEffect cleanup - Cancelando inscrição de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, setSelectedBarberShop]);
+     // Adicionar location.pathname como dependência pode ser necessário para reavaliar redirecionamentos ao mudar de rota
+  }, [navigate, setSelectedBarberShop, location.pathname]);
 
   return (
     <AuthContext.Provider value={{ session, isLoading, signOut, signIn }}>

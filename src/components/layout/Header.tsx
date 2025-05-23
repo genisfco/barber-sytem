@@ -11,14 +11,7 @@ export function Header() {
       <div className="flex h-16 items-center px-4 gap-4">
         <div className="flex-1" />
         <BarberShopSelector />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={signOut}
-          className="ml-auto"
-        >
-          <LogOut className="h-5 w-5" />
-        </Button>
+        
       </div>
     </header>
   );
