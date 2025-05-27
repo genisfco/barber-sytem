@@ -109,7 +109,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
                   <TableRow key={agendamento.id}>
                     <TableCell>{agendamento.time.substring(0, 5)}</TableCell>
                     <TableCell>{agendamento.client_name}</TableCell>
-                    <TableCell>{agendamento.barber}</TableCell>
+                    <TableCell>{agendamento.barber_name}</TableCell>
                     <TableCell>
                       {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}
                     </TableCell>

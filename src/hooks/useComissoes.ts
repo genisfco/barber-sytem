@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Comissao } from "@/types/comissao";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 // Define a type for the mutate function parameters
 type PayComissaoParams = {
@@ -20,6 +21,7 @@ export function useComissoes(
   status: "pendente" | "pago" | "cancelado" | "todos" = "todos"
 ) {
   const queryClient = useQueryClient();
+  const { selectedBarberShop } = useBarberShopContext();
   
   const dataInicioFormatada = dataInicio 
     ? format(dataInicio, "yyyy-MM-dd HH:mm:ss")
@@ -94,11 +96,30 @@ export function useComissoes(
 
   const pagarComissao = useMutation({
     mutationFn: async (params: PayComissaoParams) => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada.");
+      }
+      // Buscar o nome do barbeiro uma vez, já que a mutação é para um barbeiro específico
+      const { data: barber, error: barberFetchError } = await supabase
+        .from('barbers')
+        .select('name')
+        .eq('id', params.id)
+        .single();
+
+      if (barberFetchError) {
+        console.error("Erro ao buscar nome do barbeiro:", barberFetchError);
+        throw new Error("Erro ao buscar informações do barbeiro.");
+      }
+
+      const barberName = barber?.name || 'Barbeiro Desconhecido';
+
       if (params.isSingle) {
         // Para uma única comissão
         const { data: comissao, error: fetchError } = await supabase
           .from("barber_commissions")
-          .select('*, barbers(name)')
+          .select(`*,
+            appointment:appointments (barber_shop_id)
+          `)
           .eq("id", params.id)
           .single();
 
@@ -115,16 +136,17 @@ export function useComissoes(
 
         if (error) throw error;
 
-        // Lança a despesa da comissão
+        // Lança a despesa da comissão usando o ID da barbearia selecionada
         const { error: despesaError } = await supabase
           .from('transactions')
           .insert({
             type: 'despesa',
-            value: comissao.total_commission,
-            description: `Comissão: ${comissao.barbers.name} - Atendimento: ${comissao.appointment?.client_name}`,
+            value: Number(comissao.total_commission),
+            description: `Comissão: ${barberName} - Atendimento: ${comissao.appointment?.client_name}`,
             category: 'comissoes',
             payment_method: params.paymentMethod,
             payment_date: new Date().toISOString().slice(0, 10),
+            barber_shop_id: selectedBarberShop.id, // Usando o ID da barbearia selecionada
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -136,13 +158,17 @@ export function useComissoes(
         // Para todas as comissões do período
         const { data: comissoes, error: fetchError } = await supabase
           .from("barber_commissions")
-          .select('*, barbers(name)')
+          .select(`*,
+            appointment:appointments (barber_shop_id)
+          `)
           .eq("barber_id", params.id)
           .eq("status", "pendente")
-          .gte("created_at", dataInicioFormatada)
-          .lte("created_at", dataFimFormatada);
+          .gte("created_at", dataInicioFormatada!)
+          .lte("created_at", dataFimFormatada!);
 
         if (fetchError) throw fetchError;
+
+        console.log(`✅ Encontradas ${comissoes?.length || 0} comissões pendentes para marcar como pagas.`);
 
         // Atualiza o status de todas as comissões
         const { error } = await supabase
@@ -153,24 +179,27 @@ export function useComissoes(
           })
           .eq("barber_id", params.id)
           .eq("status", "pendente")
-          .gte("created_at", dataInicioFormatada)
-          .lte("created_at", dataFimFormatada);
+          .gte("created_at", dataInicioFormatada!)
+          .lte("created_at", dataFimFormatada!);
 
         if (error) throw error;
 
         // Calcula o total de comissões
-        const totalComissao = comissoes.reduce((sum, comissao) => sum + comissao.total_commission, 0);
+        const totalComissao = comissoes.reduce((sum, comissao) => sum + Number(comissao.total_commission), 0);
 
-        // Lança a despesa total das comissões
+        console.log(`💵 Total das comissões pendentes: ${totalComissao}`);
+
+        // Lança a despesa total das comissões usando o ID da barbearia selecionada
         const { error: despesaError } = await supabase
           .from('transactions')
           .insert({
             type: 'despesa',
-            value: totalComissao,
-            description: `Comissão: ${comissoes[0].barbers.name} - Período: ${format(new Date(dataInicioFormatada), 'dd/MM/yyyy')} a ${format(new Date(dataFimFormatada), 'dd/MM/yyyy')}`,
+            value: Number(totalComissao),
+            description: `Comissão: ${barberName} - Período: ${format(new Date(dataInicioFormatada!), 'dd/MM/yyyy')} a ${format(new Date(dataFimFormatada!), 'dd/MM/yyyy')}`,
             category: 'comissoes',
             payment_method: params.paymentMethod,
             payment_date: new Date().toISOString().slice(0, 10),
+            barber_shop_id: selectedBarberShop.id, // Usando o ID da barbearia selecionada
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -193,7 +222,8 @@ export function useComissoes(
         toast.success("Todas as comissões marcadas como pagas");
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Detalhes do erro ao atualizar comissão:", error);
       toast.error("Erro ao atualizar status da comissão");
     },
   });

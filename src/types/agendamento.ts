@@ -7,19 +7,28 @@ export interface Agendamento {
   client_email: string;
   client_phone: string;
   barber_id: string;
-  barber: string;
-  total_duration?: number;
-  total_price?: number;
-  total_products_price?: number;
-  final_price?: number;
-  payment_method?: string;
+  barber_name: string;
+  barber_shop_id: string;
+  total_duration: number;
+  total_price: number;
+  total_products_price: number;
+  final_price: number;
   status: string;
-  servicos?: ServicoAgendamento[];
-  produtos?: ProdutoAgendamento[];
-  created_at?: string;
-  updated_at?: string;
-} 
-
+  created_at: string;
+  updated_at: string;
+  servicos: Array<{
+    service_id: string;
+    service_name: string;
+    service_price: number;
+    service_duration: number;
+  }>;
+  produtos: Array<{
+    product_id: string;
+    product_name: string;
+    product_price: number;
+    quantity: number;
+  }>;
+}
 
 export interface ServicoAgendamento {
   id: string;

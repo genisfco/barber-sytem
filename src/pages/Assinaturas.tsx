@@ -900,9 +900,9 @@ const Assinaturas = () => {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                      <Button
+                        variant="ghost"
+                        size="icon"
                       onClick={() => setConfirmDesativarPlano(plano)}
                       className={plano.active ? "text-red-500 hover:text-red-700 hover:bg-red-100" : "text-green-500 hover:text-green-700 hover:bg-green-100"}
                       title={plano.active ? "Desativar Plano" : "Ativar Plano"}

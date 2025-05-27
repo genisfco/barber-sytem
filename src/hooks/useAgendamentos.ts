@@ -300,10 +300,10 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   });
 
   const marcarComoAtendido = useMutation({
-    mutationFn: async (appointment: Partial<Agendamento> & { 
+    mutationFn: async (appointment: Partial<Agendamento> & {
       id: string;
-      servicos: ServicoAgendamento[]; 
-      produtos: ProdutoAgendamento[];
+      servicos: Omit<ServicoAgendamento, 'id'>[];
+      produtos: Omit<ProdutoAgendamento, 'id'>[];
       payment_method?: string;
       client_name: string;
       barber_name: string;
@@ -446,12 +446,14 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .single();
 
         if (barberError) {
-          logError(barberError, '❌ Erro ao buscar informações do barbeiro:');
-          throw barberError;
+          logError(barberError, '❌ Erro ao buscar informações do barbeiro para comissão:');
+          // Continuar mesmo se não conseguir buscar o barbeiro, a comissão será 0
         }
 
-        const commissionRate = barber.commission_rate;
+        const commissionRate = barber?.commission_rate ?? 0; // Usar 0 se null ou undefined
         const commissionAmount = totalServiceAmount * (commissionRate / 100);
+
+        console.log(`💵 Comissão calculada para ${appointment.barber_name}: ${commissionAmount}`);
 
         // 8. Verificamos se já existe uma comissão para este agendamento
         if (commissionAmount > 0) {
@@ -514,6 +516,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               payment_method: appointment.payment_method || 'Dinheiro',
               category: 'servicos',
               payment_date: new Date().toISOString().slice(0, 10),
+              barber_shop_id: appointment.barber_shop_id,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
@@ -536,6 +539,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               payment_method: appointment.payment_method || 'Dinheiro',
               category: 'produtos',
               payment_date: new Date().toISOString().slice(0, 10),
+              barber_shop_id: appointment.barber_shop_id,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });

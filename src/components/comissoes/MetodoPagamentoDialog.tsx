@@ -20,9 +20,10 @@ interface MetodoPagamentoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (metodo: string) => void;
+  totalPendingAmount: number;
 }
 
-export function MetodoPagamentoDialog({ open, onOpenChange, onConfirm }: MetodoPagamentoDialogProps) {
+export function MetodoPagamentoDialog({ open, onOpenChange, onConfirm, totalPendingAmount }: MetodoPagamentoDialogProps) {
   const [metodo, setMetodo] = useState<string>("");
   const [erro, setErro] = useState<string>("");
 
@@ -51,7 +52,10 @@ export function MetodoPagamentoDialog({ open, onOpenChange, onConfirm }: MetodoP
             Selecione o método utilizado para registrar o pagamento das comissões.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
+        <div className="space-y-4">
+          <div className="text-center font-bold text-lg">
+            Valor Pendente a Pagar: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPendingAmount)}
+          </div>
           <Select value={metodo} onValueChange={setMetodo}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o método" />

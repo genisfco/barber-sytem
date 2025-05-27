@@ -84,8 +84,8 @@ export function FinalizarAtendimentoForm({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      if (!servicos || !produtos) {
-        throw new Error("Dados de serviços ou produtos não carregados");
+      if (servicos === undefined || produtos === undefined) {
+        throw new Error("Dados de serviços ou produtos ainda não carregados completamente.");
       }
 
       // Atualiza o agendamento com os serviços e produtos selecionados
@@ -95,7 +95,6 @@ export function FinalizarAtendimentoForm({
           throw new Error(`Serviço não encontrado: ${servicoId}`);
         }
         return {
-          id: crypto.randomUUID(),
           appointment_id: agendamento.id,
           service_id: servicoId,
           service_name: servico.name,
@@ -112,7 +111,6 @@ export function FinalizarAtendimentoForm({
           throw new Error(`Produto não encontrado: ${produto.id}`);
         }
         return {
-          id: crypto.randomUUID(),
           appointment_id: agendamento.id,
           product_id: produto.id,
           product_name: produtoInfo.name,
@@ -188,7 +186,7 @@ export function FinalizarAtendimentoForm({
             </div>
             <div>
               <h3 className="font-medium">Barbeiro</h3>
-              <p>{agendamento.barber}</p>
+              <p>{agendamento.barber_name}</p>
             </div>
           </div>
 

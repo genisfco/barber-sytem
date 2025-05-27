@@ -60,7 +60,7 @@ interface ComissoesFormProps {
 }
 
 export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
-  const { barbeiros } = useBarbers();
+  const { barbers } = useBarbers();
   
   const form = useForm<ComissoesFormValues>({
     resolver: zodResolver(formSchema),
@@ -128,7 +128,7 @@ export function ComissoesForm({ onSubmit }: ComissoesFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {barbeiros?.map((barbeiro) => (
+                    {barbers?.map((barbeiro) => (
                       <SelectItem key={barbeiro.id} value={barbeiro.id}>
                         {barbeiro.name}
                       </SelectItem>

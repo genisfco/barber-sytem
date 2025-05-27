@@ -206,7 +206,7 @@ const Servicos = () => {
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium">{servico.name}</h3>
+                    <h3 className="font-medium">{servico.name}</h3>
                       {!servico.active && (
                         <Badge variant="destructive">Inativo</Badge>
                       )}

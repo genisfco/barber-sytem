@@ -13,7 +13,7 @@ import { Check } from "lucide-react";
 import { useComissoes } from "@/hooks/useComissoes";
 import { Comissao } from "@/types/comissao";
 import { MetodoPagamentoDialog } from "./MetodoPagamentoDialog";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface ComissoesListProps {
   barbeiroId: string;
@@ -51,12 +51,37 @@ export function ComissoesList({
   const [modalMetodoOpen, setModalMetodoOpen] = useState(false);
   const [metodoSelecionado, setMetodoSelecionado] = useState<string | null>(null);
 
+  // Calcula se o botão de marcar todas como pagas deve estar habilitado
+  const canMarkAllPaid = useMemo(() => {
+    if (isLoading || !comissoes || comissoes.length === 0) return false; // Desabilitado se carregando, sem dados ou lista vazia
+
+    // Se o filtro é por 'pago' ou 'cancelado', o botão deve ser desabilitado
+    if (status === 'pago' || status === 'cancelado') {
+      return false;
+    }
+
+    // Se o filtro é 'pendente' ou 'todos', habilitar se houver pelo menos uma comissão pendente
+    return comissoes.some(comissao => comissao.status === 'pendente');
+  }, [comissoes, isLoading, status]);
+
+  // Calcula o total apenas das comissões pendentes na lista atual
+  const totalComissaoPendente = useMemo(() => {
+    if (!comissoes) return 0;
+    return comissoes.reduce((total, comissao) => {
+      if (comissao.status === 'pendente') {
+        return total + Number(comissao.total_commission);
+      }
+      return total;
+    }, 0);
+  }, [comissoes]);
+
   function handleMarcarPagas() {
     setModalMetodoOpen(true);
   }
 
   function handleConfirmarMetodo(metodo: string) {
     setMetodoSelecionado(metodo);
+    // A mutação será ajustada para lidar apenas com pendentes
     pagarComissao.mutate({ id: barbeiroId, paymentMethod: metodo });
   }
 
@@ -75,11 +100,18 @@ export function ComissoesList({
   return (
     <div className="space-y-4 mt-4">
       <div className="flex justify-between items-center">
-        <div className="text-lg font-semibold">
-          Total de comissões: {formatMoney(totalComissao)}
+        <div className="space-y-1">
+          <div className="text-ld font-semibold">
+            Valor Total: {formatMoney(totalComissao)}
+          </div>
+          {status !== 'pago' && status !== 'cancelado' && totalComissaoPendente > 0 && (
+            <div className="text-lg font-semibold text-yellow-700">
+              Valor Pendente: {formatMoney(totalComissaoPendente)}
+            </div>
+          )}
         </div>
-        <Button onClick={handleMarcarPagas}>
-          Marcar todas como pagas
+        <Button onClick={handleMarcarPagas} disabled={!canMarkAllPaid}>
+          Pagar Comissões Pendentes
         </Button>
       </div>
 
@@ -131,6 +163,7 @@ export function ComissoesList({
         open={modalMetodoOpen}
         onOpenChange={setModalMetodoOpen}
         onConfirm={handleConfirmarMetodo}
+        totalPendingAmount={totalComissaoPendente}
       />
     </div>
   );
