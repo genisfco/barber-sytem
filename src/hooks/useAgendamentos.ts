@@ -5,6 +5,7 @@ import { useServicos } from "@/hooks/useServicos";
 import { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { logError } from "@/utils/logger";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type Agendamento = Database['public']['Tables']['appointments']['Row'];
 type ServicoAgendamento = Database['public']['Tables']['appointment_services']['Row'];
@@ -18,7 +19,8 @@ interface CreateAgendamentoData {
   client_email: string;
   client_phone: string;
   barber_id: string;
-  barber: string;
+  barber_name: string;
+  barber_shop_id: string;
   services: Omit<ServicoAgendamento, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>[];
   products?: Omit<ProdutoAgendamento, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>[];
 }
@@ -26,6 +28,7 @@ interface CreateAgendamentoData {
 export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { selectedBarberShop } = useBarberShopContext();
   const { servicos } = useServicos();
 
   // Formata a data para o formato YYYY-MM-DD
@@ -52,9 +55,14 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   const { data: agendamentos, isLoading } = useQuery({
     queryKey: ['agendamentos', formattedDate, barbeiro_id],
     queryFn: async () => {
+      if (!selectedBarberShop?.id) {
+        throw new Error('Barbearia não selecionada');
+      }
+
       const query = supabase
         .from('appointments')
         .select('*')
+        .eq('barber_shop_id', selectedBarberShop.id)
         .order('time');
 
       if (formattedDate) {
@@ -95,14 +103,18 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
       return agendamentosCompletos;
     },
-    enabled: !!formattedDate, // Só executa a query se tiver uma data
-    staleTime: 1000 * 60, // Considera os dados frescos por 1 minuto
-    refetchInterval: 5000, // Recarrega a cada 5 segundos
-    refetchOnWindowFocus: true // Recarrega quando a janela ganha foco
+    enabled: !!formattedDate && !!selectedBarberShop?.id,
+    staleTime: 1000 * 60,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true
   });
 
   const createAgendamento = useMutation({
     mutationFn: async (agendamento: CreateAgendamentoData) => {
+      if (!selectedBarberShop?.id) {
+        throw new Error('Barbearia não selecionada');
+      }
+
       // Calcular totais
       const totalPrice = agendamento.services.reduce((sum, service) => sum + service.service_price, 0);
       const totalDuration = agendamento.services.reduce((sum, service) => sum + service.service_duration, 0);
@@ -120,7 +132,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           client_email: agendamento.client_email,
           client_phone: agendamento.client_phone,
           barber_id: agendamento.barber_id,
-          barber: agendamento.barber,
+          barber_name: agendamento.barber_name,
+          barber_shop_id: selectedBarberShop.id,
           total_duration: totalDuration,
           total_price: totalPrice,
           total_products_price: totalProductsPrice,
@@ -293,7 +306,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
       produtos: ProdutoAgendamento[];
       payment_method?: string;
       client_name: string;
-      barber: string;
+      barber_name: string;
       barber_id: string;
     }) => {
       try {

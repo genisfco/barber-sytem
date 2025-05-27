@@ -86,7 +86,8 @@ export interface Database extends DatabaseGenerated {
           client_email: string
           client_phone: string
           barber_id: string
-          barber: string
+          barber_name: string
+          barber_shop_id: string
           total_duration: number
           total_price: number
           total_products_price: number
@@ -104,7 +105,8 @@ export interface Database extends DatabaseGenerated {
           client_email: string
           client_phone: string
           barber_id: string
-          barber: string
+          barber_name: string
+          barber_shop_id: string
           total_duration: number
           total_price: number
           total_products_price: number
@@ -122,7 +124,8 @@ export interface Database extends DatabaseGenerated {
           client_email?: string
           client_phone?: string
           barber_id?: string
-          barber?: string
+          barber_name?: string
+          barber_shop_id?: string
           total_duration?: number
           total_price?: number
           total_products_price?: number

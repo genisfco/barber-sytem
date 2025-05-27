@@ -1,4 +1,4 @@
-import { useState, useEffect, Dispatch, SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 import {
   FormField,
   FormItem,
@@ -76,6 +77,7 @@ export function AgendamentoForm({
   dataInicial,
 }: AgendamentoFormProps) {
   const { toast } = useToast();
+  const { selectedBarberShop } = useBarberShopContext();
   
   // Estado para a data selecionada
   const [dataSelecionada, setDataSelecionada] = useState<Date>(dataInicial || new Date());
@@ -145,6 +147,15 @@ export function AgendamentoForm({
 
   async function onSubmit(values: FormValues) {
     try {
+      if (!selectedBarberShop?.id) {
+        toast({
+          title: "Erro ao agendar",
+          description: "Barbearia não selecionada. Por favor, faça login novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsSubmitting(true);
       // Valida todos os campos
       const isValid = await form.trigger();
@@ -241,6 +252,7 @@ export function AgendamentoForm({
         .from('appointments')
         .select('*')
         .eq('date', values.data.toISOString().split('T')[0])
+        .eq('barber_shop_id', selectedBarberShop.id)
         .or(`barber_id.eq.${barbeiro.id},client_id.eq.${cliente.id}`)
         .neq('status', 'cancelado')
         .in('status', ['confirmado', 'pendente']);
@@ -304,7 +316,8 @@ export function AgendamentoForm({
         client_email: cliente.email,
         client_phone: cliente.phone,
         barber_id: barbeiro.id,
-        barber: barbeiro.name,
+        barber_name: barbeiro.name,
+        barber_shop_id: selectedBarberShop.id,
         services: servicosSelecionados.map(servico => ({
           service_id: servico.id,
           service_name: servico.name,
