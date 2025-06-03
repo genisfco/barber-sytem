@@ -10,6 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   signOut: () => Promise<void>;
   signIn: (params: { email: string; password: string }) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   signOut: async () => {},
   signIn: async () => {},
+  resetPassword: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -124,6 +126,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      console.log("AuthContext: Iniciando recuperação de senha para", email);
+      
+      // Verifica se o email é válido
+      if (!email || !email.includes('@')) {
+        throw new Error("Email inválido");
+      }
+
+      const { error, data } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        console.error("AuthContext: Erro detalhado na recuperação de senha:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        throw error;
+      }
+      
+      console.log("AuthContext: Email de recuperação enviado com sucesso", data);
+    } catch (error: any) {
+      console.error("AuthContext: Erro durante a recuperação de senha:", {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        stack: error.stack
+      });
+      
+      // Mensagens de erro mais específicas
+      if (error.message?.includes('Email not found')) {
+        throw new Error("Este email não está cadastrado no sistema.");
+      } else if (error.message?.includes('rate limit')) {
+        throw new Error("Muitas tentativas. Por favor, aguarde alguns minutos e tente novamente.");
+      } else if (error.message?.includes('invalid email')) {
+        throw new Error("Email inválido. Por favor, verifique o endereço de email.");
+      }
+      
+      throw new Error(error.message || "Erro ao enviar email de recuperação. Tente novamente.");
+    }
+  };
+
   useEffect(() => {
     let ignore = false;
 
@@ -190,7 +236,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate, setSelectedBarberShop, location.pathname]);
 
   return (
-    <AuthContext.Provider value={{ session, isLoading, signOut, signIn }}>
+    <AuthContext.Provider value={{ session, isLoading, signOut, signIn, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,7 +10,8 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const { signIn, resetPassword } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,6 +36,39 @@ export default function Auth() {
     } finally {
       setIsLoading(false);
       console.log("Auth.tsx: Finalizando loading.");
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Email necessário",
+        description: "Por favor, insira seu email para recuperar a senha.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      console.log("Auth.tsx: Iniciando processo de recuperação de senha para:", email);
+      await resetPassword(email);
+      console.log("Auth.tsx: Email de recuperação enviado com sucesso");
+      toast({
+        title: "Email enviado",
+        description: "Verifique sua caixa de entrada para instruções de recuperação de senha. Se não encontrar o email, verifique também a pasta de spam.",
+        duration: 5000, // 5 segundos
+      });
+    } catch (error) {
+      console.error("Auth.tsx: Erro ao enviar email de recuperação:", error);
+      toast({
+        title: "Erro ao enviar email",
+        description: error instanceof Error ? error.message : "Não foi possível enviar o email de recuperação.",
+        variant: "destructive",
+        duration: 5000, // 5 segundos
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -68,7 +102,7 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isLoading || isResettingPassword}
               />
             </div>
 
@@ -80,12 +114,20 @@ export default function Auth() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isLoading || isResettingPassword}
               />
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={isLoading || isResettingPassword}
+                className="text-sm text-blue-600 hover:underline mt-1"
+              >
+                {isResettingPassword ? "Enviando..." : "Esqueceu sua senha?"}
+              </button>
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || isResettingPassword}>
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
