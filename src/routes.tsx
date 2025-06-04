@@ -19,7 +19,8 @@ import NotFound from "./pages/NotFound";
 import Assinaturas from "./pages/Assinaturas";
 import CadastroBarbearia from "./pages/CadastroBarbearia";
 import ConfiguracaoBarbearia from "./pages/ConfiguracaoBarbearia";
-import ResetPassword from "./pages/ResetPassword";
+import { RequestResetPassword } from "./pages/auth/RequestResetPassword";
+import { VerifyCodeAndReset } from "./pages/auth/VerifyCodeAndReset";
 //import PrivateLayout from "./pages/PrivateLayout";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -105,8 +106,9 @@ export function AppRoutes() {
     <Routes>
       {/* Rotas públicas */}
       <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/request-reset" element={<RequestResetPassword />} />
+      <Route path="/auth/verify-code" element={<VerifyCodeAndReset />} />
       <Route path="/cadastro-barbearia" element={<CadastroBarbearia />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Rotas protegidas */}
       <Route

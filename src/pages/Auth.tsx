@@ -118,11 +118,11 @@ export default function Auth() {
               />
               <button
                 type="button"
-                onClick={handleResetPassword}
+                onClick={() => navigate('/auth/request-reset')}
                 disabled={isLoading || isResettingPassword}
                 className="text-sm text-blue-600 hover:underline mt-1"
               >
-                {isResettingPassword ? "Enviando..." : "Esqueceu sua senha?"}
+                Esqueceu sua senha?
               </button>
             </div>
           </div>

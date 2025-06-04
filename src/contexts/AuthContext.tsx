@@ -11,6 +11,9 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   signIn: (params: { email: string; password: string }) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  verifyAndResetPassword: (email: string, token: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +22,9 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   signIn: async () => {},
   resetPassword: async () => {},
+  updatePassword: async () => {},
+  requestPasswordReset: async () => {},
+  verifyAndResetPassword: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -135,8 +141,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error("Email inválido");
       }
 
-      const { error, data } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/verify-code`,
       });
       
       if (error) {
@@ -148,7 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      console.log("AuthContext: Email de recuperação enviado com sucesso", data);
+      console.log("AuthContext: Email de recuperação enviado com sucesso");
     } catch (error: any) {
       console.error("AuthContext: Erro durante a recuperação de senha:", {
         message: error.message,
@@ -167,6 +173,103 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       throw new Error(error.message || "Erro ao enviar email de recuperação. Tente novamente.");
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      console.log("AuthContext: Iniciando atualização de senha");
+      
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        console.error("AuthContext: Erro ao atualizar senha:", error);
+        throw error;
+      }
+
+      console.log("AuthContext: Senha atualizada com sucesso");
+    } catch (error: any) {
+      console.error("AuthContext: Erro durante a atualização de senha:", error);
+      throw new Error(error.message || "Erro ao atualizar a senha. Tente novamente.");
+    }
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    try {
+      console.log("AuthContext: Iniciando solicitação de reset de senha para", email);
+
+      // Verifica se o email é válido
+      if (!email || !email.includes('@')) {
+        throw new Error("Email inválido");
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/verify-code`,
+      });
+
+      if (error) {
+        console.error("AuthContext: Erro detalhado na solicitação de reset de senha:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        throw error;
+      }
+
+      console.log("AuthContext: Email de solicitação de reset enviado com sucesso");
+    } catch (error: any) {
+      console.error("AuthContext: Erro durante a solicitação de reset de senha:", {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        stack: error.stack
+      });
+
+      // Mensagens de erro mais específicas
+      if (error.message?.includes('Email not found')) {
+        throw new Error("Este email não está cadastrado no sistema.");
+      } else if (error.message?.includes('rate limit')) {
+        throw new Error("Muitas tentativas. Por favor, aguarde alguns minutos e tente novamente.");
+      } else if (error.message?.includes('invalid email')) {
+        throw new Error("Email inválido. Por favor, verifique o endereço de email.");
+      }
+
+      throw new Error(error.message || "Erro ao enviar email de solicitação de reset. Tente novamente.");
+    }
+  };
+
+  const verifyAndResetPassword = async (email: string, token: string, newPassword: string) => {
+    try {
+      console.log("AuthContext: Iniciando verificação de OTP e atualização de senha");
+
+      // Verifica o código OTP
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'recovery',
+      });
+
+      if (verifyError) {
+        console.error("AuthContext: Erro ao verificar OTP:", verifyError);
+        throw verifyError;
+      }
+
+      // Se o código for válido, atualiza a senha
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        console.error("AuthContext: Erro ao atualizar senha após OTP verificado:", updateError);
+        throw updateError;
+      }
+
+      console.log("AuthContext: OTP verificado e senha atualizada com sucesso");
+    } catch (error: any) {
+      console.error("AuthContext: Erro durante a verificação de OTP ou atualização de senha:", error);
+      throw new Error(error.message || "Erro ao verificar código ou redefinir a senha. Tente novamente.");
     }
   };
 
@@ -210,7 +313,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthContext: onAuthStateChange - Mudança no estado de autenticação detectada", _event);
       if (!ignore) {
         setSession(session);
-        
+
         if (session) {
           console.log("AuthContext: onAuthStateChange - Nova sessão ou refresh, buscando barbearia...");
            // Buscar e setar barbearia no estado de mudança, marcando como fluxo de auth
@@ -218,9 +321,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           console.log("AuthContext: onAuthStateChange - Sessão removida.");
           setSelectedBarberShop(null);
-          // Se a sessão foi removida E não estamos em uma página de autenticação, redirecionar para login
-           if (!location.pathname.includes('/auth') && location.pathname !== '/cadastro-barbearia') {
-               console.log("AuthContext: onAuthStateChange - Sem sessão e fora de páginas de auth, redirecionando para /auth");
+          // Se a sessão foi removida E não estamos em uma página de autenticação NEM na página de reset de senha, redirecionar para login
+           if (!location.pathname.includes('/auth') && location.pathname !== '/cadastro-barbearia' && location.pathname !== '/reset-password') {
+               console.log("AuthContext: onAuthStateChange - Sem sessão e fora de páginas de auth/reset, redirecionando para /auth");
                navigate("/auth", { state: { sessionExpired: true, from: location.pathname }, replace: true });
            }
         }
@@ -236,7 +339,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate, setSelectedBarberShop, location.pathname]);
 
   return (
-    <AuthContext.Provider value={{ session, isLoading, signOut, signIn, resetPassword }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        isLoading,
+        signOut,
+        signIn,
+        resetPassword,
+        updatePassword,
+        requestPasswordReset,
+        verifyAndResetPassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
