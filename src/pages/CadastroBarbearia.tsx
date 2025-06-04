@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from "@/components/ui/use-toast";
 
 interface FormData {
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 // Função para traduzir mensagens de erro do Supabase
@@ -36,13 +38,36 @@ const traduzirErro = (erro: string): string => {
 };
 
 export default function CadastroBarbearia() {
-  const { register, handleSubmit, reset } = useForm<FormData>();
+  const { register, handleSubmit, reset, watch } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Observa o valor do campo password para validação
+  const password = watch('password');
 
   const onSubmit = async (data: FormData) => {
+    // Validação das senhas
+    if (data.password !== data.confirmPassword) {
+      toast({
+        title: "Senhas não conferem",
+        description: "As senhas digitadas não são iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.password.length < 6) {
+      toast({
+        title: "Senha muito curta",
+        description: "A senha deve ter pelo menos 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -111,7 +136,12 @@ export default function CadastroBarbearia() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" {...register('email', { required: true })} />
+            <Input 
+              id="email" 
+              type="email" 
+              {...register('email', { required: true })} 
+              disabled={loading}
+            />
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
@@ -120,6 +150,20 @@ export default function CadastroBarbearia() {
               type="password" 
               {...register('password', { required: true })}
               placeholder="Mínimo de 6 caracteres"
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+            <Input 
+              id="confirmPassword" 
+              type="password" 
+              {...register('confirmPassword', { 
+                required: true,
+                validate: value => value === password || "As senhas não conferem"
+              })}
+              placeholder="Digite a mesma senha"
+              disabled={loading}
             />
           </div>
           {error && (
