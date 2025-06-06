@@ -419,7 +419,7 @@ export function AgendamentoForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {barbers?.map((barbeiro) => (
+                        {barbers?.filter(barbeiro => barbeiro.active).map((barbeiro) => (
                           <SelectItem key={barbeiro.id} value={barbeiro.id}>
                             {barbeiro.name}
                           </SelectItem>

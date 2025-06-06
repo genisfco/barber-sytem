@@ -31,7 +31,7 @@ const Index = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setDataHoraAtual(new Date());
-    }, 60000);
+    }, 1000);
 
     return () => clearInterval(timer);
   }, []);
@@ -310,7 +310,7 @@ const Index = () => {
       color: "text-primary",
     },
     {
-      value: format(dataHoraAtual, "HH:mm"),
+      value: format(dataHoraAtual, "HH:mm:ss"),
       icon: Clock,
       color: "text-primary",
       subtitle: `${getDiaSemana(dataHoraAtual)}, ${format(dataHoraAtual, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
@@ -329,7 +329,7 @@ const Index = () => {
                 {stat.title && <p className="text-sm text-muted-foreground">{stat.title}</p>}
                 <h3 className={cn(
                   "text-2xl font-semibold mt-1",
-                  !stat.title && "text-right"
+                  !stat.title && "text-right text-3xl"
                 )}>{stat.value}</h3>
                 {stat.subtitle && (
                   <p className="text-sm text-muted-foreground mt-1">{stat.subtitle}</p>

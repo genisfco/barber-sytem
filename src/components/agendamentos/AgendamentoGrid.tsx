@@ -185,7 +185,7 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {barbers?.map((barbeiro) => (
+        {barbers?.filter(barbeiro => barbeiro.active).map((barbeiro) => (
           <Card key={barbeiro.id} className="overflow-hidden bg-white border shadow-sm">
             <CardHeader className="bg-primary text-primary-foreground">
               <div className="flex justify-between items-center">

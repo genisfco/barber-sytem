@@ -61,7 +61,14 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
       const query = supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          *,
+          barber:barbers (
+            id,
+            name,
+            active
+          )
+        `)
         .eq('barber_shop_id', selectedBarberShop.id)
         .order('time');
 
@@ -82,7 +89,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
       // Buscar serviços e produtos para cada agendamento
       const agendamentosCompletos = await Promise.all(
-        (appointments || []).map(async (agendamento) => {
+        appointments?.map(async (agendamento) => {
           const { data: servicos } = await supabase
             .from('appointment_services')
             .select('*')
