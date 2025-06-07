@@ -127,6 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     } catch (error: any) {
       console.error("AuthContext: Erro durante o login:", error);
+      setSelectedBarberShop(null); // Garante que a barbearia selecionada seja limpa em caso de erro no login
       // Propaga o erro para o componente de login tratar e exibir para o usuário
       throw new Error(error.message || "Erro ao fazer login. Tente novamente.");
     }

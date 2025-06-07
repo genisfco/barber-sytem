@@ -23,7 +23,14 @@ export default function Auth() {
     setIsLoading(true);
     try {
       console.log("Auth.tsx: Tentando fazer login com:", { email });
-      await signIn({ email, password });
+      
+      const loginPromise = signIn({ email, password });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("O login demorou muito. Por favor, tente novamente.")), 10000) // 10 segundos
+      );
+
+      await Promise.race([loginPromise, timeoutPromise]);
+      
       console.log("Auth.tsx: Login realizado com sucesso.");
       navigate("/");
     } catch (error) {
