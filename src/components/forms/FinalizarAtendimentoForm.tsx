@@ -195,93 +195,105 @@ export function FinalizarAtendimentoForm({
               <div className="space-y-4">
                 <h3 className="font-medium">Serviços</h3>
                 <div className="space-y-2">
-                  {servicos?.map((servico) => (
-                    <FormField
-                      key={servico.id}
-                      control={form.control}
-                      name="servicos"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(servico.id)}
-                              onCheckedChange={(checked) => {
-                                const current = field.value || [];
-                                if (checked) {
-                                  field.onChange([...current, servico.id]);
-                                } else {
-                                  field.onChange(current.filter(id => id !== servico.id));
-                                }
-                                calcularTotal();
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {servico.name} - R$ {servico.price.toFixed(2)}
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  ))}
+                  {servicos && servicos.length > 0 ? (
+                    servicos.map((servico) => (
+                      <FormField
+                        key={servico.id}
+                        control={form.control}
+                        name="servicos"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(servico.id)}
+                                onCheckedChange={(checked) => {
+                                  const current = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...current, servico.id]);
+                                  } else {
+                                    field.onChange(current.filter(id => id !== servico.id));
+                                  }
+                                  calcularTotal();
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {servico.name} - R$ {servico.price.toFixed(2)}
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg">
+                      Não há serviços ativos disponíveis.
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h3 className="font-medium">Produtos</h3>
                 <div className="space-y-2">
-                  {produtos?.map((produto) => (
-                    <FormField
-                      key={produto.id}
-                      control={form.control}
-                      name="produtos"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.some(p => p.id === produto.id)}
-                              onCheckedChange={(checked) => {
-                                const current = field.value || [];
-                                if (checked) {
-                                  field.onChange([...current, { id: produto.id, quantity: 1 }]);
-                                } else {
-                                  field.onChange(current.filter(p => p.id !== produto.id));
-                                }
-                                calcularTotal();
-                              }}
-                              disabled={produto.stock === 0}
-                            />
-                          </FormControl>
-                          <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
-                            {produto.name} - R$ {produto.price.toFixed(2)}
-                            <span className="ml-2 text-sm text-muted-foreground">
-                              (Estoque: {produto.stock})
-                            </span>
-                          </FormLabel>
-                          {field.value?.some(p => p.id === produto.id) && (
-                            <Input
-                              type="number"
-                              min="1"
-                              max={produto.stock}
-                              value={field.value.find(p => p.id === produto.id)?.quantity || 1}
-                              onChange={(e) => {
-                                const quantidade = parseInt(e.target.value);
-                                if (quantidade > produto.stock) return;
-                                
-                                const current = field.value || [];
-                                field.onChange(current.map(p => 
-                                  p.id === produto.id 
-                                    ? { ...p, quantity: quantidade } 
-                                    : p
-                                ));
-                                calcularTotal();
-                              }}
-                              className="w-20"
-                            />
-                          )}
-                        </FormItem>
-                      )}
-                    />
-                  ))}
+                  {produtos && produtos.length > 0 ? (
+                    produtos.map((produto) => (
+                      <FormField
+                        key={produto.id}
+                        control={form.control}
+                        name="produtos"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.some(p => p.id === produto.id)}
+                                onCheckedChange={(checked) => {
+                                  const current = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...current, { id: produto.id, quantity: 1 }]);
+                                  } else {
+                                    field.onChange(current.filter(p => p.id !== produto.id));
+                                  }
+                                  calcularTotal();
+                                }}
+                                disabled={produto.stock === 0}
+                              />
+                            </FormControl>
+                            <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
+                              {produto.name} - R$ {produto.price.toFixed(2)}
+                              <span className="ml-2 text-sm text-muted-foreground">
+                                (Estoque: {produto.stock})
+                              </span>
+                            </FormLabel>
+                            {field.value?.some(p => p.id === produto.id) && (
+                              <Input
+                                type="number"
+                                min="1"
+                                max={produto.stock}
+                                value={field.value.find(p => p.id === produto.id)?.quantity || 1}
+                                onChange={(e) => {
+                                  const quantidade = parseInt(e.target.value);
+                                  if (quantidade > produto.stock) return;
+                                  
+                                  const current = field.value || [];
+                                  field.onChange(current.map(p => 
+                                    p.id === produto.id 
+                                      ? { ...p, quantity: quantidade } 
+                                      : p
+                                  ));
+                                  calcularTotal();
+                                }}
+                                className="w-20"
+                              />
+                            )}
+                          </FormItem>
+                        )}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg">
+                      Não há produtos ativos disponíveis.
+                    </div>
+                  )}
                 </div>
               </div>
 

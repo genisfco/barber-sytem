@@ -7,13 +7,13 @@ import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type Servico = Database['public']['Tables']['services']['Row'];
 
-export function useServicos() {
+export function useServicosAdmin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedBarberShop } = useBarberShopContext();
 
   const { data: servicos, isLoading } = useQuery({
-    queryKey: ['servicos', selectedBarberShop?.id],
+    queryKey: ['servicos-admin', selectedBarberShop?.id],
     queryFn: async () => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
@@ -23,7 +23,6 @@ export function useServicos() {
         .from('services')
         .select('*')
         .eq('barber_shop_id', selectedBarberShop.id)
-        .eq('active', true)
         .order('name');
 
       if (error) {
@@ -56,6 +55,7 @@ export function useServicos() {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['servicos-admin', selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ['servicos', selectedBarberShop?.id] });
       toast({
         title: "Serviço criado com sucesso!",
@@ -92,6 +92,7 @@ export function useServicos() {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['servicos-admin', selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ['servicos', selectedBarberShop?.id] });
       toast({
         title: "Serviço atualizado com sucesso!",
@@ -107,32 +108,38 @@ export function useServicos() {
     },
   });
 
-  const deleteServico = useMutation({
-    mutationFn: async (id: string) => {
+  const toggleServicoStatus = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }
 
       const { error } = await supabase
         .from('services')
-        .update({ active: false, updated_at: new Date().toISOString() })
+        .update({ 
+          active,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .eq('barber_shop_id', selectedBarberShop.id);
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['servicos-admin', selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ['servicos', selectedBarberShop?.id] });
       toast({
-        title: "Serviço desativado com sucesso!",
-        description: "O serviço foi marcado como inativo no sistema.",
+        title: variables.active ? "Serviço ativado com sucesso!" : "Serviço desativado com sucesso!",
+        description: variables.active 
+          ? "O serviço foi reativado no sistema." 
+          : "O serviço foi marcado como inativo no sistema.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Erro ao desativar serviço",
-        description: error.message || "Ocorreu um erro ao tentar desativar o serviço. Tente novamente.",
+        title: "Erro ao alterar status do serviço",
+        description: error.message || "Ocorreu um erro ao tentar alterar o status do serviço. Tente novamente.",
       });
     },
   });
@@ -142,6 +149,6 @@ export function useServicos() {
     isLoading,
     createServico,
     updateServico,
-    deleteServico,
+    toggleServicoStatus,
   };
 } 

@@ -7,19 +7,18 @@ import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type Produto = Database['public']['Tables']['products']['Row'];
 
-export function useProdutos() {
+export function useProdutosAdmin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedBarberShop } = useBarberShopContext();
 
   const { data: produtos, isLoading } = useQuery({
-    queryKey: ['produtos', selectedBarberShop?.id],
+    queryKey: ['produtos-admin', selectedBarberShop?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('barber_shop_id', selectedBarberShop?.id)
-        .eq('active', true)
         .order('name');
 
       if (error) {
@@ -52,6 +51,7 @@ export function useProdutos() {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['produtos-admin', selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ['produtos', selectedBarberShop?.id] });
       toast({
         title: "Produto criado com sucesso!",
@@ -85,6 +85,7 @@ export function useProdutos() {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['produtos-admin', selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ['produtos', selectedBarberShop?.id] });
       toast({
         title: "Produto atualizado com sucesso!",
@@ -96,36 +97,6 @@ export function useProdutos() {
         variant: "destructive",
         title: "Erro ao atualizar produto",
         description: error.message || "Ocorreu um erro ao tentar atualizar o produto. Tente novamente.",
-      });
-    },
-  });
-
-  const deleteProduto = useMutation({
-    mutationFn: async (id: string) => {
-      if (!selectedBarberShop) {
-        throw new Error("Barbearia não selecionada");
-      }
-
-      const { error } = await supabase
-        .from('products')
-        .update({ active: false })
-        .eq('id', id)
-        .eq('barber_shop_id', selectedBarberShop.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos', selectedBarberShop?.id] });
-      toast({
-        title: "Produto desativado com sucesso!",
-        description: "O produto foi marcado como inativo no sistema.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Erro ao desativar produto",
-        description: error.message || "Ocorreu um erro ao tentar desativar o produto. Tente novamente.",
       });
     },
   });
@@ -145,6 +116,7 @@ export function useProdutos() {
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['produtos-admin', selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ['produtos', selectedBarberShop?.id] });
       toast({
         title: variables.active ? "Produto ativado com sucesso!" : "Produto desativado com sucesso!",
@@ -167,7 +139,6 @@ export function useProdutos() {
     isLoading,
     createProduto,
     updateProduto,
-    deleteProduto,
     toggleProdutoStatus,
   };
 } 

@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { useServicos } from "@/hooks/useServicos";
+import { useServicosAdmin } from "@/hooks/useServicosAdmin";
 import type { Servico } from "@/types/servico";
 import { Badge } from "@/components/ui/badge";
 
@@ -34,7 +34,7 @@ const Servicos = () => {
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm<ServicoFormData>();
-  const { servicos, isLoading, createServico, updateServico } = useServicos();
+  const { servicos, isLoading, createServico, updateServico, toggleServicoStatus } = useServicosAdmin();
 
   const onSubmit = async (data: ServicoFormData) => {
     if (selectedServico) {

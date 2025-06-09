@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { useProdutos } from "@/hooks/useProdutos";
+import { useProdutosAdmin } from "@/hooks/useProdutosAdmin";
 import type { Produto } from "@/types/produto";
 import { VenderProdutosForm } from "@/components/forms/VenderProdutosForm";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,7 @@ const Produtos = () => {
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const { register, handleSubmit, reset, setValue } = useForm<ProdutoFormData>();
-  const { produtos, isLoading, createProduto, updateProduto } = useProdutos();
+  const { produtos, isLoading, createProduto, updateProduto, toggleProdutoStatus } = useProdutosAdmin();
 
   const onSubmit = async (data: ProdutoFormData) => {
     const produtoData: Omit<Produto, "id" | "created_at" | "updated_at"> = {
