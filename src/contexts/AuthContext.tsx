@@ -280,24 +280,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initializeAuth = async () => {
       console.log("AuthContext: useEffect - Inicializando autenticação...");
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (!ignore) {
-          setSession(currentSession);
-          
-          if (currentSession) {
-            console.log("AuthContext: useEffect - Sessão encontrada, buscando barbearia...");
-             // Buscar e setar barbearia, mas não redirecionar automaticamente do useEffect de inicialização
-            await setUserBarberShop(currentSession.user, true); // Passa true para isAuthFlow
-          } else {
-            console.log("AuthContext: useEffect - Nenhuma sessão encontrada.");
-            setSelectedBarberShop(null);
-            // Se não há sessão E não estamos em uma página de autenticação, redirecionar para login
-             if (!location.pathname.includes('/auth') && location.pathname !== '/cadastro-barbearia') {
-                 console.log("AuthContext: useEffect - Sem sessão e fora de páginas de auth, redirecionando para /auth");
-                 navigate("/auth", { state: { sessionExpired: true, from: location.pathname }, replace: true });
-             }
-          }
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        setSession(session);
+        if (session?.user) {
+          console.log("AuthContext: Sessão inicial encontrada, buscando barbearia...");
+          const isInAuthPath = location.pathname.includes('/auth');
+          await setUserBarberShop(session.user, isInAuthPath);
         }
       } catch (error) {
         console.error("AuthContext: useEffect - Erro ao inicializar autenticação:", error);
@@ -317,8 +306,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (session) {
           console.log("AuthContext: onAuthStateChange - Nova sessão ou refresh, buscando barbearia...");
-           // Buscar e setar barbearia no estado de mudança, marcando como fluxo de auth
-          await setUserBarberShop(session.user, true); // Passa true para isAuthFlow
+          if (session.user) {
+            await setUserBarberShop(session.user, true);
+          }
         } else {
           console.log("AuthContext: onAuthStateChange - Sessão removida.");
           setSelectedBarberShop(null);
