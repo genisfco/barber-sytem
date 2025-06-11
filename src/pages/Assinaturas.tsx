@@ -795,7 +795,7 @@ const Assinaturas = () => {
               <form onSubmit={handleSubmitPlano(onSubmitPlano)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Plano</Label>
-                  <Input id="name" {...registerPlano("name", { required: true })} />
+                  <Input id="name" {...registerPlano("name", { required: true })} onChange={handlePlanoNameChange} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>
