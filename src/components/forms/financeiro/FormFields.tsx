@@ -44,6 +44,19 @@ type FormFieldsProps = {
 };
 
 export function FormFields({ form, tipo }: FormFieldsProps) {
+  const formatDescription = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatDescription(e.target.value);
+    form.setValue('descricao', formattedValue);
+  };
+
   return (
     <>
       <FormField
@@ -53,7 +66,11 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
           <FormItem>
             <FormLabel>Descrição</FormLabel>
             <FormControl>
-              <Input placeholder="Digite a descrição" {...field} />
+              <Input 
+                placeholder="Digite a descrição" 
+                {...field} 
+                onChange={handleDescriptionChange}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

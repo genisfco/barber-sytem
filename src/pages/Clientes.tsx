@@ -108,6 +108,41 @@ const Clientes = () => {
     )
   );
 
+  const formatName = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+    return value;
+  };
+
+  const formatEmail = (value: string) => {
+    return value.toLowerCase();
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatName(e.target.value);
+    setValue('name', formattedValue);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatPhone(e.target.value);
+    setValue('phone', formattedValue);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatEmail(e.target.value);
+    setValue('email', formattedValue);
+  };
+
   return (
     <TooltipProvider>
       <div className="p-6 space-y-6">
@@ -137,8 +172,9 @@ const Clientes = () => {
                   <Label htmlFor="name">Nome completo</Label>
                   <Input
                     id="name"
-                    placeholder="Digite o nome do cliente"
+                    placeholder="Digite o nome completo do cliente"
                     {...register("name")}
+                    onChange={handleNameChange}
                   />
                 </div>
                 <div className="space-y-2">
@@ -148,6 +184,7 @@ const Clientes = () => {
                     type="email"
                     placeholder="Digite o e-mail do cliente"
                     {...register("email")}
+                    onChange={handleEmailChange}
                   />
                 </div>
                 <div className="space-y-2">
@@ -156,6 +193,7 @@ const Clientes = () => {
                     id="phone"
                     placeholder="Digite o telefone do cliente"
                     {...register("phone")}
+                    onChange={handlePhoneChange}
                   />
                 </div>
                 <div className="space-y-2">

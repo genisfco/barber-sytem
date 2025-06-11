@@ -83,6 +83,19 @@ const Servicos = () => {
     }
   };
 
+  const formatName = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatName(e.target.value);
+    setValue('name', formattedValue);
+  };
+
   const filteredServicos = servicos?.filter((servico) =>
     servico.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -117,6 +130,7 @@ const Servicos = () => {
                   id="name"
                   placeholder="Digite o nome do serviço"
                   {...register("name")}
+                  onChange={handleNameChange}
                 />
               </div>
               <div className="space-y-2">

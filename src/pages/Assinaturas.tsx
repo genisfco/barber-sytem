@@ -755,6 +755,19 @@ const Assinaturas = () => {
     }
   }, [editingPlano, setValuePlano, resetPlano]);
 
+  const formatName = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handlePlanoNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatName(e.target.value);
+    setValuePlano('name', formattedValue);
+  };
+
   // Renderização condicional para loading
   if (isLoading || isLoadingPlanos || isLoadingPagamentos) {
     return (
@@ -830,7 +843,11 @@ const Assinaturas = () => {
               <form onSubmit={handleSubmitPlano(onSubmitPlanoEdit)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Plano</Label>
-                  <Input id="name" {...registerPlano("name", { required: true })} />
+                  <Input 
+                    id="name" 
+                    {...registerPlano("name", { required: true })}
+                    onChange={handlePlanoNameChange}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>

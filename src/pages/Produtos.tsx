@@ -93,6 +93,19 @@ const Produtos = () => {
     }
   };
 
+  const formatName = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatName(e.target.value);
+    setValue('name', formattedValue);
+  };
+
   const filteredProdutos = produtos?.filter((produto) =>
     produto.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -128,6 +141,7 @@ const Produtos = () => {
                     id="name"
                     placeholder="Digite o nome do produto"
                     {...register("name")}
+                    onChange={handleNameChange}
                   />
                 </div>
                 <div className="space-y-2">
