@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
+import { Eye, EyeOff } from 'lucide-react';
 
 interface FormData {
   email: string;
@@ -13,11 +14,29 @@ interface FormData {
   confirmPassword: string;
 }
 
+// Função para validar a força da senha
+const validatePasswordStrength = (password: string) => {
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const hasMinLength = password.length >= 8;
+
+  return {
+    isValid: hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && hasMinLength,
+    hasUpperCase,
+    hasLowerCase,
+    hasNumbers,
+    hasSpecialChar,
+    hasMinLength
+  };
+};
+
 // Função para traduzir mensagens de erro do Supabase
 const traduzirErro = (erro: string): string => {
   const mensagens: { [key: string]: string } = {
     'Email already registered': 'Este e-mail já está registrado',
-    'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
+    'Password should be at least 8 characters': 'A senha deve ter pelo menos 8 caracteres',
     'Invalid email': 'E-mail inválido',
     'Missing password': 'A senha é obrigatória',
     'Missing email': 'O e-mail é obrigatório',
@@ -42,11 +61,14 @@ export default function CadastroBarbearia() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Observa o valor do campo password para validação
   const password = watch('password');
+  const passwordStrength = password ? validatePasswordStrength(password) : null;
 
   const onSubmit = async (data: FormData) => {
     // Validação das senhas
@@ -59,10 +81,11 @@ export default function CadastroBarbearia() {
       return;
     }
 
-    if (data.password.length < 6) {
+    const passwordValidation = validatePasswordStrength(data.password);
+    if (!passwordValidation.isValid) {
       toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
+        title: "Senha fraca",
+        description: "A senha não atende aos requisitos mínimos de segurança.",
         variant: "destructive",
       });
       return;
@@ -145,26 +168,78 @@ export default function CadastroBarbearia() {
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              {...register('password', { required: true })}
-              placeholder="Mínimo de 6 caracteres"
-              disabled={loading}
-            />
+            <div className="relative">
+              <Input 
+                id="password" 
+                type={showPassword ? "text" : "password"}
+                {...register('password', { required: true })}
+                placeholder="Digite uma senha forte"
+                disabled={loading}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-500" />
+                )}
+              </Button>
+            </div>
+            {password && (
+              <div className="mt-2 space-y-1">
+                <p className="text-sm font-medium">Requisitos da senha:</p>
+                <ul className="text-sm space-y-1">
+                  <li className={`flex items-center ${passwordStrength?.hasMinLength ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasMinLength ? '✓' : '×'} Mínimo de 8 caracteres
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasUpperCase ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasUpperCase ? '✓' : '×'} Letra maiúscula
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasLowerCase ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasLowerCase ? '✓' : '×'} Letra minúscula
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasNumbers ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasNumbers ? '✓' : '×'} Número
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasSpecialChar ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasSpecialChar ? '✓' : '×'} Caractere especial (!@#$%^&*(),.?":{}|&lt;&gt;)
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
           <div>
             <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-            <Input 
-              id="confirmPassword" 
-              type="password" 
-              {...register('confirmPassword', { 
-                required: true,
-                validate: value => value === password || "As senhas não conferem"
-              })}
-              placeholder="Digite a mesma senha"
-              disabled={loading}
-            />
+            <div className="relative">
+              <Input 
+                id="confirmPassword" 
+                type={showConfirmPassword ? "text" : "password"}
+                {...register('confirmPassword', { 
+                  required: true,
+                  validate: value => value === password || "As senhas não conferem"
+                })}
+                placeholder="Digite a mesma senha"
+                disabled={loading}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-500" />
+                )}
+              </Button>
+            </div>
           </div>
           {error && (
             <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
