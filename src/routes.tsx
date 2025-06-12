@@ -19,9 +19,10 @@ import NotFound from "./pages/NotFound";
 import Assinaturas from "./pages/Assinaturas";
 import CadastroUser from "./pages/CadastroUser.tsx";
 import CadastroBarbearia from "./pages/CadastroBarbearia.tsx";
+import ConfiguracoesBarbearia from "./pages/ConfiguracoesBarbearia.tsx";
 import { RequestResetPassword } from "./pages/auth/RequestResetPassword";
 import { VerifyCodeAndReset } from "./pages/auth/VerifyCodeAndReset";
-//import PrivateLayout from "./pages/PrivateLayout";
+
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading: isAuthLoading } = useAuth();
@@ -74,7 +75,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Se tiver sessão mas não tiver barbearia selecionada E NÃO ESTIVER NA PÁGINA DE CONFIGURAÇÃO
+  // Se tiver sessão mas não tiver barbearia selecionada E NÃO ESTIVER NA PÁGINA DE CADASTRO DE BARBEARIA
   if (session && !selectedBarberShop && location.pathname !== '/cadastro-barbearia') {
      console.log("ProtectedRoute: Usuário logado sem barbearia, redirecionando para /cadastro-barbearia.");
     return <Navigate to="/cadastro-barbearia" replace />;
@@ -196,6 +197,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <Assinaturas />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/configuracoes-barbearia"
+        element={
+          <ProtectedRoute>
+            <ConfiguracoesBarbearia />
           </ProtectedRoute>
         }
       />

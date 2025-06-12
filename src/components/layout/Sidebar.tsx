@@ -12,6 +12,7 @@ import {
   ListTodo,
   Package,
   CreditCard,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,6 +35,7 @@ export function Sidebar() {
     { href: "/financeiro", label: "Financeiro", icon: DollarSign },
     { href: "/relatorio-mensal", label: "Relatório Mensal", icon: BarChart },
     { href: "/relatorio-anual", label: "Relatório Anual", icon: TrendingUp },
+    { href: "/configuracoes-barbearia", label: "Configurações", icon: Settings },
   ];
 
   return (
