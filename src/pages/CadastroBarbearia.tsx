@@ -56,8 +56,17 @@ const traduzirErro = (erro: string): string => {
   return 'Ocorreu um erro durante o cadastro. Por favor, tente novamente.';
 };
 
+const formatEmail = (value: string) => {
+  return value.toLowerCase();
+};
+
+const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const formattedValue = formatEmail(e.target.value);
+  setValue('email', formattedValue);
+};
+
 export default function CadastroBarbearia() {
-  const { register, handleSubmit, reset, watch } = useForm<FormData>();
+  const { register, handleSubmit, reset, watch, setValue } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -163,6 +172,7 @@ export default function CadastroBarbearia() {
               id="email" 
               type="email" 
               {...register('email', { required: true })} 
+              onChange={handleEmailChange}
               disabled={loading}
             />
           </div>

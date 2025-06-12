@@ -15,7 +15,7 @@ interface FormData {
 }
 
 export default function ConfiguracaoBarbearia() {
-  const { register, handleSubmit, reset } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -55,6 +55,46 @@ export default function ConfiguracaoBarbearia() {
 
     checkUser();
   }, [navigate]);
+
+  const formatBarberShopName = (value: string) => {
+    // Se o texto estiver todo em maiúsculo, mantém assim
+    if (value === value.toUpperCase()) {
+      return value;
+    }
+    // Caso contrário, aplica o formato padrão (primeira letra maiúscula)
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleBarberShopNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatBarberShopName(e.target.value);
+    setValue('barberShopName', formattedValue);
+  };
+
+  const formatEmail = (value: string) => {
+    return value.toLowerCase();
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatEmail(e.target.value);
+    setValue('barberShopEmail', formattedValue);
+  };
+
+  const formatAddress = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatAddress(e.target.value);
+    setValue('barberShopAddress', formattedValue);
+  };
 
   const onSubmit = async (data: FormData) => {
     console.log("ConfiguracaoBarbearia: Formulário submetido. Dados:", data);
@@ -133,7 +173,11 @@ export default function ConfiguracaoBarbearia() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="barberShopName">Nome da Barbearia</Label>
-            <Input id="barberShopName" {...register('barberShopName', { required: true })} />
+            <Input 
+              id="barberShopName" 
+              {...register('barberShopName', { required: true })}
+              onChange={handleBarberShopNameChange}
+            />
           </div>
           <div>
             <Label htmlFor="barberShopCnpj">CNPJ</Label>
@@ -145,11 +189,20 @@ export default function ConfiguracaoBarbearia() {
           </div>
           <div>
             <Label htmlFor="barberShopAddress">Endereço</Label>
-            <Input id="barberShopAddress" {...register('barberShopAddress', { required: true })} />
+            <Input 
+              id="barberShopAddress" 
+              {...register('barberShopAddress', { required: true })} 
+              onChange={handleAddressChange}
+            />
           </div>
           <div>
             <Label htmlFor="barberShopEmail">E-mail da Barbearia</Label>
-            <Input id="barberShopEmail" type="email" {...register('barberShopEmail', { required: true })} />
+            <Input 
+              id="barberShopEmail" 
+              type="email"
+              {...register('barberShopEmail', { required: true })} 
+              onChange={handleEmailChange}
+            />
           </div>
           {error && (
             <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
