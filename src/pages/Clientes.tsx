@@ -117,11 +117,25 @@ const Clientes = () => {
   };
 
   const formatPhone = (value: string) => {
+    // Remove todos os caracteres não numéricos
     const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    
+    // Limita a 11 dígitos (DDD + 8 para fixo ou 9 + 8 para celular)
+    const limitedNumbers = numbers.slice(0, 11);
+    
+    // Verifica se é celular (começa com 9 após o DDD)
+    if (limitedNumbers.length > 2 && limitedNumbers[2] === '9') {
+      return limitedNumbers.replace(
+        /^(\d{2})(\d{5})(\d{4})/,
+        '($1) $2-$3'
+      );
     }
-    return value;
+    
+    // Formato para telefone fixo
+    return limitedNumbers.replace(
+      /^(\d{2})(\d{4})(\d{4})/,
+      '($1) $2-$3'
+    );
   };
 
   const formatEmail = (value: string) => {
@@ -194,6 +208,7 @@ const Clientes = () => {
                     placeholder="Digite o telefone do cliente"
                     {...register("phone")}
                     onChange={handlePhoneChange}
+                    maxLength={15} // (XX) XXXXX-XXXX = 15 caracteres
                   />
                 </div>
                 <div className="space-y-2">

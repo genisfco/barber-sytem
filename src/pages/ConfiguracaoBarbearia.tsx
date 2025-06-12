@@ -96,6 +96,58 @@ export default function ConfiguracaoBarbearia() {
     setValue('barberShopAddress', formattedValue);
   };
 
+  const formatCNPJ = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limita a 14 dígitos
+    const limitedNumbers = numbers.slice(0, 14);
+    
+    // Aplica a máscara XX.XXX.XXX/XXXX-XX
+    return limitedNumbers.replace(
+      /^(\d{2})(\d{3})?(\d{3})?(\d{4})?(\d{2})?.*/,
+      (_, p1, p2, p3, p4, p5) => {
+        if (p5) return `${p1}.${p2}.${p3}/${p4}-${p5}`;
+        if (p4) return `${p1}.${p2}.${p3}/${p4}`;
+        if (p3) return `${p1}.${p2}.${p3}`;
+        if (p2) return `${p1}.${p2}`;
+        return p1;
+      }
+    );
+  };
+
+  const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCNPJ(e.target.value);
+    setValue('barberShopCnpj', formattedValue);
+  };
+
+  const formatPhone = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limita a 11 dígitos (DDD + 8 para fixo ou 9 + 8 para celular)
+    const limitedNumbers = numbers.slice(0, 11);
+    
+    // Verifica se é celular (começa com 9 após o DDD)
+    if (limitedNumbers.length > 2 && limitedNumbers[2] === '9') {
+      return limitedNumbers.replace(
+        /^(\d{2})(\d{5})(\d{4})/,
+        '($1) $2-$3'
+      );
+    }
+    
+    // Formato para telefone fixo
+    return limitedNumbers.replace(
+      /^(\d{2})(\d{4})(\d{4})/,
+      '($1) $2-$3'
+    );
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatPhone(e.target.value);
+    setValue('barberShopPhone', formattedValue);
+  };
+
   const onSubmit = async (data: FormData) => {
     console.log("ConfiguracaoBarbearia: Formulário submetido. Dados:", data);
     if (!user) {
@@ -181,11 +233,21 @@ export default function ConfiguracaoBarbearia() {
           </div>
           <div>
             <Label htmlFor="barberShopCnpj">CNPJ</Label>
-            <Input id="barberShopCnpj" {...register('barberShopCnpj', { required: true })} />
+            <Input 
+              id="barberShopCnpj" 
+              {...register('barberShopCnpj', { required: true })} 
+              onChange={handleCNPJChange}
+              maxLength={18} // XX.XXX.XXX/XXXX-XX = 18 caracteres
+            />
           </div>
           <div>
             <Label htmlFor="barberShopPhone">Telefone</Label>
-            <Input id="barberShopPhone" {...register('barberShopPhone', { required: true })} />
+            <Input 
+              id="barberShopPhone" 
+              {...register('barberShopPhone', { required: true })} 
+              onChange={handlePhoneChange}
+              maxLength={15} // (XX) XXXXX-XXXX = 15 caracteres
+            />
           </div>
           <div>
             <Label htmlFor="barberShopAddress">Endereço</Label>
