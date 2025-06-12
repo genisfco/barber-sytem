@@ -1,0 +1,267 @@
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from "@/components/ui/use-toast";
+import { Eye, EyeOff } from 'lucide-react';
+
+interface FormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+// Função para validar a força da senha
+const validatePasswordStrength = (password: string) => {
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const hasMinLength = password.length >= 8;
+
+  return {
+    isValid: hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && hasMinLength,
+    hasUpperCase,
+    hasLowerCase,
+    hasNumbers,
+    hasSpecialChar,
+    hasMinLength
+  };
+};
+
+// Função para traduzir mensagens de erro do Supabase
+const traduzirErro = (erro: string): string => {
+  const mensagens: { [key: string]: string } = {
+    'Email already registered': 'Este e-mail já está registrado',
+    'Password should be at least 8 characters': 'A senha deve ter pelo menos 8 caracteres',
+    'Invalid email': 'E-mail inválido',
+    'Missing password': 'A senha é obrigatória',
+    'Missing email': 'O e-mail é obrigatório',
+    'Invalid login credentials': 'Credenciais inválidas',
+    'User not found': 'Usuário não encontrado',
+    'Error creating user': 'Erro ao criar usuário',
+    'Network error': 'Erro de conexão. Verifique sua internet',
+    'Server error': 'Erro no servidor. Tente novamente mais tarde',
+  };
+
+  for (const [key, value] of Object.entries(mensagens)) {
+    if (erro.toLowerCase().includes(key.toLowerCase())) {
+      return value;
+    }
+  }
+
+  return 'Ocorreu um erro durante o cadastro. Por favor, tente novamente.';
+};
+
+const formatEmail = (value: string) => {
+  return value.toLowerCase();
+};
+
+export default function CadastroUser() {
+  const { register, handleSubmit, reset, watch, setValue } = useForm<FormData>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatEmail(e.target.value);
+    setValue('email', formattedValue);
+  };
+
+  // Observa o valor do campo password para validação
+  const password = watch('password');
+  const passwordStrength = password ? validatePasswordStrength(password) : null;
+
+  const onSubmit = async (data: FormData) => {
+    // Validação das senhas
+    if (data.password !== data.confirmPassword) {
+      toast({
+        title: "Senhas não conferem",
+        description: "As senhas digitadas não são iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const passwordValidation = validatePasswordStrength(data.password);
+    if (!passwordValidation.isValid) {
+      toast({
+        title: "Senha fraca",
+        description: "A senha não atende aos requisitos mínimos de segurança.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: window.location.origin + '/auth'
+        }
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+      
+      if (!signUpData.user) {
+        throw new Error('Erro ao criar usuário');
+      }
+
+      setSuccess(true);
+      reset();
+    } catch (err: any) {
+      setError(traduzirErro(err.message || 'Erro desconhecido'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card text-center">
+          <h2 className="text-2xl font-bold text-green-600">Cadastro realizado com sucesso!</h2>
+          <p className="text-gray-600 mb-4">
+            Enviamos um e-mail de confirmação para você.
+            Por favor, verifique sua caixa de entrada e confirme seu cadastro para poder fazer login.
+            Após confirmar seu e-mail e fazer login, você será redirecionado para configurar sua barbearia.
+          </p>
+          <div className="space-y-4">
+            <Button
+              onClick={() => navigate('/auth')}
+              className="w-full"
+            >
+              Ir para o Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+      <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-6">Cadastro de Usuário</h1>
+          <Button
+            variant="link"
+            className="text-sm text-blue-600 hover:underline"
+            onClick={() => navigate('/auth')}
+          >
+            Voltar para o Login
+          </Button>
+        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <Label htmlFor="email">E-mail</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              {...register('email', { required: true })} 
+              onChange={handleEmailChange}
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Senha</Label>
+            <div className="relative">
+              <Input 
+                id="password" 
+                type={showPassword ? "text" : "password"}
+                {...register('password', { required: true })}
+                placeholder="Digite uma senha forte"
+                disabled={loading}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-500" />
+                )}
+              </Button>
+            </div>
+            {password && (
+              <div className="mt-2 space-y-1">
+                <p className="text-sm font-medium">Requisitos da senha:</p>
+                <ul className="text-sm space-y-1">
+                  <li className={`flex items-center ${passwordStrength?.hasMinLength ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasMinLength ? '✓' : '×'} Mínimo de 8 caracteres
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasUpperCase ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasUpperCase ? '✓' : '×'} Letra maiúscula
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasLowerCase ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasLowerCase ? '✓' : '×'} Letra minúscula
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasNumbers ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasNumbers ? '✓' : '×'} Número
+                  </li>
+                  <li className={`flex items-center ${passwordStrength?.hasSpecialChar ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordStrength?.hasSpecialChar ? '✓' : '×'} Caractere especial (!@#$%^&*(),.?":{}|&lt;&gt;)
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+            <div className="relative">
+              <Input 
+                id="confirmPassword" 
+                type={showConfirmPassword ? "text" : "password"}
+                {...register('confirmPassword', { 
+                  required: true,
+                  validate: value => value === password || "As senhas não conferem"
+                })}
+                placeholder="Digite a mesma senha"
+                disabled={loading}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-gray-500" />
+                )}
+              </Button>
+            </div>
+          </div>
+          {error && (
+            <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
+              {error}
+            </div>
+          )}
+          
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Cadastrando...' : 'Cadastrar'}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+} 

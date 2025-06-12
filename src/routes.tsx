@@ -17,8 +17,8 @@ import RelatorioMensal from "./pages/RelatorioMensal";
 import RelatorioAnual from "./pages/RelatorioAnual";
 import NotFound from "./pages/NotFound";
 import Assinaturas from "./pages/Assinaturas";
-import CadastroBarbearia from "./pages/CadastroBarbearia";
-import ConfiguracaoBarbearia from "./pages/ConfiguracaoBarbearia";
+import CadastroUser from "./pages/CadastroUser.tsx";
+import CadastroBarbearia from "./pages/CadastroBarbearia.tsx";
 import { RequestResetPassword } from "./pages/auth/RequestResetPassword";
 import { VerifyCodeAndReset } from "./pages/auth/VerifyCodeAndReset";
 //import PrivateLayout from "./pages/PrivateLayout";
@@ -75,9 +75,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Se tiver sessão mas não tiver barbearia selecionada E NÃO ESTIVER NA PÁGINA DE CONFIGURAÇÃO
-  if (session && !selectedBarberShop && location.pathname !== '/configuracao-barbearia') {
-     console.log("ProtectedRoute: Usuário logado sem barbearia, redirecionando para /configuracao-barbearia.");
-    return <Navigate to="/configuracao-barbearia" replace />;
+  if (session && !selectedBarberShop && location.pathname !== '/cadastro-barbearia') {
+     console.log("ProtectedRoute: Usuário logado sem barbearia, redirecionando para /cadastro-barbearia.");
+    return <Navigate to="/cadastro-barbearia" replace />;
   }
 
   // Se tiver sessão e estiver tentando acessar a página de login (já tratada acima, mas deixamos aqui por segurança)
@@ -108,14 +108,14 @@ export function AppRoutes() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/request-reset" element={<RequestResetPassword />} />
       <Route path="/auth/verify-code" element={<VerifyCodeAndReset />} />
-      <Route path="/cadastro-barbearia" element={<CadastroBarbearia />} />
+      <Route path="/cadastro-usuario" element={<CadastroUser />} />
 
       {/* Rotas protegidas */}
       <Route
-        path="/configuracao-barbearia"
+        path="/cadastro-barbearia"
         element={
           <ProtectedRoute>
-            <ConfiguracaoBarbearia />
+            <CadastroBarbearia />
           </ProtectedRoute>
         }
       />

@@ -1,131 +1,197 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from "@/components/ui/use-toast";
-import { Eye, EyeOff } from 'lucide-react';
 
 interface FormData {
-  email: string;
-  password: string;
-  confirmPassword: string;
+  barberShopName: string;
+  barberShopCnpj: string;
+  barberShopPhone: string;
+  barberShopAddress: string;
+  barberShopEmail: string;
 }
 
-// Função para validar a força da senha
-const validatePasswordStrength = (password: string) => {
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumbers = /\d/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  const hasMinLength = password.length >= 8;
-
-  return {
-    isValid: hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && hasMinLength,
-    hasUpperCase,
-    hasLowerCase,
-    hasNumbers,
-    hasSpecialChar,
-    hasMinLength
-  };
-};
-
-// Função para traduzir mensagens de erro do Supabase
-const traduzirErro = (erro: string): string => {
-  const mensagens: { [key: string]: string } = {
-    'Email already registered': 'Este e-mail já está registrado',
-    'Password should be at least 8 characters': 'A senha deve ter pelo menos 8 caracteres',
-    'Invalid email': 'E-mail inválido',
-    'Missing password': 'A senha é obrigatória',
-    'Missing email': 'O e-mail é obrigatório',
-    'Invalid login credentials': 'Credenciais inválidas',
-    'User not found': 'Usuário não encontrado',
-    'Error creating user': 'Erro ao criar usuário',
-    'Network error': 'Erro de conexão. Verifique sua internet',
-    'Server error': 'Erro no servidor. Tente novamente mais tarde',
-  };
-
-  for (const [key, value] of Object.entries(mensagens)) {
-    if (erro.toLowerCase().includes(key.toLowerCase())) {
-      return value;
-    }
-  }
-
-  return 'Ocorreu um erro durante o cadastro. Por favor, tente novamente.';
-};
-
-const formatEmail = (value: string) => {
-  return value.toLowerCase();
-};
-
-const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const formattedValue = formatEmail(e.target.value);
-  setValue('email', formattedValue);
-};
-
 export default function CadastroBarbearia() {
-  const { register, handleSubmit, reset, watch, setValue } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
 
-  // Observa o valor do campo password para validação
-  const password = watch('password');
-  const passwordStrength = password ? validatePasswordStrength(password) : null;
+  useEffect(() => {
+    const checkUser = async () => {
+      console.log("CadastroBarbearia: Verificando usuário logado...");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log("CadastroBarbearia: Usuário não logado, redirecionando para /auth");
+        navigate('/auth');
+        return;
+      }
+      console.log("CadastroBarbearia: Usuário logado encontrado:", user.id);
+      setUser(user);
+
+      // Verifica se o usuário já tem uma barbearia
+      console.log("CadastroBarbearia: Verificando se usuário já possui barbearia...");
+      const { data: barberShop, error: fetchError } = await supabase
+        .from('barber_shops')
+        .select('*')
+        .eq('admin_id', user.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+         console.error("CadastroBarbearia: Erro ao buscar barbearia:", fetchError);
+         // Podemos decidir o que fazer aqui, talvez exibir um erro ou tentar novamente
+      } else if (barberShop) {
+        console.log("CadastroBarbearia: Barbearia encontrada, redirecionando para /dashboard");
+        navigate('/dashboard'); // Redireciona para o dashboard se já tiver barbearia
+      } else {
+        console.log("CadastroBarbearia: Nenhuma barbearia encontrada para este usuário.");
+      }
+    };
+
+    checkUser();
+  }, [navigate]);
+
+  const formatBarberShopName = (value: string) => {
+    // Se o texto estiver todo em maiúsculo, mantém assim
+    if (value === value.toUpperCase()) {
+      return value;
+    }
+    // Caso contrário, aplica o formato padrão (primeira letra maiúscula)
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleBarberShopNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatBarberShopName(e.target.value);
+    setValue('barberShopName', formattedValue);
+  };
+
+  const formatEmail = (value: string) => {
+    return value.toLowerCase();
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatEmail(e.target.value);
+    setValue('barberShopEmail', formattedValue);
+  };
+
+  const formatAddress = (value: string) => {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatAddress(e.target.value);
+    setValue('barberShopAddress', formattedValue);
+  };
+
+  const formatCNPJ = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limita a 14 dígitos
+    const limitedNumbers = numbers.slice(0, 14);
+    
+    // Aplica a máscara XX.XXX.XXX/XXXX-XX
+    if (limitedNumbers.length <= 2) return limitedNumbers;
+    if (limitedNumbers.length <= 5) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2)}`;
+    if (limitedNumbers.length <= 8) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5)}`;
+    if (limitedNumbers.length <= 12) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5, 8)}/${limitedNumbers.slice(8)}`;
+    return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5, 8)}/${limitedNumbers.slice(8, 12)}-${limitedNumbers.slice(12)}`;
+  };
+
+  const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCNPJ(e.target.value);
+    setValue('barberShopCnpj', formattedValue);
+  };
+
+  const formatPhone = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limita a 11 dígitos (DDD + 8 para fixo ou 9 + 8 para celular)
+    const limitedNumbers = numbers.slice(0, 11);
+    
+    // Verifica se é celular (começa com 9 após o DDD)
+    if (limitedNumbers.length > 2 && limitedNumbers[2] === '9') {
+      return limitedNumbers.replace(
+        /^(\d{2})(\d{5})(\d{4})/,
+        '($1) $2-$3'
+      );
+    }
+    
+    // Formato para telefone fixo
+    return limitedNumbers.replace(
+      /^(\d{2})(\d{4})(\d{4})/,
+      '($1) $2-$3'
+    );
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatPhone(e.target.value);
+    setValue('barberShopPhone', formattedValue);
+  };
 
   const onSubmit = async (data: FormData) => {
-    // Validação das senhas
-    if (data.password !== data.confirmPassword) {
-      toast({
-        title: "Senhas não conferem",
-        description: "As senhas digitadas não são iguais.",
-        variant: "destructive",
-      });
+    console.log("CadastroBarbearia: Formulário submetido. Dados:", data);
+    if (!user) {
+      console.log("CadastroBarbearia: Usuário não disponível ao submeter, abortando.");
+      setError('Erro: Usuário não logado.');
       return;
     }
-
-    const passwordValidation = validatePasswordStrength(data.password);
-    if (!passwordValidation.isValid) {
-      toast({
-        title: "Senha fraca",
-        description: "A senha não atende aos requisitos mínimos de segurança.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    
     setLoading(true);
     setError(null);
 
     try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: window.location.origin + '/auth'
-        }
-      });
+      const barberShopData = {
+        name: data.barberShopName,
+        cnpj: data.barberShopCnpj,
+        phone: data.barberShopPhone,
+        address: data.barberShopAddress,
+        email: data.barberShopEmail,
+        admin_id: user.id,
+        active: true,
+        logo_url: null,
+      };
 
-      if (signUpError) {
-        throw signUpError;
+      console.log("CadastroBarbearia: Tentando inserir dados da barbearia:", barberShopData);
+
+      const { error: createError } = await supabase
+        .from('barber_shops')
+        .insert([barberShopData]); // Note: insert expects an array
+
+      if (createError) {
+        console.error("CadastroBarbearia: Erro ao criar barbearia no Supabase:", createError);
+        throw createError;
       }
-      
-      if (!signUpData.user) {
-        throw new Error('Erro ao criar usuário');
-      }
+
+      console.log("CadastroBarbearia: Barbearia criada com sucesso!");
 
       setSuccess(true);
       reset();
+      
+      // Redireciona para o dashboard após um pequeno delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
     } catch (err: any) {
-      setError(traduzirErro(err.message || 'Erro desconhecido'));
+      console.error("CadastroBarbearia: Erro durante a submissão do formulário:", err);
+      setError(err.message || 'Erro ao criar barbearia');
     } finally {
       setLoading(false);
+      console.log("CadastroBarbearia: Finalizando loading.");
     }
   };
 
@@ -133,20 +199,10 @@ export default function CadastroBarbearia() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card text-center">
-          <h2 className="text-2xl font-bold text-green-600">Cadastro realizado com sucesso!</h2>
+          <h2 className="text-2xl font-bold text-green-600">Barbearia configurada com sucesso!</h2>
           <p className="text-gray-600 mb-4">
-            Enviamos um e-mail de confirmação para você.
-            Por favor, verifique sua caixa de entrada e confirme seu cadastro para poder fazer login.
-            Após confirmar seu e-mail e fazer login, você será redirecionado para configurar sua barbearia.
+            Você será redirecionado para o dashboard em instantes...
           </p>
-          <div className="space-y-4">
-            <Button
-              onClick={() => navigate('/auth')}
-              className="w-full"
-            >
-              Ir para o Login
-            </Button>
-          </div>
         </div>
       </div>
     );
@@ -156,100 +212,54 @@ export default function CadastroBarbearia() {
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
       <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-6">Cadastro de Usuário</h1>
-          <Button
-            variant="link"
-            className="text-sm text-blue-600 hover:underline"
-            onClick={() => navigate('/auth')}
-          >
-            Voltar para o Login
-          </Button>
+          <h1 className="text-2xl font-bold mb-6">Configuração da Barbearia</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Complete as informações da sua barbearia para começar a usar o sistema.
+          </p>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="barberShopName">Nome da Barbearia</Label>
             <Input 
-              id="email" 
-              type="email" 
-              {...register('email', { required: true })} 
-              onChange={handleEmailChange}
-              disabled={loading}
+              id="barberShopName" 
+              {...register('barberShopName', { required: true })}
+              onChange={handleBarberShopNameChange}
             />
           </div>
           <div>
-            <Label htmlFor="password">Senha</Label>
-            <div className="relative">
-              <Input 
-                id="password" 
-                type={showPassword ? "text" : "password"}
-                {...register('password', { required: true })}
-                placeholder="Digite uma senha forte"
-                disabled={loading}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-500" />
-                )}
-              </Button>
-            </div>
-            {password && (
-              <div className="mt-2 space-y-1">
-                <p className="text-sm font-medium">Requisitos da senha:</p>
-                <ul className="text-sm space-y-1">
-                  <li className={`flex items-center ${passwordStrength?.hasMinLength ? 'text-green-600' : 'text-red-600'}`}>
-                    {passwordStrength?.hasMinLength ? '✓' : '×'} Mínimo de 8 caracteres
-                  </li>
-                  <li className={`flex items-center ${passwordStrength?.hasUpperCase ? 'text-green-600' : 'text-red-600'}`}>
-                    {passwordStrength?.hasUpperCase ? '✓' : '×'} Letra maiúscula
-                  </li>
-                  <li className={`flex items-center ${passwordStrength?.hasLowerCase ? 'text-green-600' : 'text-red-600'}`}>
-                    {passwordStrength?.hasLowerCase ? '✓' : '×'} Letra minúscula
-                  </li>
-                  <li className={`flex items-center ${passwordStrength?.hasNumbers ? 'text-green-600' : 'text-red-600'}`}>
-                    {passwordStrength?.hasNumbers ? '✓' : '×'} Número
-                  </li>
-                  <li className={`flex items-center ${passwordStrength?.hasSpecialChar ? 'text-green-600' : 'text-red-600'}`}>
-                    {passwordStrength?.hasSpecialChar ? '✓' : '×'} Caractere especial (!@#$%^&*(),.?":{}|&lt;&gt;)
-                  </li>
-                </ul>
-              </div>
-            )}
+            <Label htmlFor="barberShopCnpj">CNPJ</Label>
+            <Input 
+              id="barberShopCnpj" 
+              {...register('barberShopCnpj', { required: true })} 
+              onChange={handleCNPJChange}
+              maxLength={18} // XX.XXX.XXX/XXXX-XX = 18 caracteres
+            />
           </div>
           <div>
-            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-            <div className="relative">
-              <Input 
-                id="confirmPassword" 
-                type={showConfirmPassword ? "text" : "password"}
-                {...register('confirmPassword', { 
-                  required: true,
-                  validate: value => value === password || "As senhas não conferem"
-                })}
-                placeholder="Digite a mesma senha"
-                disabled={loading}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-500" />
-                )}
-              </Button>
-            </div>
+            <Label htmlFor="barberShopPhone">Telefone</Label>
+            <Input 
+              id="barberShopPhone" 
+              {...register('barberShopPhone', { required: true })} 
+              onChange={handlePhoneChange}
+              maxLength={15} // (XX) XXXXX-XXXX = 15 caracteres
+            />
+          </div>
+          <div>
+            <Label htmlFor="barberShopAddress">Endereço</Label>
+            <Input 
+              id="barberShopAddress" 
+              {...register('barberShopAddress', { required: true })} 
+              onChange={handleAddressChange}
+            />
+          </div>
+          <div>
+            <Label htmlFor="barberShopEmail">E-mail da Barbearia</Label>
+            <Input 
+              id="barberShopEmail" 
+              type="email"
+              {...register('barberShopEmail', { required: true })} 
+              onChange={handleEmailChange}
+            />
           </div>
           {error && (
             <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
@@ -258,7 +268,7 @@ export default function CadastroBarbearia() {
           )}
           
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Cadastrando...' : 'Cadastrar'}
+            {loading ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </form>
       </div>

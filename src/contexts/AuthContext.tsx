@@ -72,16 +72,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("AuthContext: Nenhuma barbearia encontrada para este usuário.");
         setSelectedBarberShop(null);
         // Redireciona para configuração APENAS se não estiver já na página de configuração E não for um fluxo de auth
-         if (location.pathname !== '/configuracao-barbearia' && !isAuthFlow) {
-             navigate("/configuracao-barbearia");
+         if (location.pathname !== '/cadastro-barbearia' && !isAuthFlow) {
+             navigate("/cadastro-barbearia");
          }
       }
     } catch (error: any) {
       console.error("AuthContext: Erro no setUserBarberShop:", error);
       setSelectedBarberShop(null);
        // Redireciona para configuração em caso de erro APENAS se não estiver já na página de configuração E não for um fluxo de auth
-        if (location.pathname !== '/configuracao-barbearia' && !isAuthFlow) {
-             navigate("/configuracao-barbearia");
+        if (location.pathname !== '/cadastro-barbearia' && !isAuthFlow) {
+             navigate("/cadastro-barbearia");
         }
       throw error; // Re-lança o erro após logar e tratar
     }
