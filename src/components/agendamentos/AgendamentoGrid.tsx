@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBarbers } from "@/hooks/useBarbers";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
-import { horarios } from "@/constants/horarios";
+import { horarios, converterHorariosFuncionamento } from "@/constants/horarios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
 import { IndisponivelForm } from "@/components/forms/BarberIndisponivelForm";
@@ -16,14 +16,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from '@/integrations/supabase/client';
+import { DayOfWeek } from '@/types/barberShop';
 
 interface AgendamentoGridProps {
+  barberShopId: string;
   date: Date;
-  agendamentos: any[] | undefined;
+  agendamentos: any[];
   isLoading: boolean;
+  onHorarioSelect: (horario: string) => void;
 }
 
-export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGridProps) {
+export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, onHorarioSelect }: AgendamentoGridProps) {
   const { barbers } = useBarbers();
   const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
@@ -31,9 +35,47 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const [openForm, setOpenForm] = useState(false);
   const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
   const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
+  const [horariosFuncionamento, setHorariosFuncionamento] = useState<any[]>([]);
 
   // Formatamos a data para o padrão yyyy-MM-dd
   const dataFormatada = format(date, "yyyy-MM-dd");
+
+  const convertToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  useEffect(() => {
+    const carregarHorariosFuncionamento = async () => {
+      const { data: horarios, error } = await supabase
+        .from('barber_shop_hours')
+        .select('*')
+        .eq('barber_shop_id', barberShopId)
+        .order('day_of_week');
+
+      if (error) {
+        console.error('Erro ao carregar horários:', error);
+        return;
+      }
+
+      if (horarios) {
+        setHorariosFuncionamento(horarios);
+      }
+    };
+
+    carregarHorariosFuncionamento();
+  }, [barberShopId]);
+
+  useEffect(() => {
+    if (date) {
+      const diaSemana = date.getDay() as DayOfWeek;
+      const horariosConvertidos = converterHorariosFuncionamento(horariosFuncionamento);
+      const horariosDoDia = horariosConvertidos
+        .find(h => h.dia === diaSemana && h.ativo)?.horarios || [];
+      setHorariosDisponiveis(horariosDoDia);
+    }
+  }, [date, horariosFuncionamento]);
 
   const handleHorarioClick = (barbeiroId: string, horario: string) => {
     setSelectedBarber(barbeiroId);
@@ -85,25 +127,31 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
     }
     
     // Verifica se o horário está ocupado por algum agendamento
-    const horarioOcupado = agendamentos?.some((agendamento) => {
-      if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
+    const horarioOcupado = (agendamentos ?? []).some(
+      (agendamentoItem) => {
+        if (
+          agendamentoItem.barber_id === barbeiroId &&
+          agendamentoItem.date === dataFormatada &&
+          agendamentoItem.status !== 'cancelado' // Excluir agendamentos cancelados
+        ) {
+          const slotMinutesStart = convertToMinutes(horario);
+          const slotMinutesEnd = slotMinutesStart + 30; // Considerando slots de 30 minutos
+
+          const apptMinutesStart = convertToMinutes(agendamentoItem.time);
+          const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
+
+          // Verifica sobreposição
+          const hasOverlap = (
+            (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
+            (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
+            (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd) // Caso o agendamento seja maior que o slot
+          );
+
+          return hasOverlap;
+        }
         return false;
       }
-
-      // Converte os horários para minutos para facilitar a comparação
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-      
-      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-      
-      // Verifica se o horário que estamos verificando está dentro do período do agendamento
-      return (
-        minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
-        ["pendente", "atendido", "confirmado"].includes(agendamento.status)
-      );
-    });
+    );
 
     return horarioOcupado || false;
   };
@@ -112,28 +160,6 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
   const getMotivoIndisponibilidade = (barbeiroId: string, horario: string) => {
     // Primeiro verificamos se o horário já passou
     if (isHorarioPassado(horario)) {
-      const agendamento = agendamentos?.find((agendamento) => {
-        if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
-          return false;
-        }
-
-        const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-        const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-        
-        const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-        const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-        
-        return (
-          minutosVerificar >= minutosAgendamento &&
-          minutosVerificar < minutosAgendamento + agendamento.total_duration &&
-          ["pendente", "atendido", "confirmado"].includes(agendamento.status)
-        );
-      });
-
-      if (agendamento) {
-        const servicos = agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado';
-        return `Atendimento ${agendamento.client_name} (${servicos})`;
-      }
       return "Horário expirado";
     }
 
@@ -142,36 +168,57 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
       return "Barbeiro indisponível no horário";
     }
 
-    const agendamento = agendamentos?.find((agendamento) => {
-      if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
+    const agendamentoExistente = (agendamentos ?? []).find(
+      (agendamentoItem) => {
+        if (
+          agendamentoItem.barber_id === barbeiroId &&
+          agendamentoItem.date === dataFormatada &&
+          agendamentoItem.status !== 'cancelado' // Excluir agendamentos cancelados
+        ) {
+          const slotMinutesStart = convertToMinutes(horario);
+          const slotMinutesEnd = slotMinutesStart + 30; // Considerando slots de 30 minutos
+
+          const apptMinutesStart = convertToMinutes(agendamentoItem.time);
+          const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
+
+          // Verifica sobreposição
+          const hasOverlap = (
+            (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
+            (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
+            (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd) // Caso o agendamento seja maior que o slot
+          );
+
+          return hasOverlap;
+        }
         return false;
       }
+    );
 
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-      
-      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-      
-      return (
-        minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
-        ["pendente", "atendido", "confirmado"].includes(agendamento.status)
-      );
-    });
-
-    if (agendamento) {
-      const servicos = agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado';
-      return `Agendado para ${agendamento.client_name} (${servicos})`;
+    if (agendamentoExistente) {
+      return "Horário já agendado";
     }
 
-    return "Horário indisponível";
+    return "Horário disponível"; // Se chegou aqui, o horário deveria estar disponível.
   };
 
-  if (isLoading) {
+  if (barbers.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p>Carregando horários...</p>
+        <p>Carregando barbeiros...</p>
+      </div>
+    );
+  }
+
+  if (horariosDisponiveis.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4">
+        <h2 className="text-xl font-semibold">
+          {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
+        </h2>
+        <p className="text-red-600 font-medium text-center">
+          Agendamento Indisponível.<br />
+          Barbearia sem horário definido de funcionamento para o dia selecionado.
+        </p>
       </div>
     );
   }
@@ -194,11 +241,16 @@ export function AgendamentoGrid({ date, agendamentos, isLoading }: AgendamentoGr
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-2">
-                {horarios.map((horario) => {
+                {horariosDisponiveis.map((horario) => {
                   const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
                   const horario_passado = isHorarioPassado(horario);
                   const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
                   const motivoIndisponibilidade = getMotivoIndisponibilidade(barbeiro.id, horario);
+
+                  // Debugging logs
+                  console.log(`Barbeiro: ${barbeiro.name}, Horário: ${horario}, Data: ${dataFormatada}`);
+                  console.log(`isHorarioIndisponivel: ${horario_barbeiro_indisponivel}, Motivo: ${motivoIndisponibilidade}`);
+                  console.log("Agendamentos para a data:", agendamentos);
 
                   return (
                     <TooltipProvider key={`${barbeiro.id}-${horario}`}>

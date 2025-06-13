@@ -132,7 +132,7 @@ export function AgendamentoForm({
         clienteId: agendamentoParaEditar.client_id,
         barbeiroId: agendamentoParaEditar.barber_id,
         servicosSelecionados: agendamentoParaEditar.servicos?.map(s => s.service_id) || [],
-        data: new Date(agendamentoParaEditar.date),
+        data: new Date(agendamentoParaEditar.date + 'T00:00:00'),
         horario: agendamentoParaEditar.time,
       });
     }
@@ -487,9 +487,9 @@ export function AgendamentoForm({
               date={form.watch('data')}
               setDate={(date: Date | undefined) => {
                 form.setValue('data', date as Date);
-                if (date) setDataSelecionada(date);
               }}
               agendamentos={agendamentos}
+              barberShopId={selectedBarberShop?.id as string}
               agendamentoParaEditar={agendamentoParaEditar}
             />
 

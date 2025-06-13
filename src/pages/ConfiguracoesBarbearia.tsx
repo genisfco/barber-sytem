@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DayOfWeek } from '@/types/barberShop';
+import { HourPicker } from '@/components/ui/HourPicker';
 
 interface FormData {
   barberShopName: string;
@@ -20,6 +21,7 @@ interface FormData {
 }
 
 interface HorarioFuncionamento {
+  id: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
@@ -207,30 +209,35 @@ export default function ConfiguracoesBarbearia() {
         setSuccess(true);
         setTimeout(() => setSuccess(false), 2000);
       } else {
-        const { error } = await supabase
+        const { data: newHorario, error } = await supabase
           .from('barber_shop_hours')
           .insert({
             barber_shop_id: barberShop.id,
             day_of_week: dia,
-            start_time: campo === 'start_time' ? valor : '08:00',
-            end_time: campo === 'end_time' ? valor : '18:00',
+            start_time: campo === 'start_time' ? valor as string : '09:00',
+            end_time: campo === 'end_time' ? valor as string : '20:00',
             is_active: campo === 'is_active' ? valor : true
-          });
+          })
+          .select()
+          .single();
 
         if (error) {
           throw error;
         }
 
-        setHorarios([...horarios, {
-          day_of_week: dia,
-          start_time: campo === 'start_time' ? valor as string : '08:00',
-          end_time: campo === 'end_time' ? valor as string : '18:00',
-          is_active: campo === 'is_active' ? valor as boolean : true
-        }]);
+        if (newHorario) {
+          setHorarios([...horarios, {
+            id: newHorario.id,
+            day_of_week: dia,
+            start_time: campo === 'start_time' ? valor as string : '09:00',
+            end_time: campo === 'end_time' ? valor as string : '20:00',
+            is_active: campo === 'is_active' ? valor as boolean : true
+          }]);
 
-        // Feedback visual temporário
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 2000);
+          // Feedback visual temporário
+          setSuccess(true);
+          setTimeout(() => setSuccess(false), 2000);
+        }
       }
     } catch (err: any) {
       console.error("Erro ao salvar horário:", err);
@@ -383,24 +390,18 @@ export default function ConfiguracoesBarbearia() {
                       <div className="flex items-center space-x-4">
                         <div>
                           <Label>Abertura</Label>
-                          <Input
-                            type="time"
-                            value={horario?.start_time ?? '08:00'}
-                            onChange={(e) => handleHorarioChange(dia.value, 'start_time', e.target.value)}
+                          <HourPicker
+                            value={horario?.start_time ?? '09:00'}
+                            onChange={(value) => handleHorarioChange(dia.value, 'start_time', value)}
                             disabled={!horario?.is_active}
-                            min="00:00"
-                            max="23:59"
                           />
                         </div>
                         <div>
                           <Label>Fechamento</Label>
-                          <Input
-                            type="time"
-                            value={horario?.end_time ?? '18:00'}
-                            onChange={(e) => handleHorarioChange(dia.value, 'end_time', e.target.value)}
+                          <HourPicker
+                            value={horario?.end_time ?? '20:00'}
+                            onChange={(value) => handleHorarioChange(dia.value, 'end_time', value)}
                             disabled={!horario?.is_active}
-                            min="00:00"
-                            max="23:59"
                           />
                         </div>
                       </div>

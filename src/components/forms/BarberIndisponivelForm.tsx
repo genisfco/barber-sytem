@@ -3,9 +3,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from '@/hooks/use-toast';
 import { logError } from "@/utils/logger";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
+import { supabase } from '@/integrations/supabase/client';
+import { DayOfWeek } from '@/types/barberShop';
+import { converterHorariosFuncionamento, gerarHorariosDisponiveis } from "@/constants/horarios";
 
 import {
   Form,
@@ -19,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { useIndisponibilidades } from "@/hooks/useIndisponibilidades";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { horarios } from "@/constants/horarios";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -59,6 +62,16 @@ interface IndisponivelFormProps {
 }
 
 export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: IndisponivelFormProps) {
+  const { selectedBarberShop } = useBarberShopContext();
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
+  const [horariosFuncionamento, setHorariosFuncionamento] = useState<any[]>([]);
+  const [diaSemanaSemHorario, setDiaSemanaSemHorario] = useState(false);
+
+  const convertToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
   const form = useForm<IndisponivelFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -79,6 +92,69 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
   const { agendamentos } = useAgendamentos(form.watch('data'), barbeiroId);
   const { toast } = useToast();
 
+  // Carregar horários de funcionamento da barbearia
+  useEffect(() => {
+    const carregarHorariosFuncionamento = async () => {
+      const { data: horarios, error } = await supabase
+        .from('barber_shop_hours')
+        .select('*')
+        .eq('barber_shop_id', selectedBarberShop.id)
+        .order('day_of_week');
+
+      if (error) {
+        console.error('Erro ao carregar horários:', error);
+        return;
+      }
+
+      if (horarios) {
+        setHorariosFuncionamento(horarios);
+      }
+    };
+
+    carregarHorariosFuncionamento();
+  }, [selectedBarberShop.id]);
+
+  // Atualizar horários disponíveis quando a data é alterada
+  useEffect(() => {
+    const data = form.watch("data");
+    if (!data) return;
+
+    const diaSemana = data.getDay() as DayOfWeek;
+    const horariosConvertidos = converterHorariosFuncionamento(horariosFuncionamento);
+    const configuracaoDia = horariosConvertidos.find(h => h.dia === diaSemana);
+    
+    // Verifica se o dia tem horário de funcionamento
+    if (!configuracaoDia || !configuracaoDia.ativo) {
+      setDiaSemanaSemHorario(true);
+      setHorariosDisponiveis([]);
+      form.setValue("todosHorarios", false);
+      form.setValue("horarioInicial", undefined);
+      form.setValue("horarioFinal", undefined);
+      return;
+    }
+
+    setDiaSemanaSemHorario(false);
+    setHorariosDisponiveis(configuracaoDia.horarios);
+
+    // Se existe indisponibilidade, preenche os campos
+    const indisponibilidade = buscarIndisponibilidadeExistente(data);
+    if (indisponibilidade) {
+      if (!indisponibilidade.start_time && !indisponibilidade.end_time) {
+        form.setValue("todosHorarios", true);
+        form.setValue("horarioInicial", configuracaoDia.horarios[0]);
+        form.setValue("horarioFinal", configuracaoDia.horarios[configuracaoDia.horarios.length - 1]);
+      } else {
+        form.setValue("todosHorarios", false);
+        form.setValue("horarioInicial", indisponibilidade.start_time);
+        form.setValue("horarioFinal", indisponibilidade.end_time);
+      }
+    } else {
+      form.setValue("todosHorarios", false);
+      form.setValue("horarioInicial", undefined);
+      form.setValue("horarioFinal", undefined);
+    }
+  }, [form.watch("data"), horariosFuncionamento]);
+
   // Função para buscar indisponibilidade existente
   const buscarIndisponibilidadeExistente = (data: Date) => {
     if (!indisponibilidades || !data) return null;
@@ -90,33 +166,6 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
         indisponibilidade.date === formattedDate
     );
   };
-
-  // Efeito para atualizar o formulário quando a data é selecionada
-  useEffect(() => {
-    const data = form.getValues("data");
-    if (!data) return;
-
-    const indisponibilidade = buscarIndisponibilidadeExistente(data);
-    if (indisponibilidade) {
-      // Se existe indisponibilidade, preenche os campos
-      if (!indisponibilidade.start_time && !indisponibilidade.end_time) {
-        // Se não tem horário específico, é para o dia todo
-        form.setValue("todosHorarios", true);
-        form.setValue("horarioInicial", horarios[0]);
-        form.setValue("horarioFinal", horarios[horarios.length - 1]);
-      } else {
-        // Se tem horário específico, preenche os campos
-        form.setValue("todosHorarios", false);
-        form.setValue("horarioInicial", indisponibilidade.start_time);
-        form.setValue("horarioFinal", indisponibilidade.end_time);
-      }
-    } else {
-      // Se não existe indisponibilidade, limpa os campos
-      form.setValue("todosHorarios", false);
-      form.setValue("horarioInicial", undefined);
-      form.setValue("horarioFinal", undefined);
-    }
-  }, [form.watch("data")]);
 
   const onSubmit = async (data: IndisponivelFormValues) => {
     try {
@@ -155,8 +204,8 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
         await registrarIndisponibilidade.mutateAsync({
           barbeiroId,
           data: data.data,
-          horarioInicial: data.todosHorarios ? horarios[0] : data.horarioInicial,
-          horarioFinal: data.todosHorarios ? horarios[horarios.length - 1] : data.horarioFinal,
+          horarioInicial: data.todosHorarios ? horariosDisponiveis[0] : data.horarioInicial,
+          horarioFinal: data.todosHorarios ? horariosDisponiveis[horariosDisponiveis.length - 1] : data.horarioFinal,
           motivo: data.motivo
         });
       }
@@ -209,12 +258,41 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
     return minutosHorario >= minutosInicial && minutosHorario <= minutosFinal;
   };
 
+  const isHorarioOcupadoPorAgendamento = (horario: string) => {
+    if (!dataSelecionada || !agendamentos || !barbeiroId) return false;
+
+    const selectedBarbeiroId = barbeiroId;
+    const formattedDate = format(dataSelecionada, "yyyy-MM-dd");
+
+    return agendamentos.some(agendamentoItem => {
+      if (
+        agendamentoItem.barber_id === selectedBarbeiroId &&
+        agendamentoItem.date === formattedDate &&
+        agendamentoItem.status !== 'cancelado'
+      ) {
+        const slotMinutesStart = convertToMinutes(horario);
+        const slotMinutesEnd = slotMinutesStart + 30; // Assuming 30-minute slots
+
+        const apptMinutesStart = convertToMinutes(agendamentoItem.time);
+        const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
+
+        const hasOverlap = (
+          (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
+          (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
+          (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd)
+        );
+        return hasOverlap;
+      }
+      return false;
+    });
+  };
+
   // Handler para alternar entre todos os horários
   const handleTodosHorariosChange = (checked: boolean) => {
     form.setValue('todosHorarios', checked);
     if (checked) {
-      form.setValue('horarioInicial', horarios[0]);
-      form.setValue('horarioFinal', horarios[horarios.length - 1]);
+      form.setValue('horarioInicial', horariosDisponiveis[0]);
+      form.setValue('horarioFinal', horariosDisponiveis[horariosDisponiveis.length - 1]);
     } else {
       form.setValue('horarioInicial', undefined);
       form.setValue('horarioFinal', undefined);
@@ -258,110 +336,137 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
           <div className="space-y-4">
             {dataSelecionada && (
               <>
-                <div className="flex items-center space-x-2">
-                  <FormField
-                    control={form.control}
-                    name="todosHorarios"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 w-full">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">
-                            Todos Horários
-                          </FormLabel>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={handleTodosHorariosChange}
-                            disabled={estaIndisponivel}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {!todosHorarios && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="horarioInicial"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Horário Inicial</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                            disabled={estaIndisponivel}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o horário inicial" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {horarios.map((horario) => (
-                                <SelectItem key={horario} value={horario}>
-                                  {horario}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="horarioFinal"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Horário Final</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                            disabled={estaIndisponivel}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o horário final" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {horarios.map((horario) => (
-                                <SelectItem 
-                                  key={horario} 
-                                  value={horario}
-                                  disabled={estaIndisponivel || (horarioInicial && horario <= horarioInicial)}
-                                >
-                                  {horario}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                {diaSemanaSemHorario ? (
+                  <div className="p-5 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-yellow-900 text-sm">
+                      Barbearia sem horário definido de funcionamento para o dia selecionado. <br/>
+                      Não precisa registrar indisponibilidade.
+                    </p>
                   </div>
-                )}
-
-                <div className="grid grid-cols-4 gap-1">
-                  {horarios.map((horario) => (
-                    <div
-                      key={horario}
-                      className={cn(
-                        "py-2 px-1 rounded-md text-center font-medium transition-colors",
-                        isHorarioSelecionado(horario)
-                          ? "bg-red-100 text-red-700"
-                          : "bg-emerald-50 text-emerald-700"
-                      )}
-                    >
-                      {horario}
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="todosHorarios"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 w-full">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">
+                                Todos Horários
+                              </FormLabel>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={handleTodosHorariosChange}
+                                disabled={estaIndisponivel}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                  ))}
-                </div>
+
+                    {!todosHorarios && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="horarioInicial"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Horário Inicial</FormLabel>
+                              <Select 
+                                onValueChange={field.onChange} 
+                                defaultValue={field.value}
+                                disabled={estaIndisponivel}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o horário inicial" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {horariosDisponiveis.map((horario) => (
+                                    <SelectItem key={horario} value={horario}>
+                                      {horario}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="horarioFinal"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Horário Final</FormLabel>
+                              <Select 
+                                onValueChange={field.onChange} 
+                                defaultValue={field.value}
+                                disabled={estaIndisponivel}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o horário final" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {horariosDisponiveis.map((horario) => (
+                                    <SelectItem 
+                                      key={horario} 
+                                      value={horario}
+                                      disabled={estaIndisponivel || (horarioInicial && horario <= horarioInicial)}
+                                    >
+                                      {horario}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-4 gap-1">
+                      {horariosDisponiveis.map((horario) => {
+                        const isOccupiedByAppointment = isHorarioOcupadoPorAgendamento(horario);
+                        const isSelectedForIndisponibility = isHorarioSelecionado(horario);
+
+                        return (
+                          <div
+                            key={horario}
+                            className={cn(
+                              "py-2 px-1 rounded-md text-center font-medium transition-colors",
+                              isOccupiedByAppointment
+                                ? "bg-red-500 text-white cursor-not-allowed opacity-75"
+                                : isSelectedForIndisponibility
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-emerald-50 text-emerald-700"
+                            )}
+                            onClick={() => {
+                              if (!isOccupiedByAppointment) {
+                                // Lógica para selecionar/desselecionar horários para indisponibilidade
+                                // Esta parte precisaria ser refinada para permitir seleção de múltiplos horários
+                                // ou um range, dependendo da UX desejada.
+                                // Por enquanto, apenas desabilita o clique se estiver ocupado.
+                              }
+                            }}
+                            title={isOccupiedByAppointment ? "Horário já agendado" : ""}
+                          >
+                            {horario}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -378,6 +483,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
           <Button 
             type="submit"
             variant={estaIndisponivel ? "destructive" : "default"}
+            disabled={diaSemanaSemHorario}
           >
             {estaIndisponivel ? "Remover Indisponibilidade" : "Registrar Indisponibilidade"}
           </Button>

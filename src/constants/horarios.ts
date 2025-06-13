@@ -8,6 +8,22 @@ export interface HorarioFuncionamento {
 
 // Lista de todos os horários possíveis (30 em 30 minutos)
 export const horarios = [
+  "00:00",
+  "00:30",
+  "01:00",
+  "01:30",
+  "02:00",
+  "02:30",
+  "03:00",
+  "03:30",
+  "04:00",
+  "04:30",
+  "05:00",
+  "05:30",
+  "06:00",
+  "06:30",
+  "07:00",
+  "07:30",
   "08:00",
   "08:30",
   "09:00",
@@ -40,6 +56,7 @@ export const horarios = [
   "22:30",
   "23:00",
   "23:30",
+  "24:00",
 ] as const;
 
 // Função auxiliar para gerar horários entre dois horários
@@ -63,4 +80,29 @@ export function verificarHorarioFuncionamento(
   }
 
   return configuracaoDia.horarios.includes(horario);
+}
+
+// Nova função para gerar horários disponíveis baseado nos horários de funcionamento da barbearia
+export function gerarHorariosDisponiveis(
+  horariosFuncionamento: HorarioFuncionamento[],
+  dia: DayOfWeek
+): string[] {
+  const configuracaoDia = horariosFuncionamento.find(h => h.dia === dia);
+  
+  if (!configuracaoDia || !configuracaoDia.ativo) {
+    return [];
+  }
+
+  return configuracaoDia.horarios;
+}
+
+// Nova função para converter horários de funcionamento do banco para o formato da interface
+export function converterHorariosFuncionamento(
+  horariosBanco: { day_of_week: number; start_time: string; end_time: string; is_active: boolean }[]
+): HorarioFuncionamento[] {
+  return horariosBanco.map(h => ({
+    dia: h.day_of_week as DayOfWeek,
+    horarios: gerarHorariosEntre(h.start_time, h.end_time),
+    ativo: h.is_active
+  }));
 }

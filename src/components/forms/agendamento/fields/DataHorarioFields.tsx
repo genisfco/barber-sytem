@@ -1,238 +1,188 @@
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Calendar } from "@/components/ui/calendar";
-import { horarios } from "@/constants/horarios";
-import { UseFormReturn } from "react-hook-form";
-import { FormValues } from "../schema";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { useIndisponibilidades } from "@/hooks/useIndisponibilidades";
-import { format } from "date-fns";
+import { useState, useEffect } from 'react';
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { converterHorariosFuncionamento } from "@/constants/horarios";
+import { supabase } from '@/integrations/supabase/client';
+import { DayOfWeek } from '@/types/barberShop';
 
-interface Agendamento {
-  id: string;
-  date: string;
-  time: string;
-  barber_id: string;
-  client_id: string;
-  client_name: string;
-  status: string;
-  total_duration: number;
-  servicos: Array<{
-    service_id: string;
-    service_name: string;
-  }>;
-}
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { UseFormReturn } from "react-hook-form";
+import { FormValues } from "../../agendamento/schema";
+import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
+import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DataHorarioFieldsProps {
   form: UseFormReturn<FormValues>;
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
-  agendamentos: Agendamento[] | undefined;
-  agendamentoParaEditar?: Agendamento;
+  agendamentos: any[];
+  barberShopId: string;
+  agendamentoParaEditar?: any;
 }
 
-export function DataHorarioFields({ form, date, setDate, agendamentos, agendamentoParaEditar }: DataHorarioFieldsProps) {
-  const { verificarIndisponibilidade } = useIndisponibilidades();
+export function DataHorarioFields({
+  form,
+  date,
+  setDate,
+  agendamentos,
+  barberShopId,
+  agendamentoParaEditar,
+}: DataHorarioFieldsProps) {
+  const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
+  const [horariosFuncionamento, setHorariosFuncionamento] = useState<any[]>([]);
+
+  const convertToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  useEffect(() => {
+    const carregarHorariosFuncionamento = async () => {
+      const { data: horarios, error } = await supabase
+        .from('barber_shop_hours')
+        .select('*')
+        .eq('barber_shop_id', barberShopId)
+        .order('day_of_week');
+
+      if (error) {
+        console.error('Erro ao carregar horários:', error);
+        return;
+      }
+
+      if (horarios) {
+        setHorariosFuncionamento(horarios);
+      }
+    };
+
+    carregarHorariosFuncionamento();
+  }, [barberShopId]);
+
+  useEffect(() => {
+    if (date) {
+      const diaSemana = date.getDay() as DayOfWeek;
+      const horariosConvertidos = converterHorariosFuncionamento(horariosFuncionamento);
+      const horariosDoDia = horariosConvertidos
+        .find(h => h.dia === diaSemana && h.ativo)?.horarios || [];
+      setHorariosDisponiveis(horariosDoDia);
+    } else {
+      setHorariosDisponiveis([]);
+    }
+  }, [date, horariosFuncionamento]);
+
+  const dataFormatada = date ? format(date, "yyyy-MM-dd") : '';
 
   const isHorarioPassado = (horario: string) => {
-    if (!date) return false;
-    
+    if (!date) return true;
+
     const [hora, minuto] = horario.split(":").map(Number);
     const hoje = new Date();
     const dataSelecionada = new Date(date);
-    
-    dataSelecionada.setHours(0, 0, 0, 0);
-    hoje.setHours(0, 0, 0, 0);
-    
-    // Se a data selecionada for anterior a hoje, todos os horários são considerados passados
-    if (dataSelecionada < hoje) {
+
+    if (dataSelecionada < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) {
       return true;
     }
-    
-    // Se a data selecionada for posterior a hoje, nenhum horário é considerado passado
-    if (dataSelecionada > hoje) {
+
+    if (dataSelecionada > new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) {
       return false;
     }
-    
-    // Se for hoje, verifica se o horário já passou
-    const agora = new Date();
-    if (hora < agora.getHours()) return true;
-    if (hora === agora.getHours() && minuto <= agora.getMinutes()) return true;
-    
+
+    if (hora < hoje.getHours()) return true;
+    if (hora === hoje.getHours() && minuto <= hoje.getMinutes()) return true;
+
     return false;
   };
 
-  const isHorarioDisponivel = (horario: string) => {
-    if (!date) return false;
+  const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
+    if (!date || !barbeiroId) return true;
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const dataSelecionada = new Date(date);
-    dataSelecionada.setHours(0, 0, 0, 0);
+    const barbeiroBloqueadoNoHorario = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada, horario);
+    if (barbeiroBloqueadoNoHorario) {
+      return true;
+    }
 
-    // Verifica se o horário já passou
     const horarioPassado = isHorarioPassado(horario);
     if (horarioPassado) {
-      return false;
+      return true;
     }
 
-    // Verifica se o barbeiro está indisponível para o horário
-    const barbeiroId = form.getValues('barbeiroId');
-    if (!barbeiroId) {
-      return false;
-    }
+    const horarioOcupado = (agendamentos ?? []).some(
+      (agendamentoItem) => {
+        if (
+          agendamentoItem.barber_id === barbeiroId &&
+          agendamentoItem.date === dataFormatada &&
+          agendamentoItem.status !== 'cancelado' &&
+          (agendamentoParaEditar ? agendamentoItem.id !== agendamentoParaEditar.id : true)
+        ) {
+          const slotMinutesStart = convertToMinutes(horario);
+          const slotMinutesEnd = slotMinutesStart + 30;
 
-    // NOVO: Se for novo agendamento e cliente não selecionado, todos horários ficam vermelhos
-    const clienteId = form.getValues('clienteId');
-    if (!agendamentoParaEditar && !clienteId) {
-      return false;
-    }
+          const apptMinutesStart = convertToMinutes(agendamentoItem.time);
+          const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
 
-    const dataFormatada = format(date, "yyyy-MM-dd");
-    const barbeiroIndisponivel = verificarIndisponibilidade(barbeiroId, date, horario);
-    if (barbeiroIndisponivel) {
-      return false;
-    }
+          const hasOverlap = (
+            (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
+            (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
+            (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd)
+          );
 
-    // --- NOVA LÓGICA DE CONFLITO PARA EDIÇÃO ---
-    // Duração total do serviço selecionado
-    let duracaoTotal = 0;
-    try {
-      const servicosSelecionados = form.getValues('servicosSelecionados');
-      const servicos = agendamentos?.[0]?.servicos ? agendamentos[0].servicos : [];
-      if (servicosSelecionados && servicosSelecionados.length > 0 && servicos.length > 0) {
-        duracaoTotal = servicos
-          .filter((s: any) => servicosSelecionados.includes(s.service_id))
-          .reduce((sum: number, s: any) => sum + (s.service_duration || 0), 0);
-      } else if (agendamentoParaEditar && agendamentoParaEditar.servicos) {
-        duracaoTotal = agendamentoParaEditar.servicos.reduce((sum: number, s: any) => sum + (s.service_duration || 0), 0);
+          return hasOverlap;
+        }
+        return false;
       }
-    } catch (e) {
-      duracaoTotal = 30; // fallback
-    }
-    if (!duracaoTotal) duracaoTotal = 30; // fallback padrão
+    );
 
-    // Calcula início e fim do novo agendamento
-    const [horaVerificar, minutoVerificar] = horario.split(":").map(Number);
-    const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-    const minutosVerificarFim = minutosVerificar + duracaoTotal;
-
-    // Filtra agendamentos do barbeiro, na data, status válido, exceto o próprio
-    const agendamentosBarbeiro = agendamentos?.filter((agendamento) => {
-      if (agendamentoParaEditar?.id && agendamento.id === agendamentoParaEditar.id) return false;
-      return (
-        agendamento.barber_id === barbeiroId &&
-        agendamento.date === dataFormatada &&
-        ["pendente", "atendido", "confirmado"].includes(agendamento.status.toLowerCase())
-      );
-    }) || [];
-
-    // Verifica se o horário está ocupado por algum agendamento do barbeiro
-    const conflito = agendamentosBarbeiro.some((agendamento) => {
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(":").map(Number);
-      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosAgendamentoFim = minutosAgendamento + (agendamento.total_duration || 30);
-      const sobreposicao = (minutosVerificar < minutosAgendamentoFim && minutosVerificarFim > minutosAgendamento);
-      return sobreposicao;
-    });
-    if (conflito) {
-      return false;
-    }
-    return true;
+    return horarioOcupado || false;
   };
 
-  const getMotivoIndisponibilidade = (horario: string) => {
-    if (!date) return "Selecione uma data";
-    
+  const getMotivoIndisponibilidade = (barbeiroId: string, horario: string) => {
     if (isHorarioPassado(horario)) {
       return "Horário expirado";
     }
 
-    const barbeiroId = form.getValues('barbeiroId');
-    if (!barbeiroId) {
-      return "Selecione um barbeiro";
-    }
-
-    const clienteId = form.getValues('clienteId');
-    if (!clienteId) {
-      return "Selecione um cliente";
-    }
-
-    const dataFormatada = format(date, "yyyy-MM-dd");
-    
-    // Verifica indisponibilidade do barbeiro
-    const barbeiroIndisponivel = verificarIndisponibilidade(barbeiroId, date, horario);
-    if (barbeiroIndisponivel) {
+    const barbeiroBloqueadoNoHorario = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada, horario);
+    if (barbeiroBloqueadoNoHorario) {
       return "Barbeiro indisponível no horário";
     }
 
-    // Verifica agendamentos do barbeiro
-    const agendamentoBarbeiro = agendamentos?.find((agendamento) => {
-      if (agendamentoParaEditar?.id && agendamento.id === agendamentoParaEditar.id) {
+    const agendamentoExistente = (agendamentos ?? []).find(
+      (agendamentoItem) => {
+        if (
+          agendamentoItem.barber_id === barbeiroId &&
+          agendamentoItem.date === dataFormatada &&
+          agendamentoItem.status !== 'cancelado' &&
+          (agendamentoParaEditar ? agendamentoItem.id !== agendamentoParaEditar.id : true)
+        ) {
+          const slotMinutesStart = convertToMinutes(horario);
+          const slotMinutesEnd = slotMinutesStart + 30;
+
+          const apptMinutesStart = convertToMinutes(agendamentoItem.time);
+          const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
+
+          const hasOverlap = (
+            (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
+            (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
+            (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd)
+          );
+
+          return hasOverlap;
+        }
         return false;
       }
+    );
 
-      if (agendamento.barber_id !== barbeiroId || agendamento.date !== dataFormatada) {
-        return false;
-      }
-
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-      
-      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-      
-      return (
-        minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
-        ["pendente", "atendido", "confirmado"].includes(agendamento.status.toLowerCase())
-      );
-    });
-
-    if (agendamentoBarbeiro) {
-      // NOVO: Se o cliente selecionado for o mesmo do agendamento, mostra mensagem específica
-      if (agendamentoBarbeiro.client_id === clienteId) {
-        return "Cliente selecionado já agendado neste horário";
-      }
-      const servicos = agendamentoBarbeiro.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado';
-      return `Agendado para ${agendamentoBarbeiro.client_name} (${servicos})`;
+    if (agendamentoExistente) {
+      return "Horário já agendado";
     }
 
-    // Verifica agendamentos do cliente
-    const agendamentoCliente = agendamentos?.find((agendamento) => {
-      if (agendamentoParaEditar?.id && agendamento.id === agendamentoParaEditar.id) {
-        return false;
-      }
-
-      if (agendamento.client_id !== clienteId || agendamento.date !== dataFormatada) {
-        return false;
-      }
-
-      const [horaAgendamento, minutoAgendamento] = agendamento.time.split(':').map(Number);
-      const [horaVerificar, minutoVerificar] = horario.split(':').map(Number);
-      
-      const minutosAgendamento = horaAgendamento * 60 + minutoAgendamento;
-      const minutosVerificar = horaVerificar * 60 + minutoVerificar;
-      
-      return (
-        minutosVerificar >= minutosAgendamento &&
-        minutosVerificar < minutosAgendamento + agendamento.total_duration &&
-        ["pendente", "atendido", "confirmado"].includes(agendamento.status.toLowerCase())
-      );
-    });
-
-    if (agendamentoCliente) {
-      return "O Cliente já foi agendado neste horário";
-    }
-
-    return "";
-  };
-
-  const isDateDisabled = (date: Date) => {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-    return date < hoje;
+    return "Horário disponível";
   };
 
   return (
@@ -242,21 +192,44 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
         name="data"
         render={({ field }) => (
           <FormItem className="flex flex-col">
-            <FormLabel>Data</FormLabel>
-            <Calendar
-              mode="single"
-              selected={field.value}
-              onSelect={(date) => {
-                setDate(date);
-                field.onChange(date);
-                if (date) {
-                  form.setValue('horario', '');
-                }
-              }}
-              disabled={isDateDisabled}
-              className="rounded-md border w-full max-w-[300px] mx-auto md:mx-0"
-            />
-            <FormMessage />
+            <Label htmlFor="data">Data</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <FormControl>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full pl-3 text-left font-normal",
+                      !field.value && "text-muted-foreground"
+                    )}
+                  >
+                    {field.value ? (
+                      format(field.value, "PPP", { locale: ptBR })
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </FormControl>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={field.value}
+                  onSelect={(date) => {
+                    field.onChange(date);
+                    setDate(date);
+                    form.setValue('horario', '');
+                  }}
+                  disabled={(date) =>
+                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                  }
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            <FormMessage className="text-red-500 text-sm" />
           </FormItem>
         )}
       />
@@ -266,41 +239,47 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
         name="horario"
         render={({ field }) => (
           <FormItem className="flex flex-col">
-            <FormLabel>Horário</FormLabel>
+            <Label htmlFor="horario">Horário</Label>
             <div className="grid grid-cols-4 gap-2">
-              {horarios.map((horario) => {
-                const disponivel = isHorarioDisponivel(horario);
-                const selecionado = field.value === horario;
-                const horarioPassado = isHorarioPassado(horario);
-                const motivoIndisponibilidade = getMotivoIndisponibilidade(horario);
-                // NOVO: vermelho mais forte se for conflito do próprio cliente
-                const vermelhoForte = motivoIndisponibilidade === 'Cliente selecionado já agendado neste horário';
+              {horariosDisponiveis.length === 0 && (
+                <p className="text-sm text-red-600 font-medium text-center col-span-4">
+                  {date
+                    ? "Agendamentos indisponíveis para a data selecionada. Barbearia sem horário definido de funcionamento. Selecione outra data."
+                    : "Selecione uma data para ver os horários disponíveis."}
+                </p>
+              )}
+              {horariosDisponiveis.map((horario) => {
+                const barbeiroId = form.watch('barbeiroId');
+                const isUnavailable = isHorarioIndisponivel(barbeiroId, horario);
+                const motivo = getMotivoIndisponibilidade(barbeiroId, horario);
+
                 return (
                   <TooltipProvider key={horario}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button
+                        <Button
                           type="button"
+                          className={cn(
+                            "py-2 px-1 rounded-md text-center font-medium transition-colors",
+                            isUnavailable
+                              ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
+                              : field.value === horario
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer border border-emerald-200"
+                          )}
                           onClick={() => {
-                            if (disponivel) {
+                            if (!isUnavailable) {
                               field.onChange(horario);
                             }
                           }}
-                          className={cn(
-                            "py-2 px-1 rounded-md text-center font-medium transition-colors",
-                            !disponivel && vermelhoForte && "bg-red-500 text-white cursor-not-allowed opacity-90 border border-red-700",
-                            !disponivel && !vermelhoForte && "bg-red-100 text-red-700 cursor-not-allowed opacity-75",
-                            disponivel && !selecionado && "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-                            selecionado && "bg-primary text-primary-foreground"
-                          )}
-                          disabled={!disponivel}
+                          disabled={isUnavailable}
                         >
                           {horario}
-                        </button>
+                        </Button>
                       </TooltipTrigger>
-                      {!disponivel && (
+                      {isUnavailable && (
                         <TooltipContent>
-                          <p>{motivoIndisponibilidade}</p>
+                          <p>{motivo}</p>
                         </TooltipContent>
                       )}
                     </Tooltip>
@@ -308,7 +287,7 @@ export function DataHorarioFields({ form, date, setDate, agendamentos, agendamen
                 );
               })}
             </div>
-            <FormMessage />
+            <FormMessage className="text-red-500 text-sm" />
           </FormItem>
         )}
       />

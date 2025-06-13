@@ -5,12 +5,14 @@ import { AgendamentoCalendar } from "@/components/agendamentos/AgendamentoCalend
 import { AgendamentoGrid } from "@/components/agendamentos/AgendamentoGrid";
 import { AgendamentosTable } from "@/components/agendamentos/AgendamentosTable";
 import { format, startOfDay } from "date-fns";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 const Agendamentos = () => {
   // Inicializa com a data atual
   const initialDate = startOfDay(new Date());
   const [date, setDate] = useState<Date>(initialDate);
   const { agendamentos, isLoading } = useAgendamentos(date);
+  const { selectedBarberShop } = useBarberShopContext();
 
   const formatDateForComparison = (date: Date) => {
     return format(date, 'yyyy-MM-dd');
@@ -39,6 +41,11 @@ const Agendamentos = () => {
           date={date} 
           agendamentos={filteredAgendamentos}
           isLoading={isLoading}
+          barberShopId={selectedBarberShop?.id || ''}
+          onHorarioSelect={(horario) => {
+            // Aqui você pode adicionar a lógica para lidar com a seleção do horário
+            console.log('Horário selecionado:', horario);
+          }}
         />
       </div>
       <AgendamentosTable 
