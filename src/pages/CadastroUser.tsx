@@ -134,7 +134,7 @@ export default function CadastroUser() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card text-center">
           <h2 className="text-2xl font-bold text-green-600">Cadastro realizado com sucesso!</h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-200 mb-4">
             Enviamos um e-mail de confirmação para você.
             Por favor, verifique sua caixa de entrada e confirme seu cadastro para poder fazer login.
             Após confirmar seu e-mail e fazer login, você será redirecionado para configurar sua barbearia.

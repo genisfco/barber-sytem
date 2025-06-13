@@ -212,9 +212,9 @@ export default function CadastroBarbearia() {
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
       <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-6">Configuração da Barbearia</h1>
-          <p className="text-sm text-gray-600 mb-4">
-            Complete as informações da sua barbearia para começar a usar o sistema.
+          <h1 className="text-2xl font-bold mb-6">Cadastro da Barbearia</h1>
+          <p className="text-sm text-gray-200 mb-4">
+            Complete as informações da sua Barbearia para ter acesso ao BarberPro.
           </p>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
