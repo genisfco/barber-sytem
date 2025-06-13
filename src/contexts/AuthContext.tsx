@@ -313,8 +313,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("AuthContext: onAuthStateChange - Sessão removida.");
           setSelectedBarberShop(null);
           // Se a sessão foi removida E não estamos em uma página de autenticação NEM na página de reset de senha, redirecionar para login
-           if (!location.pathname.includes('/auth') && location.pathname !== '/cadastro-barbearia' && location.pathname !== '/reset-password') {
-               console.log("AuthContext: onAuthStateChange - Sem sessão e fora de páginas de auth/reset, redirecionando para /auth");
+           if (!location.pathname.includes('/auth') && location.pathname !== '/reset-password' && location.pathname !== '/cadastro-usuario') {
+               console.log("AuthContext: onAuthStateChange - Sem sessão e fora de páginas de auth/reset/cadastro, redirecionando para /auth");
                navigate("/auth", { state: { sessionExpired: true, from: location.pathname }, replace: true });
            }
         }
