@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, X, Loader2, Pencil, Trash2, Check, Power } from "lucide-react";
@@ -27,6 +27,9 @@ import type { Cliente } from "@/types/cliente";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useClientesAssinantesCount } from "@/hooks/useClientes";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type ClienteFormData = {
   name: string;
@@ -37,6 +40,7 @@ type ClienteFormData = {
 };
 
 const Clientes = () => {
+  const { selectedBarberShop } = useBarberShopContext();
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
@@ -52,6 +56,43 @@ const Clientes = () => {
   });
   const { clientes, isLoading, createCliente, updateCliente, toggleClienteStatus } = useClientes();
   const { data: assinantesCount, isLoading: isLoadingAssinantesCount, refetch: refetchAssinantesCount } = useClientesAssinantesCount();
+  const [clientesAssinantes, setClientesAssinantes] = useState<string[]>([]);
+
+  // Buscar clientes assinantes
+  const { data: assinaturas } = useQuery({
+    queryKey: ["clientes-assinantes", selectedBarberShop?.id],
+    queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
+      const { data, error } = await supabase
+        .from("client_subscriptions")
+        .select(`
+          client_id,
+          clients!inner(
+            barber_shop_id
+          ),
+          subscription_plans!inner(
+            barber_shop_id
+          )
+        `)
+        .eq('clients.barber_shop_id', selectedBarberShop.id)
+        .eq('subscription_plans.barber_shop_id', selectedBarberShop.id)
+        .eq('status', 'ativa');
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedBarberShop
+  });
+
+  // Atualizar lista de clientes assinantes quando as assinaturas mudarem
+  useEffect(() => {
+    if (assinaturas) {
+      setClientesAssinantes(assinaturas.map(a => a.client_id));
+    }
+  }, [assinaturas]);
 
   const onSubmit = async (data: ClienteFormData) => {
     if (selectedClient) {
@@ -100,13 +141,16 @@ const Clientes = () => {
     setStatusDialogOpen(true);
   };
 
-  const filteredClientes = clientes?.filter((cliente) =>
-    (
+  const filteredClientes = clientes?.filter((cliente) => {
+    const matchesSearch = (
       cliente.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.phone.includes(searchTerm)
-    )
-  );
+    );
+
+    // Removendo o filtro de assinantes, mantendo apenas a busca por texto
+    return matchesSearch;
+  });
 
   const formatName = (value: string) => {
     return value
@@ -280,7 +324,6 @@ const Clientes = () => {
                 >
                   {isLoadingAssinantesCount ? '...' : assinantesCount}
                 </div>
-                
               </CardContent>
             </Card>
           </div>
@@ -308,12 +351,22 @@ const Clientes = () => {
             </div>
           ) : (
             filteredClientes?.map((cliente) => (
-              <Card key={cliente.id} className={!cliente.active ? "opacity-70" : ""}>
+              <Card 
+                key={cliente.id} 
+                className={`${!cliente.active ? "opacity-70" : ""} ${
+                  showOnlySubscribers && clientesAssinantes.includes(cliente.id) ? "border-primary bg-primary/10" : ""
+                }`}
+              >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">
                     {cliente.name}
                     {!cliente.active && (
                       <Badge variant="destructive">Inativo</Badge>
+                    )}
+                    {showOnlySubscribers && clientesAssinantes.includes(cliente.id) && (
+                      <Badge variant="outline" className="bg-primary/30 text-primary border-primary">
+                        Assinante
+                      </Badge>
                     )}
                   </CardTitle>
                   <div className="flex items-center space-x-2">

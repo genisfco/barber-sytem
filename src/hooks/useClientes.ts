@@ -160,9 +160,23 @@ export function useClientesAssinantesCount() {
         throw new Error("Barbearia não selecionada");
       }
 
-      // Ajustar para buscar assinantes de outra fonte futuramente
-      // Por ora, retorna 0
-      return 0;
+      const { data, error } = await supabase
+        .from("client_subscriptions")
+        .select(`
+          id,
+          clients!inner(
+            barber_shop_id
+          ),
+          subscription_plans!inner(
+            barber_shop_id
+          )
+        `)
+        .eq('clients.barber_shop_id', selectedBarberShop.id)
+        .eq('subscription_plans.barber_shop_id', selectedBarberShop.id)
+        .eq('status', 'ativa');
+
+      if (error) throw error;
+      return data?.length || 0;
     },
     enabled: !!selectedBarberShop
   });
