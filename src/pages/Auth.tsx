@@ -158,7 +158,7 @@ export default function Auth() {
         <div className="text-center mt-4">
           <span className="text-sm text-gray-600">Ainda não tem Cadastro?</span>
           <br />
-          <Link to="/cadastro-barbearia" className="text-blue-600 hover:underline text-sm">
+          <Link to="/cadastro-usuario" className="text-blue-600 hover:underline text-sm">
             Cadastre sua Barbearia
           </Link>
         </div>
