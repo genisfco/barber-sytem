@@ -320,7 +320,10 @@ export default function CadastroBarbearia() {
 
       console.log("CadastroBarbearia: Barbearia criada com sucesso!");
       setLoading(false);
-      navigate('/dashboard');
+      setSuccess(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 10000); // 10 segundos
       return;
     } catch (err: any) {
       console.error("CadastroBarbearia: Erro durante a submissão do formulário:", err);
@@ -333,9 +336,11 @@ export default function CadastroBarbearia() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card text-center">
-          <h2 className="text-2xl font-bold text-green-600">Barbearia configurada com sucesso!</h2>
-          <p className="text-gray-600 mb-4">
-            Você será redirecionado para o dashboard em instantes...
+          <div className="text-green-600 text-lg font-bold p-2 bg-green-50 rounded mb-4">
+            Barbearia configurada com sucesso! 
+          </div>
+          <p className="text-gray-200 text-base mb-4">
+            Você será direcionado para o seu Dashboard...
           </p>
         </div>
       </div>

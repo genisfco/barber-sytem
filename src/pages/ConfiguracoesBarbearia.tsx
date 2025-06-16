@@ -11,13 +11,21 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DayOfWeek } from '@/types/barberShop';
 import { HourPicker } from '@/components/ui/HourPicker';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 interface FormData {
   barberShopName: string;
   barberShopCnpj: string;
   barberShopPhone: string;
-  barberShopAddress: string;
   barberShopEmail: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface HorarioFuncionamento {
@@ -28,15 +36,33 @@ interface HorarioFuncionamento {
   is_active: boolean;
 }
 
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '400px'
+};
+
+const defaultCenter = {
+  lat: -23.550520, // São Paulo
+  lng: -46.633308
+};
+
 export default function ConfiguracoesBarbearia() {
-  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorDados, setErrorDados] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [barberShop, setBarberShop] = useState<any>(null);
   const [horarios, setHorarios] = useState<HorarioFuncionamento[]>([]);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+  const [errorHorarios, setErrorHorarios] = useState<string | null>(null);
 
   const diasSemana = [
     { value: 0, label: 'Domingo' },
@@ -71,11 +97,36 @@ export default function ConfiguracoesBarbearia() {
 
       if (barberShop) {
         setBarberShop(barberShop);
-        setValue('barberShopName', barberShop.name);
-        setValue('barberShopCnpj', barberShop.cnpj);
-        setValue('barberShopPhone', barberShop.phone);
-        setValue('barberShopAddress', barberShop.address);
-        setValue('barberShopEmail', barberShop.email);
+        setValue('barberShopName', barberShop.name || '');
+        setValue('barberShopCnpj', barberShop.cnpj || '');
+        setValue('barberShopPhone', barberShop.phone || '');
+        setValue('barberShopEmail', barberShop.email || '');
+        setValue('cep', barberShop.cep || '');
+        setValue('latitude', barberShop.latitude || undefined);
+        setValue('longitude', barberShop.longitude || undefined);
+        if (barberShop.latitude && barberShop.longitude) {
+          setCoordinates({ lat: barberShop.latitude, lng: barberShop.longitude });
+          setMapCenter({ lat: barberShop.latitude, lng: barberShop.longitude });
+        }
+        // Separar o address
+        if (barberShop.address) {
+          // Exemplo: Avenida Aprígio Bezerra da Silva, 1335 - Chácara Agrindus - Taboão da Serra - SP
+          const regex = /^(.*),\s*(\d+)\s*-\s*(.*)\s*-\s*(.*)\s*-\s*([A-Z]{2})$/;
+          const match = barberShop.address.match(regex);
+          if (match) {
+            setValue('logradouro', match[1]);
+            setValue('numero', match[2]);
+            setValue('bairro', match[3]);
+            setValue('cidade', match[4]);
+            setValue('estado', match[5]);
+          } else {
+            setValue('logradouro', '');
+            setValue('numero', '');
+            setValue('bairro', '');
+            setValue('cidade', '');
+            setValue('estado', '');
+          }
+        }
 
         // Buscar horários de funcionamento
         const { data: horarios, error: horariosError } = await supabase
@@ -97,6 +148,86 @@ export default function ConfiguracoesBarbearia() {
 
     checkUser();
   }, [navigate, setValue]);
+
+  // Observa mudanças nos campos de endereço para atualizar as coordenadas
+  const watchAddress = watch(['logradouro', 'numero', 'bairro', 'cidade', 'estado']);
+
+  // Função para geocodificar o endereço usando Google Maps
+  const geocodeAddress = async () => {
+    const [logradouro, numero, bairro, cidade, estado] = watchAddress;
+    if (!logradouro || !numero || !bairro || !cidade || !estado) {
+      setCoordinates(null);
+      setValue('latitude', undefined);
+      setValue('longitude', undefined);
+      return;
+    }
+    const address = `${logradouro}, ${numero} - ${bairro} - ${cidade} - ${estado}`;
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          const lat = location.lat();
+          const lng = location.lng();
+          setCoordinates({ lat, lng });
+          setValue('latitude', lat);
+          setValue('longitude', lng);
+          setMapCenter({ lat, lng });
+          setErrorDados(null);
+        } else {
+          setCoordinates(null);
+          setValue('latitude', undefined);
+          setValue('longitude', undefined);
+          setErrorDados('Não foi possível obter as coordenadas do endereço.');
+        }
+      });
+    } catch (err) {
+      setCoordinates(null);
+      setValue('latitude', undefined);
+      setValue('longitude', undefined);
+      setErrorDados('Erro ao obter coordenadas do endereço.');
+    }
+  };
+
+  // Atualiza as coordenadas quando o endereço mudar (busca automática)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      geocodeAddress();
+    }, 1000); // Debounce de 1 segundo
+    return () => clearTimeout(timer);
+  }, [watchAddress]);
+
+  // Função para calcular distância entre dois pontos (Haversine)
+  function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371000; // Raio da Terra em metros
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      0.5 - Math.cos(dLat)/2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      (1 - Math.cos(dLon))/2;
+    return R * 2 * Math.asin(Math.sqrt(a));
+  }
+
+  // Função para atualizar coordenadas ao arrastar o marcador
+  const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      // Se já existe uma coordenada de referência (do endereço), calcula a distância
+      if (coordinates && coordinates.lat && coordinates.lng) {
+        const dist = getDistanceFromLatLonInMeters(coordinates.lat, coordinates.lng, lat, lng);
+        if (dist > 500) {
+          setErrorDados('O marcador foi movido para muito longe do endereço digitado. Verifique se o endereço está correto ou ajuste o marcador próximo ao endereço.');
+        } else {
+          setErrorDados(null);
+        }
+      }
+      setCoordinates({ lat, lng });
+      setValue('latitude', lat);
+      setValue('longitude', lng);
+    }
+  };
 
   const formatBarberShopName = (value: string) => {
     if (value === value.toUpperCase()) {
@@ -121,19 +252,6 @@ export default function ConfiguracoesBarbearia() {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatEmail(e.target.value);
     setValue('barberShopEmail', formattedValue);
-  };
-
-  const formatAddress = (value: string) => {
-    return value
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatAddress(e.target.value);
-    setValue('barberShopAddress', formattedValue);
   };
 
   const formatCNPJ = (value: string) => {
@@ -183,7 +301,7 @@ export default function ConfiguracoesBarbearia() {
       const endTime = campo === 'end_time' ? valor as string : horarioAtual?.end_time;
       
       if (startTime && endTime && startTime >= endTime) {
-        setError('O horário de fechamento deve ser maior que o horário de abertura');
+        setErrorHorarios('O horário de fechamento deve ser maior que o horário de abertura');
         return;
       }
     }
@@ -241,27 +359,73 @@ export default function ConfiguracoesBarbearia() {
       }
     } catch (err: any) {
       console.error("Erro ao salvar horário:", err);
-      setError(err.message || 'Erro ao salvar horário');
+      setErrorHorarios(err.message || 'Erro ao salvar horário');
+    }
+  };
+
+  // Função para formatar o CEP
+  const formatCEP = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const limitedNumbers = numbers.slice(0, 8);
+    return limitedNumbers.replace(/^(\d{5})(\d{3})/, '$1-$2');
+  };
+
+  const handleCEPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCEP(e.target.value);
+    setValue('cep', formattedValue);
+  };
+
+  const handleCEPBlur = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cep = e.target.value;
+    if (cep.length === 9) { // 00000-000
+      fetchAddressByCEP(cep);
+    }
+  };
+
+  const fetchAddressByCEP = async (cep: string) => {
+    try {
+      const cleanCEP = cep.replace(/\D/g, '');
+      if (cleanCEP.length !== 8) return;
+
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        setErrorDados('CEP não encontrado');
+        return;
+      }
+
+      setValue('logradouro', data.logradouro);
+      setValue('bairro', data.bairro);
+      setValue('cidade', data.localidade);
+      setValue('estado', data.uf);
+    } catch (err) {
+      setErrorDados('Erro ao buscar CEP');
     }
   };
 
   const onSubmit = async (data: FormData) => {
     if (!user || !barberShop) {
-      setError('Erro: Usuário ou barbearia não disponível.');
+      setErrorDados('Erro: Usuário ou barbearia não disponível.');
       return;
     }
     
     setLoading(true);
-    setError(null);
+    setErrorDados(null);
 
     try {
+      // Montar o endereço no formato correto
+      const formattedAddress = `${data.logradouro}, ${data.numero} - ${data.bairro} - ${data.cidade} - ${data.estado}`;
       const { error: updateError } = await supabase
         .from('barber_shops')
         .update({
           name: data.barberShopName,
           cnpj: data.barberShopCnpj,
           phone: data.barberShopPhone,
-          address: data.barberShopAddress,
+          address: formattedAddress,
+          cep: data.cep,
+          latitude: data.latitude,
+          longitude: data.longitude,
           email: data.barberShopEmail,
         })
         .eq('id', barberShop.id);
@@ -275,7 +439,7 @@ export default function ConfiguracoesBarbearia() {
         setSuccess(false);
       }, 3000);
     } catch (err: any) {
-      setError(err.message || 'Erro ao atualizar dados da barbearia');
+      setErrorDados(err.message || 'Erro ao atualizar dados da barbearia');
     } finally {
       setLoading(false);
     }
@@ -325,13 +489,81 @@ export default function ConfiguracoesBarbearia() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="barberShopAddress">Endereço</Label>
+                  <Label htmlFor="cep">CEP</Label>
                   <Input 
-                    id="barberShopAddress" 
-                    {...register('barberShopAddress', { required: true })} 
-                    onChange={handleAddressChange}
+                    id="cep" 
+                    {...register('cep', { required: true })} 
+                    maxLength={9}
+                    onChange={handleCEPChange}
+                    onBlur={handleCEPBlur}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="logradouro">Logradouro</Label>
+                  <Input 
+                    id="logradouro" 
+                    {...register('logradouro', { required: true })} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="numero">Número</Label>
+                  <Input 
+                    id="numero" 
+                    {...register('numero', { required: true })} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bairro">Bairro</Label>
+                  <Input 
+                    id="bairro" 
+                    {...register('bairro', { required: true })} 
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="cidade">Cidade</Label>
+                    <Input 
+                      id="cidade" 
+                      {...register('cidade', { required: true })} 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="estado">Estado</Label>
+                    <Input 
+                      id="estado" 
+                      {...register('estado', { required: true })} 
+                      maxLength={2}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Label>Localização no Mapa</Label>
+                  <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
+                    <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
+                      <GoogleMap
+                        mapContainerStyle={mapContainerStyle}
+                        center={mapCenter}
+                        zoom={15}
+                      >
+                        {coordinates && (
+                          <Marker
+                            position={coordinates}
+                            draggable={true}
+                            onDragEnd={handleMarkerDragEnd}
+                          />
+                        )}
+                      </GoogleMap>
+                    </LoadScript>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Arraste o marcador para ajustar a localização exata da barbearia
+                  </p>
+                </div>
+                {coordinates && (
+                  <div className="text-sm text-gray-500">
+                    Coordenadas: {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="barberShopEmail">E-mail da Barbearia</Label>
                   <Input 
@@ -341,9 +573,9 @@ export default function ConfiguracoesBarbearia() {
                     onChange={handleEmailChange}
                   />
                 </div>
-                {error && (
+                {errorDados && (
                   <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
-                    {error}
+                    {errorDados}
                   </div>
                 )}
                 {success && (
@@ -365,9 +597,9 @@ export default function ConfiguracoesBarbearia() {
               <CardTitle>Horários de Funcionamento</CardTitle>
             </CardHeader>
             <CardContent>
-              {error && (
+              {errorHorarios && (
                 <div className="text-red-600 text-sm p-2 bg-red-50 rounded mb-4">
-                  {error}
+                  {errorHorarios}
                 </div>
               )}
               {success && (
