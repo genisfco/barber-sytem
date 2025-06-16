@@ -5,22 +5,60 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 interface FormData {
   barberShopName: string;
   barberShopCnpj: string;
   barberShopPhone: string;
-  barberShopAddress: string;
   barberShopEmail: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  latitude?: number;
+  longitude?: number;
 }
 
+interface ViaCepResponse {
+  cep: string;
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  erro?: boolean;
+}
+
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '400px'
+};
+
+const defaultCenter = {
+  lat: -23.550520, // São Paulo
+  lng: -46.633308
+};
+
 export default function CadastroBarbearia() {
-  const { register, handleSubmit, reset, setValue } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+
+  // Observa mudanças nos campos de endereço para atualizar as coordenadas
+  const watchAddress = watch(['logradouro', 'numero', 'bairro', 'cidade', 'estado']);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -34,8 +72,6 @@ export default function CadastroBarbearia() {
       console.log("CadastroBarbearia: Usuário logado encontrado:", user.id);
       setUser(user);
 
-      // Verifica se o usuário já tem uma barbearia
-      console.log("CadastroBarbearia: Verificando se usuário já possui barbearia...");
       const { data: barberShop, error: fetchError } = await supabase
         .from('barber_shops')
         .select('*')
@@ -44,10 +80,9 @@ export default function CadastroBarbearia() {
 
       if (fetchError && fetchError.code !== 'PGRST116') {
          console.error("CadastroBarbearia: Erro ao buscar barbearia:", fetchError);
-         // Podemos decidir o que fazer aqui, talvez exibir um erro ou tentar novamente
       } else if (barberShop) {
         console.log("CadastroBarbearia: Barbearia encontrada, redirecionando para /dashboard");
-        navigate('/dashboard'); // Redireciona para o dashboard se já tiver barbearia
+        navigate('/dashboard');
       } else {
         console.log("CadastroBarbearia: Nenhuma barbearia encontrada para este usuário.");
       }
@@ -55,6 +90,77 @@ export default function CadastroBarbearia() {
 
     checkUser();
   }, [navigate]);
+
+  // Função para geocodificar o endereço usando Google Maps
+  const geocodeAddress = async () => {
+    const [logradouro, numero, bairro, cidade, estado] = watchAddress;
+    
+    if (!logradouro || !numero || !bairro || !cidade || !estado) {
+      console.log('Campos de endereço incompletos:', { logradouro, numero, bairro, cidade, estado });
+      setCoordinates(null);
+      setValue('latitude', undefined);
+      setValue('longitude', undefined);
+      return;
+    }
+
+    const address = `${logradouro}, ${numero} - ${bairro}, ${cidade} - ${estado}`;
+    console.log('Tentando geocodificar endereço:', address);
+    
+    try {
+      const geocoder = new google.maps.Geocoder();
+      
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          const lat = location.lat();
+          const lng = location.lng();
+          
+          console.log('Coordenadas encontradas:', { lat, lng });
+          
+          setCoordinates({ lat, lng });
+          setValue('latitude', lat);
+          setValue('longitude', lng);
+          setMapCenter({ lat, lng });
+          setError(null);
+        } else {
+          console.error('Erro na geocodificação:', status);
+          setCoordinates(null);
+          setValue('latitude', undefined);
+          setValue('longitude', undefined);
+          setError('Não foi possível obter as coordenadas do endereço. Ajuste o marcador no mapa.');
+        }
+      });
+    } catch (err) {
+      console.error('Erro ao geocodificar endereço:', err);
+      setCoordinates(null);
+      setValue('latitude', undefined);
+      setValue('longitude', undefined);
+      setError('Erro ao obter coordenadas do endereço. Ajuste o marcador no mapa.');
+    }
+  };
+
+  const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      
+      setCoordinates({ lat, lng });
+      setValue('latitude', lat);
+      setValue('longitude', lng);
+      setError(null);
+    }
+  };
+
+  // Atualiza as coordenadas quando o endereço mudar
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        geocodeAddress();
+      }, 1000); // Debounce de 1 segundo
+
+      return () => clearTimeout(timer);
+    }
+  }, [watchAddress, loading]);
 
   const formatBarberShopName = (value: string) => {
     // Se o texto estiver todo em maiúsculo, mantém assim
@@ -81,19 +187,6 @@ export default function CadastroBarbearia() {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatEmail(e.target.value);
     setValue('barberShopEmail', formattedValue);
-  };
-
-  const formatAddress = (value: string) => {
-    return value
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatAddress(e.target.value);
-    setValue('barberShopAddress', formattedValue);
   };
 
   const formatCNPJ = (value: string) => {
@@ -143,6 +236,47 @@ export default function CadastroBarbearia() {
     setValue('barberShopPhone', formattedValue);
   };
 
+  const formatCEP = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    const limitedNumbers = numbers.slice(0, 8);
+    return limitedNumbers.replace(/^(\d{5})(\d{3})/, '$1-$2');
+  };
+
+  const handleCEPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCEP(e.target.value);
+    setValue('cep', formattedValue);
+  };
+
+  const handleCEPBlur = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cep = e.target.value;
+    if (cep.length === 9) { // 00000-000
+      fetchAddressByCEP(cep);
+    }
+  };
+
+  const fetchAddressByCEP = async (cep: string) => {
+    try {
+      const cleanCEP = cep.replace(/\D/g, '');
+      if (cleanCEP.length !== 8) return;
+
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+      const data: ViaCepResponse = await response.json();
+
+      if (data.erro) {
+        setError('CEP não encontrado');
+        return;
+      }
+
+      setValue('logradouro', data.logradouro);
+      setValue('bairro', data.bairro);
+      setValue('cidade', data.localidade);
+      setValue('estado', data.uf);
+    } catch (err) {
+      console.error('Erro ao buscar CEP:', err);
+      setError('Erro ao buscar CEP');
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     console.log("CadastroBarbearia: Formulário submetido. Dados:", data);
     if (!user) {
@@ -155,11 +289,16 @@ export default function CadastroBarbearia() {
     setError(null);
 
     try {
+      const formattedAddress = `${data.logradouro}, ${data.numero} - ${data.bairro} - ${data.cidade} - ${data.estado}`;
+
       const barberShopData = {
         name: data.barberShopName,
         cnpj: data.barberShopCnpj,
         phone: data.barberShopPhone,
-        address: data.barberShopAddress,
+        address: formattedAddress,
+        cep: data.cep,
+        latitude: coordinates?.lat,
+        longitude: coordinates?.lng,
         email: data.barberShopEmail,
         admin_id: user.id,
         active: true,
@@ -170,28 +309,23 @@ export default function CadastroBarbearia() {
 
       const { error: createError } = await supabase
         .from('barber_shops')
-        .insert([barberShopData]); // Note: insert expects an array
+        .insert([barberShopData]);
 
       if (createError) {
         console.error("CadastroBarbearia: Erro ao criar barbearia no Supabase:", createError);
-        throw createError;
+        setError(createError.message || 'Erro ao criar barbearia');
+        setLoading(false);
+        return;
       }
 
       console.log("CadastroBarbearia: Barbearia criada com sucesso!");
-
-      setSuccess(true);
-      reset();
-      
-      // Redireciona para o dashboard após um pequeno delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+      setLoading(false);
+      navigate('/dashboard');
+      return;
     } catch (err: any) {
       console.error("CadastroBarbearia: Erro durante a submissão do formulário:", err);
       setError(err.message || 'Erro ao criar barbearia');
-    } finally {
       setLoading(false);
-      console.log("CadastroBarbearia: Finalizando loading.");
     }
   };
 
@@ -210,7 +344,7 @@ export default function CadastroBarbearia() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-      <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card">
+      <div className="w-full max-w-4xl space-y-8 p-8 rounded shadow-md bg-card">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-6">Cadastro da Barbearia</h1>
           <p className="text-sm text-gray-200 mb-4">
@@ -232,7 +366,7 @@ export default function CadastroBarbearia() {
               id="barberShopCnpj" 
               {...register('barberShopCnpj', { required: true })} 
               onChange={handleCNPJChange}
-              maxLength={18} // XX.XXX.XXX/XXXX-XX = 18 caracteres
+              maxLength={18}
             />
           </div>
           <div>
@@ -241,17 +375,98 @@ export default function CadastroBarbearia() {
               id="barberShopPhone" 
               {...register('barberShopPhone', { required: true })} 
               onChange={handlePhoneChange}
-              maxLength={15} // (XX) XXXXX-XXXX = 15 caracteres
+              maxLength={15}
             />
           </div>
-          <div>
-            <Label htmlFor="barberShopAddress">Endereço</Label>
-            <Input 
-              id="barberShopAddress" 
-              {...register('barberShopAddress', { required: true })} 
-              onChange={handleAddressChange}
-            />
+
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Endereço</h2>
+            
+            <div>
+              <Label htmlFor="cep">CEP</Label>
+              <Input 
+                id="cep" 
+                {...register('cep', { required: true })} 
+                onChange={handleCEPChange}
+                onBlur={handleCEPBlur}
+                maxLength={9}
+                placeholder="00000-000"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="logradouro">Logradouro</Label>
+              <Input 
+                id="logradouro" 
+                {...register('logradouro', { required: true })} 
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="numero">Número</Label>
+              <Input 
+                id="numero" 
+                {...register('numero', { required: true })} 
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="bairro">Bairro</Label>
+              <Input 
+                id="bairro" 
+                {...register('bairro', { required: true })} 
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="cidade">Cidade</Label>
+                <Input 
+                  id="cidade" 
+                  {...register('cidade', { required: true })} 
+                />
+              </div>
+              <div>
+                <Label htmlFor="estado">Estado</Label>
+                <Input 
+                  id="estado" 
+                  {...register('estado', { required: true })} 
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <Label>Localização no Mapa</Label>
+              <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
+                <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={15}
+                  >
+                    {coordinates && (
+                      <Marker
+                        position={coordinates}
+                        draggable={true}
+                        onDragEnd={handleMarkerDragEnd}
+                      />
+                    )}
+                  </GoogleMap>
+                </LoadScript>
+              </div>
+              <p className="text-sm text-gray-200 mt-2">
+                Arraste o marcador para ajustar a localização exata da barbearia
+              </p>
+            </div>
+
+            {coordinates && (
+              <div className="text-sm text-gray-500">
+                Coordenadas: {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+              </div>
+            )}
           </div>
+
           <div>
             <Label htmlFor="barberShopEmail">E-mail da Barbearia</Label>
             <Input 
@@ -261,13 +476,14 @@ export default function CadastroBarbearia() {
               onChange={handleEmailChange}
             />
           </div>
+
           {error && (
             <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
               {error}
             </div>
           )}
           
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || !user}>
             {loading ? 'Salvando...' : 'Salvar Configurações'}
           </Button>
         </form>
