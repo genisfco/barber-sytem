@@ -337,7 +337,7 @@ export default function CadastroBarbearia() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md space-y-8 p-8 rounded shadow-md bg-card text-center">
           <div className="text-green-600 text-lg font-bold p-2 bg-green-50 rounded mb-4">
-            Barbearia configurada com sucesso! 
+            Barbearia cadastrada com sucesso! 
           </div>
           <p className="text-gray-200 text-base mb-4">
             Você será direcionado para o seu Dashboard...

@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { addMonths, parseISO, format, subDays, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useClientes } from "@/hooks/useClientes";
+import { useServicos } from "@/hooks/useServicos";
+import { useProdutos } from "@/hooks/useProdutos";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +27,10 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
+
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SubscriptionWithDetails extends Subscription {
   client_name?: string;
@@ -39,7 +45,41 @@ interface PlanoType {
   duration_months: number;
   active: boolean;
   barber_shop_id: string;
+  max_benefits_per_month: number;
+  service_benefits?: {
+    [key: string]: {
+      type: "" | "gratuito" | "desconto";
+      discount?: number;
+    };
+  };
+  product_benefits?: {
+    [key: string]: {
+      type: "" | "gratuito" | "desconto";
+      discount?: number;
+    };
+  };
 }
+
+// Adicionar o schema do formulário
+const planoFormSchema = z.object({
+  id: z.string().optional(), // Adicionado para edição
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+  price: z.coerce.number().min(0, "Preço deve ser maior que zero"),
+  duration_months: z.coerce.number().min(1, "Duração é obrigatória"),
+  active: z.boolean().default(true),
+  service_benefits: z.record(z.object({
+    type: z.enum(["", "gratuito", "desconto"] as const),
+    discount: z.coerce.number().min(0).max(100).optional()
+  })).optional(),
+  product_benefits: z.record(z.object({
+    type: z.enum(["", "gratuito", "desconto"] as const),
+    discount: z.coerce.number().min(0).max(100).optional()
+  })).optional(),
+  max_benefits_per_month: z.coerce.number().min(0).optional()
+});
+
+type PlanoFormData = z.infer<typeof planoFormSchema>;
 
 const Assinaturas = () => {
   const { selectedBarberShop } = useBarberShopContext();
@@ -49,6 +89,18 @@ const Assinaturas = () => {
   const [editingPlano, setEditingPlano] = useState<PlanoType | null>(null);
   const [deletingPlano, setDeletingPlano] = useState<PlanoType | null>(null);
   const [confirmDesativarPlano, setConfirmDesativarPlano] = useState<PlanoType | null>(null);
+
+  // Buscar tipos de benefícios
+  const { data: benefitTypes, isLoading: isLoadingBenefitTypes } = useQuery<any[]>({
+    queryKey: ["benefit-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("benefit_types")
+        .select("id, name");
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   const { data: assinaturas, isLoading } = useQuery<SubscriptionWithDetails[]>({
     queryKey: ["assinaturas", selectedBarberShop?.id],
@@ -100,18 +152,55 @@ const Assinaturas = () => {
   });
 
   // Buscar planos ativos (já existe, mas vamos buscar todos para exibir no topo)
-  const { data: planos, isLoading: isLoadingPlanos, refetch: refetchPlanos } = useQuery<any[]>({
-    queryKey: ["planos-ativos"],
+  const { data: planos, isLoading: isLoadingPlanos, refetch: refetchPlanos } = useQuery<PlanoType[]>({ // Adicionado tipo PlanoType[]
+    queryKey: ["planos-ativos", selectedBarberShop?.id],
     queryFn: async () => {
+      if (!selectedBarberShop || !benefitTypes) { // Depende de benefitTypes estar carregado
+        throw new Error("Barbearia não selecionada ou tipos de benefício não carregados");
+      }
       const { data, error } = await supabase
         .from("subscription_plans")
-        .select("*")
-        .eq('barber_shop_id', selectedBarberShop?.id)
+        .select(`
+          *,
+          subscription_plan_benefits(*)
+        `)
+        .eq('barber_shop_id', selectedBarberShop.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      // Processa os dados para agrupar os benefícios
+      return (data || []).map((plano: any) => {
+        const service_benefits: PlanoType['service_benefits'] = {};
+        const product_benefits: PlanoType['product_benefits'] = {};
+
+        plano.subscription_plan_benefits.forEach((benefit: any) => {
+          const benefitTypeName = benefitTypes.find((bt: any) => bt.id === benefit.benefit_type_id)?.name;
+
+          if (benefit.service_id) {
+            if (benefitTypeName === 'servico_gratuito') {
+              service_benefits[benefit.service_id] = { type: 'gratuito' };
+            } else if (benefitTypeName === 'servico_desconto') {
+              service_benefits[benefit.service_id] = { type: 'desconto', discount: benefit.discount_percentage || undefined };
+            }
+          } else if (benefit.product_id) {
+            if (benefitTypeName === 'produto_gratuito') {
+              product_benefits[benefit.product_id] = { type: 'gratuito' };
+            } else if (benefitTypeName === 'produto_desconto') {
+              product_benefits[benefit.product_id] = { type: 'desconto', discount: benefit.discount_percentage || undefined };
+            }
+          }
+        });
+
+        const { subscription_plan_benefits, ...rest } = plano; // Remove o array de benefícios crus
+
+        return {
+          ...rest,
+          service_benefits,
+          product_benefits
+        } as PlanoType;
+      });
     },
-    enabled: !!selectedBarberShop
+    enabled: !!selectedBarberShop && !!benefitTypes // Habilita a query apenas quando a barbearia e os tipos de benefício estiverem carregados
   });
 
   // Buscar pagamentos das assinaturas
@@ -158,13 +247,24 @@ const Assinaturas = () => {
   });
 
   // Formulário do plano
-  const { register: registerPlano, handleSubmit: handleSubmitPlano, reset: resetPlano, setValue: setValuePlano, formState: { isSubmitting: isSubmittingPlano } } = useForm({
+  const { 
+    register: registerPlano, 
+    handleSubmit: handleSubmitPlano, 
+    reset: resetPlano, 
+    setValue: setValuePlano,
+    watch: watchPlano,
+    formState: { isSubmitting: isSubmittingPlano } 
+  } = useForm<PlanoFormData>({
+    resolver: zodResolver(planoFormSchema),
     defaultValues: {
       name: "",
       description: "",
-      price: "",
-      duration_months: "1",
-      active: true
+      price: 0,
+      duration_months: 1,
+      active: true,
+      service_benefits: {},
+      product_benefits: {},
+      max_benefits_per_month: 0
     }
   });
 
@@ -216,12 +316,13 @@ const Assinaturas = () => {
   }
 
   const mutationPlano = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: PlanoFormData) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }
 
-      const { error } = await supabase
+      // Primeiro, inserir o plano
+      const { data: planoInserido, error: errorPlano } = await supabase
         .from("subscription_plans")
         .insert({
           name: data.name,
@@ -229,27 +330,114 @@ const Assinaturas = () => {
           price: Number(data.price),
           duration_months: Number(data.duration_months),
           active: data.active,
-          barber_shop_id: selectedBarberShop.id
-        });
-      if (error) throw error;
+          barber_shop_id: selectedBarberShop.id,
+          max_benefits_per_month: Number(data.max_benefits_per_month)
+        })
+        .select()
+        .single();
+
+      if (errorPlano) throw errorPlano;
+
+      // Inserir benefícios de serviços
+      if (data.service_benefits) {
+        const serviceBenefits = Object.entries(data.service_benefits)
+          .filter(([_, benefit]) => benefit.type !== "")
+          .map(([serviceId, benefit]) => {
+            const benefitTypeId = benefit.type === "gratuito"
+              ? benefitTypes?.find(bt => bt.name === "servico_gratuito")?.id
+              : benefitTypes?.find(bt => bt.name === "servico_desconto")?.id;
+
+            if (!benefitTypeId) {
+              throw new Error(`Tipo de benefício de serviço ${benefit.type} não encontrado.`);
+            }
+            return {
+              subscription_plan_id: planoInserido.id,
+              benefit_type_id: benefitTypeId,
+              service_id: serviceId,
+              discount_percentage: benefit.type === "desconto" ? (benefit.discount === undefined ? null : benefit.discount) : null,
+              is_unlimited: true
+            };
+          });
+
+        if (serviceBenefits.length > 0) {
+          const { error: errorServiceBenefits } = await supabase
+            .from("subscription_plan_benefits")
+            .insert(serviceBenefits);
+          
+          if (errorServiceBenefits) {
+            console.error("Erro ao inserir novos benefícios de serviços:", errorServiceBenefits);
+            throw errorServiceBenefits;
+          }
+        }
+      }
+
+      // Inserir benefícios de produtos
+      if (data.product_benefits) {
+        const productBenefits = Object.entries(data.product_benefits)
+          .filter(([_, benefit]) => benefit.type !== "")
+          .map(([productId, benefit]) => {
+            const benefitTypeId = benefit.type === "gratuito"
+              ? benefitTypes?.find(bt => bt.name === "produto_gratuito")?.id
+              : benefitTypes?.find(bt => bt.name === "produto_desconto")?.id;
+
+            if (!benefitTypeId) {
+              throw new Error(`Tipo de benefício de produto ${benefit.type} não encontrado.`);
+            }
+            return {
+              subscription_plan_id: planoInserido.id,
+              benefit_type_id: benefitTypeId,
+              product_id: productId,
+              discount_percentage: benefit.type === "desconto" ? (benefit.discount === undefined ? null : benefit.discount) : null,
+              is_unlimited: true
+            };
+          });
+
+        if (productBenefits.length > 0) {
+          const { error: errorProductBenefits } = await supabase
+            .from("subscription_plan_benefits")
+            .insert(productBenefits);
+          
+          if (errorProductBenefits) {
+            console.error("Erro ao inserir novos benefícios de produtos:", errorProductBenefits);
+            throw errorProductBenefits;
+          }
+        }
+      }
+    },
+    onError: (error) => {
+      console.error("Erro na mutação do plano:", error);
+      toast.error("Erro ao salvar o plano. Verifique o console para mais detalhes.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planos-ativos"] });
-      setOpenPlano(false);
       resetPlano();
       refetchPlanos();
+      setOpenPlano(false); // Garante que o diálogo feche
     }
   });
-  function onSubmitPlano(data: any) {
+  function onSubmitPlano(data: PlanoFormData) {
+    console.log('Dados do formulário:', data);
     mutationPlano.mutate(data);
   }
 
   const mutationEditPlano = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: PlanoFormData) => { // Alterado o tipo de 'data' para PlanoFormData
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }
 
+      // 1. Deletar benefícios existentes
+      const { error: deleteError } = await supabase
+        .from("subscription_plan_benefits")
+        .delete()
+        .eq("subscription_plan_id", data.id);
+      
+      if (deleteError) {
+        console.error("Erro ao deletar benefícios antigos:", deleteError);
+        throw deleteError;
+      }
+
+      // 2. Atualizar o plano principal
       const { error } = await supabase
         .from("subscription_plans")
         .update({
@@ -257,22 +445,99 @@ const Assinaturas = () => {
           description: data.description,
           price: Number(data.price),
           duration_months: Number(data.duration_months),
-          active: data.active
+          active: data.active,
+          max_benefits_per_month: Number(data.max_benefits_per_month) // Incluído aqui também
         })
-        .eq("id", editingPlano?.id)
+        .eq("id", data.id)
         .eq("barber_shop_id", selectedBarberShop.id);
       if (error) throw error;
+
+      // 3. Inserir benefícios de serviços (reutilizando lógica da mutação de criação)
+      if (data.service_benefits) {
+        const serviceBenefits = Object.entries(data.service_benefits)
+          .filter(([_, benefit]) => benefit.type !== "")
+          .map(([serviceId, benefit]) => {
+            const benefitTypeId = benefit.type === "gratuito"
+              ? benefitTypes?.find(bt => bt.name === "servico_gratuito")?.id
+              : benefitTypes?.find(bt => bt.name === "servico_desconto")?.id;
+
+            if (!benefitTypeId) {
+              throw new Error(`Tipo de benefício de serviço ${benefit.type} não encontrado.`);
+            }
+            return {
+              subscription_plan_id: data.id,
+              benefit_type_id: benefitTypeId,
+              service_id: serviceId,
+              discount_percentage: benefit.type === "desconto" ? (benefit.discount === undefined ? null : benefit.discount) : null,
+              is_unlimited: true
+            };
+          });
+
+        if (serviceBenefits.length > 0) {
+          const { error: errorServiceBenefits } = await supabase
+            .from("subscription_plan_benefits")
+            .insert(serviceBenefits);
+          
+          if (errorServiceBenefits) {
+            console.error("Erro ao inserir novos benefícios de serviços:", errorServiceBenefits);
+            throw errorServiceBenefits;
+          }
+        }
+      }
+
+      // 4. Inserir benefícios de produtos (reutilizando lógica da mutação de criação)
+      if (data.product_benefits) {
+        const productBenefits = Object.entries(data.product_benefits)
+          .filter(([_, benefit]) => benefit.type !== "")
+          .map(([productId, benefit]) => {
+            const benefitTypeId = benefit.type === "gratuito"
+              ? benefitTypes?.find(bt => bt.name === "produto_gratuito")?.id
+              : benefitTypes?.find(bt => bt.name === "produto_desconto")?.id;
+
+            if (!benefitTypeId) {
+              throw new Error(`Tipo de benefício de produto ${benefit.type} não encontrado.`);
+            }
+            return {
+              subscription_plan_id: data.id,
+              benefit_type_id: benefitTypeId,
+              product_id: productId,
+              discount_percentage: benefit.type === "desconto" ? (benefit.discount === undefined ? null : benefit.discount) : null,
+              is_unlimited: true
+            };
+          });
+
+        if (productBenefits.length > 0) {
+          const { error: errorProductBenefits } = await supabase
+            .from("subscription_plan_benefits")
+            .insert(productBenefits);
+          
+          if (errorProductBenefits) {
+            console.error("Erro ao inserir novos benefícios de produtos:", errorProductBenefits);
+            throw errorProductBenefits;
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planos-ativos"] });
-      setOpenPlano(false);
-      setEditingPlano(null);
+      setEditingPlano(null); // Limpa o plano em edição
       resetPlano();
       refetchPlanos();
+      setOpenPlano(false); // Garante que o diálogo feche
     }
   });
-  function onSubmitPlanoEdit(data: any) {
-    mutationEditPlano.mutate(data);
+  function onSubmitPlanoEdit(data: PlanoFormData) { // Alterado o tipo de 'data' para PlanoFormData
+    if (!selectedBarberShop) {
+      toast.error("Barbearia não selecionada");
+      return;
+    }
+
+    const dataToMutate: PlanoFormData = {
+      ...data,
+      id: editingPlano?.id, // Garante que o ID do plano em edição seja usado
+    };
+
+    mutationEditPlano.mutate(dataToMutate);
   }
 
   const mutationDeletePlano = useMutation({
@@ -747,9 +1012,30 @@ const Assinaturas = () => {
     if (editingPlano) {
       setValuePlano("name", editingPlano.name);
       setValuePlano("description", editingPlano.description || "");
-      setValuePlano("price", editingPlano.price.toString());
-      setValuePlano("duration_months", editingPlano.duration_months.toString());
+      setValuePlano("price", Number(editingPlano.price));
+      setValuePlano("duration_months", Number(editingPlano.duration_months));
       setValuePlano("active", editingPlano.active);
+      setValuePlano("max_benefits_per_month", Number(editingPlano.max_benefits_per_month));
+
+      // Preencher benefícios de serviços
+      if (editingPlano.service_benefits) {
+        Object.entries(editingPlano.service_benefits).forEach(([serviceId, benefit]: [string, { type: "" | "gratuito" | "desconto"; discount?: number; }]) => {
+          setValuePlano(`service_benefits.${serviceId}.type`, benefit.type);
+          if (benefit.discount) {
+            setValuePlano(`service_benefits.${serviceId}.discount`, Number(benefit.discount));
+          }
+        });
+      }
+
+      // Preencher benefícios de produtos
+      if (editingPlano.product_benefits) {
+        Object.entries(editingPlano.product_benefits).forEach(([productId, benefit]: [string, { type: "" | "gratuito" | "desconto"; discount?: number; }]) => {
+          setValuePlano(`product_benefits.${productId}.type`, benefit.type);
+          if (benefit.discount) {
+            setValuePlano(`product_benefits.${productId}.discount`, Number(benefit.discount));
+          }
+        });
+      }
     } else {
       resetPlano();
     }
@@ -767,6 +1053,9 @@ const Assinaturas = () => {
     const formattedValue = formatName(e.target.value);
     setValuePlano('name', formattedValue);
   };
+
+  const { servicos } = useServicos();
+  const { produtos } = useProdutos();
 
   // Renderização condicional para loading
   if (isLoading || isLoadingPlanos || isLoadingPagamentos) {
@@ -788,42 +1077,191 @@ const Assinaturas = () => {
             <DialogTrigger asChild>
               <Button><Plus className="mr-2 h-4 w-4" />Novo Plano</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
               <DialogHeader>
-                <DialogTitle>Novo Plano de Assinatura</DialogTitle>
+                <DialogTitle>Criar Novo Plano de Assinatura</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados do plano de assinatura
+                </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmitPlano(onSubmitPlano)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Plano</Label>
-                  <Input id="name" {...registerPlano("name", { required: true })} onChange={handlePlanoNameChange} />
+              <form onSubmit={handleSubmitPlano((data) => {
+                console.log('Dados do formulário:', data);
+                const formData = {
+                  ...data,
+                  price: Number(data.price),
+                  duration_months: Number(data.duration_months),
+                  max_benefits_per_month: Number(data.max_benefits_per_month),
+                  service_benefits: Object.fromEntries(
+                    Object.entries(data.service_benefits || {}).map(([key, value]) => [
+                      key,
+                      {
+                        ...value,
+                        discount: value.discount ? Number(value.discount) : undefined
+                      }
+                    ])
+                  ),
+                  product_benefits: Object.fromEntries(
+                    Object.entries(data.product_benefits || {}).map(([key, value]) => [
+                      key,
+                      {
+                        ...value,
+                        discount: value.discount ? Number(value.discount) : undefined
+                      }
+                    ])
+                  )
+                };
+                mutationPlano.mutate(formData);
+              })} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome do Plano</Label>
+                    <Input 
+                      id="name" 
+                      className="bg-background"
+                      {...registerPlano("name", { required: true })} 
+                      onChange={handlePlanoNameChange} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Preço (R$)</Label>
+                    <Input 
+                      id="price" 
+                      type="number" 
+                      step="0.01" 
+                      className="bg-background"
+                      {...registerPlano("price", { required: true })} 
+                    />
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Input id="description" {...registerPlano("description")} />
+                  <Label htmlFor="description">Descrição (opcional)</Label>
+                  <Input 
+                    id="description" 
+                    className="bg-background"
+                    {...registerPlano("description")} 
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Preço (R$)</Label>
-                  <Input id="price" type="number" step="0.01" {...registerPlano("price", { required: true })} />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="duration_months">Duração e Renovação do Plano (meses)</Label>
+                    <select
+                      id="duration_months"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      {...registerPlano("duration_months", { required: true })}
+                    >
+                      <option value="1">1 mês</option>
+                      <option value="3">3 meses</option>
+                      <option value="6">6 meses</option>
+                      <option value="12">12 meses</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration_months">Duração (meses)</Label>
-                  <select
-                    id="duration_months"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    {...registerPlano("duration_months", { required: true })}
-                  >
-                    <option value="1">1 mês</option>
-                    <option value="3">3 meses</option>
-                    <option value="6">6 meses</option>
-                    <option value="12">12 meses</option>
-                  </select>
+
+                {/* Seção de Benefícios de Serviços */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Benefícios de Serviços</h3>
+                  <div className="space-y-2">
+                    {servicos?.map((servico) => (
+                      <div key={servico.id} className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label>{servico.name}</Label>
+                          <p className="text-sm text-muted-foreground">R$ {servico.price.toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                            {...registerPlano(`service_benefits.${servico.id}.type`)}
+                          >
+                            <option value="">Não incluso</option>
+                            <option value="gratuito">Gratuito</option>
+                            <option value="desconto">Desconto</option>
+                          </select>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-20 bg-background"
+                            placeholder="%"
+                            {...registerPlano(`service_benefits.${servico.id}.discount`)}
+                            disabled={watchPlano(`service_benefits.${servico.id}.type`) !== 'desconto'}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Seção de Benefícios de Produtos */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Benefícios de Produtos</h3>
+                  <div className="space-y-2">
+                    {produtos?.map((produto) => (
+                      <div key={produto.id} className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label>{produto.name}</Label>
+                          <p className="text-sm text-muted-foreground">R$ {produto.price.toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                            {...registerPlano(`product_benefits.${produto.id}.type`)}
+                          >
+                            <option value="">Não incluso</option>
+                            <option value="gratuito">Gratuito</option>
+                            <option value="desconto">Desconto</option>
+                          </select>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-20 bg-background"
+                            placeholder="%"
+                            {...registerPlano(`product_benefits.${produto.id}.discount`)}
+                            disabled={watchPlano(`product_benefits.${produto.id}.type`) !== 'desconto'}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Limites de Benefícios */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Limites de Benefícios</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="benefits_unlimited" 
+                        checked={watchPlano("max_benefits_per_month") === 0}
+                        onCheckedChange={(checked) => {
+                          setValuePlano("max_benefits_per_month", checked ? 0 : 1);
+                        }}
+                      />
+                      <Label htmlFor="benefits_unlimited">Sem limites de uso</Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="max_benefits_per_month">Máximo de benefícios por mês</Label>
+                      <p className="text-sm text-muted-foreground">Este limite se renova mensalmente durante todo o período da assinatura</p>
+                      <Input
+                        id="max_benefits_per_month"
+                        type="number"
+                        min="1"
+                        className="bg-background"
+                        disabled={watchPlano("max_benefits_per_month") === 0}
+                        {...registerPlano("max_benefits_per_month")}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex justify-end gap-2 mt-4">
                   <Button type="button" variant="outline" onClick={() => setOpenPlano(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={isSubmittingPlano || mutationPlano.isPending}>
-                    {isSubmittingPlano || mutationPlano.isPending ? (
+                  <Button type="submit" disabled={isSubmittingPlano}>
+                    {isSubmittingPlano ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Plus className="mr-2 h-4 w-4" />
@@ -836,44 +1274,158 @@ const Assinaturas = () => {
           </Dialog>
           {/* Dialog de edição de plano */}
           <Dialog open={!!editingPlano} onOpenChange={(v) => { if (!v) { setEditingPlano(null); resetPlano(); } }}>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
               <DialogHeader>
                 <DialogTitle>Editar Plano de Assinatura</DialogTitle>
+                <DialogDescription>
+                  Edite os dados do plano de assinatura
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmitPlano(onSubmitPlanoEdit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome do Plano</Label>
+                    <Input 
+                      id="name" 
+                      className="bg-background"
+                      {...registerPlano("name", { required: true })}
+                      onChange={handlePlanoNameChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Preço (R$)</Label>
+                    <Input 
+                      id="price" 
+                      type="number" 
+                      step="0.01" 
+                      className="bg-background"
+                      {...registerPlano("price", { required: true })} 
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Plano</Label>
+                  <Label htmlFor="description">Descrição (opcional)</Label>
                   <Input 
-                    id="name" 
-                    {...registerPlano("name", { required: true })}
-                    onChange={handlePlanoNameChange}
+                    id="description" 
+                    className="bg-background"
+                    {...registerPlano("description")} 
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Input id="description" {...registerPlano("description")} />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="duration_months">Duração e Renovação do Plano (meses)</Label>
+                    <select
+                      id="duration_months"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      {...registerPlano("duration_months", { required: true })}
+                    >
+                      <option value="1">1 mês</option>
+                      <option value="3">3 meses</option>
+                      <option value="6">6 meses</option>
+                      <option value="12">12 meses</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Preço (R$)</Label>
-                  <Input id="price" type="number" step="0.01" {...registerPlano("price", { required: true })} />
+
+                {/* Seção de Benefícios de Serviços */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Benefícios de Serviços</h3>
+                  <div className="space-y-2">
+                    {servicos?.map((servico) => (
+                      <div key={servico.id} className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label>{servico.name}</Label>
+                          <p className="text-sm text-muted-foreground">R$ {servico.price.toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                            {...registerPlano(`service_benefits.${servico.id}.type`)}
+                          >
+                            <option value="">Não incluso</option>
+                            <option value="gratuito">Gratuito</option>
+                            <option value="desconto">Desconto</option>
+                          </select>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-20 bg-background"
+                            placeholder="%"
+                            {...registerPlano(`service_benefits.${servico.id}.discount`)}
+                            disabled={watchPlano(`service_benefits.${servico.id}.type`) !== 'desconto'}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration_months">Duração (meses)</Label>
-                  <select
-                    id="duration_months"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    {...registerPlano("duration_months", { required: true })}
-                  >
-                    <option value="1">1 mês</option>
-                    <option value="3">3 meses</option>
-                    <option value="6">6 meses</option>
-                    <option value="12">12 meses</option>
-                  </select>
+
+                {/* Seção de Benefícios de Produtos */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Benefícios de Produtos</h3>
+                  <div className="space-y-2">
+                    {produtos?.map((produto) => (
+                      <div key={produto.id} className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label>{produto.name}</Label>
+                          <p className="text-sm text-muted-foreground">R$ {produto.price.toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                            {...registerPlano(`product_benefits.${produto.id}.type`)}
+                          >
+                            <option value="">Não incluso</option>
+                            <option value="gratuito">Gratuito</option>
+                            <option value="desconto">Desconto</option>
+                          </select>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-20 bg-background"
+                            placeholder="%"
+                            {...registerPlano(`product_benefits.${produto.id}.discount`)}
+                            disabled={watchPlano(`product_benefits.${produto.id}.type`) !== 'desconto'}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input id="active" type="checkbox" {...registerPlano("active")} />
-                  <Label htmlFor="active">Plano Ativo</Label>
+
+                {/* Limites de Benefícios */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Limites de Benefícios</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="benefits_unlimited" 
+                        checked={watchPlano("max_benefits_per_month") === 0}
+                        onCheckedChange={(checked) => {
+                          setValuePlano("max_benefits_per_month", checked ? 0 : 1);
+                        }}
+                      />
+                      <Label htmlFor="benefits_unlimited">Sem limites de uso</Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="max_benefits_per_month">Máximo de benefícios por mês</Label>
+                      <p className="text-sm text-muted-foreground">Este limite se renova mensalmente durante todo o período da assinatura</p>
+                      <Input
+                        id="max_benefits_per_month"
+                        type="number"
+                        min="1"
+                        className="bg-background"
+                        disabled={watchPlano("max_benefits_per_month") === 0}
+                        {...registerPlano("max_benefits_per_month")}
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <div className="flex justify-end gap-2 mt-4">
                   <Button type="button" variant="outline" onClick={() => { setEditingPlano(null); resetPlano(); }}>
                     Cancelar
@@ -932,6 +1484,7 @@ const Assinaturas = () => {
                   <div className="text-sm text-muted-foreground space-y-1">
                     <p>{plano.description}</p>
                     <p>Status: <b className={plano.active ? 'text-green-600' : 'text-red-600'}>{plano.active ? 'Ativo' : 'Inativo'}</b></p>
+                    <p>Limite de benefícios: <b>{plano.max_benefits_per_month === 0 ? 'Ilimitado' : plano.max_benefits_per_month}</b></p>
                   </div>
                 </CardContent>
               </Card>
@@ -1081,9 +1634,9 @@ const Assinaturas = () => {
                 <Card key={assinatura.id}>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle className="text-lg font-medium flex flex-col gap-1">
-                        <span>{assinatura.plan_name || 'Plano'}</span>
-                        <span className="text-sm text-muted-foreground">{assinatura.client_name || 'Cliente'}</span>
+                      <CardTitle className="text-lg font-medium flex flex-col gap-1">                        
+                        <span>{assinatura.client_name || 'Cliente'}</span>
+                        <span className="text-lg text-muted-foreground">{assinatura.plan_name || 'Plano'}</span>
                       </CardTitle>
                       {/* Botão de registrar pagamento só aparece se status assinatura = ativa ou inadimplente e statusPagamento = Pendente ou Aguardando ou Sem pagamento*/}
                       {(assinatura.status === 'ativa' || assinatura.status === 'inadimplente') && (statusPagamento === 'Pendente' || statusPagamento === 'Aguardando' || statusPagamento === 'Sem pagamento') && podeRegistrarPagamento(assinatura, pagamentosAssinatura, plano, 1) && (

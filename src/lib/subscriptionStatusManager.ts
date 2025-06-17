@@ -10,6 +10,11 @@ import { addDays, isAfter, parseISO, subDays, addMonths } from "date-fns";
  */
 export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, barberShopId) {
   if (!assinatura || !plano || !barberShopId) return;
+  // Verificar se a assinatura realmente pertence a esta barbearia
+  if (assinatura.subscription_plans.barber_shop_id !== barberShopId) {
+    console.warn("Tentativa de atualizar assinatura que não pertence à barbearia selecionada.", assinatura);
+    return;
+  }
   const hoje = new Date();
   const start = parseISO(assinatura.start_date);
   const end = assinatura.end_date ? parseISO(assinatura.end_date) : null;
@@ -25,8 +30,7 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
       if (assinatura.status !== 'cancelada') {
         await supabase.from('client_subscriptions')
           .update({ status: 'cancelada' })
-          .eq('id', assinatura.id)
-          .eq('subscription_plans.barber_shop_id', barberShopId);
+          .eq('id', assinatura.id);
       }
       return;
     }
@@ -35,8 +39,7 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
       if (assinatura.status !== 'expirada') {
         await supabase.from('client_subscriptions')
           .update({ status: 'expirada' })
-          .eq('id', assinatura.id)
-          .eq('subscription_plans.barber_shop_id', barberShopId);
+          .eq('id', assinatura.id);
       }
       return;
     }
@@ -77,8 +80,7 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
     if (podeAlterarStatusAssinatura && assinatura.status !== 'ativa') {
       await supabase.from('client_subscriptions')
         .update({ status: 'ativa' })
-        .eq('id', assinatura.id)
-        .eq('subscription_plans.barber_shop_id', barberShopId);
+        .eq('id', assinatura.id);
     }
     // Chamar renovação de ciclos imediatamente após quitação
     await renovarCiclosAssinaturas(barberShopId);
@@ -88,8 +90,7 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
     if (podeAlterarStatusAssinatura && assinatura.status !== 'inadimplente') {
       await supabase.from('client_subscriptions')
         .update({ status: 'inadimplente' })
-        .eq('id', assinatura.id)
-        .eq('subscription_plans.barber_shop_id', barberShopId);
+        .eq('id', assinatura.id);
     }
     return;
   }
@@ -156,8 +157,7 @@ export async function renovarCiclosAssinaturas(barberShopId) {
             start_date: proximoCicloInicio.toISOString().slice(0, 10),
             end_date: proximoCicloFim.toISOString().slice(0, 10)
           })
-          .eq('id', assinatura.id)
-          .eq('subscription_plans.barber_shop_id', barberShopId);
+          .eq('id', assinatura.id);
       }
       // Se não quitou, não renova, permitindo que a assinatura fique para trás
     }
