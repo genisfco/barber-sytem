@@ -181,3 +181,47 @@ export function useClientesAssinantesCount() {
     enabled: !!selectedBarberShop
   });
 }
+
+export function useClientesAssinantesDetalhado() {
+  const { selectedBarberShop } = useBarberShopContext();
+
+  return useQuery({
+    queryKey: ["clientes-assinantes-detalhado", selectedBarberShop?.id],
+    queryFn: async () => {
+      if (!selectedBarberShop) {
+        throw new Error("Barbearia não selecionada");
+      }
+
+      const { data, error } = await supabase
+        .from("client_subscriptions")
+        .select(`
+          id,
+          client_id,
+          status,
+          clients!inner(
+            barber_shop_id
+          ),
+          subscription_plans!inner(
+            barber_shop_id
+          )
+        `)
+        .eq('clients.barber_shop_id', selectedBarberShop.id)
+        .eq('subscription_plans.barber_shop_id', selectedBarberShop.id)
+        .in('status', ['ativa', 'inadimplente']);
+
+      if (error) throw error;
+      
+      const ativos = data?.filter(item => item.status === 'ativa') || [];
+      const inadimplentes = data?.filter(item => item.status === 'inadimplente') || [];
+      
+      return {
+        total: data?.length || 0,
+        ativos: ativos.length,
+        inadimplentes: inadimplentes.length,
+        clientesAtivos: ativos.map(item => item.client_id),
+        clientesInadimplentes: inadimplentes.map(item => item.client_id)
+      };
+    },
+    enabled: !!selectedBarberShop
+  });
+}

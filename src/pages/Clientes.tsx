@@ -22,10 +22,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { useClientes } from "@/hooks/useClientes";
+import { useClientes, useClientesAssinantesDetalhado } from "@/hooks/useClientes";
 import type { Cliente } from "@/types/cliente";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { useClientesAssinantesCount } from "@/hooks/useClientes";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +47,7 @@ const Clientes = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [subscriberDialogOpen, setSubscriberDialogOpen] = useState(false);
   const [showOnlySubscribers, setShowOnlySubscribers] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'ativos' | 'inadimplentes'>('all');
   const { register, handleSubmit, reset, setValue, watch } = useForm<ClienteFormData>({
     defaultValues: {
       active: true,
@@ -55,8 +55,10 @@ const Clientes = () => {
     }
   });
   const { clientes, isLoading, createCliente, updateCliente, toggleClienteStatus } = useClientes();
-  const { data: assinantesCount, isLoading: isLoadingAssinantesCount, refetch: refetchAssinantesCount } = useClientesAssinantesCount();
+  const { data: assinantesDetalhado, isLoading: isLoadingAssinantesDetalhado, refetch: refetchAssinantesDetalhado } = useClientesAssinantesDetalhado();
   const [clientesAssinantes, setClientesAssinantes] = useState<string[]>([]);
+  const [clientesAtivos, setClientesAtivos] = useState<string[]>([]);
+  const [clientesInadimplentes, setClientesInadimplentes] = useState<string[]>([]);
 
   // Buscar clientes assinantes
   const { data: assinaturas } = useQuery({
@@ -70,6 +72,7 @@ const Clientes = () => {
         .from("client_subscriptions")
         .select(`
           client_id,
+          status,
           clients!inner(
             barber_shop_id
           ),
@@ -79,7 +82,7 @@ const Clientes = () => {
         `)
         .eq('clients.barber_shop_id', selectedBarberShop.id)
         .eq('subscription_plans.barber_shop_id', selectedBarberShop.id)
-        .eq('status', 'ativa');
+        .in('status', ['ativa', 'inadimplente']);
         
 
       if (error) throw error;
@@ -88,10 +91,15 @@ const Clientes = () => {
     enabled: !!selectedBarberShop
   });
 
-  // Atualizar lista de clientes assinantes quando as assinaturas mudarem
+  // Atualizar listas de clientes assinantes quando as assinaturas mudarem
   useEffect(() => {
     if (assinaturas) {
-      setClientesAssinantes(assinaturas.map(a => a.client_id));
+      const ativos = assinaturas.filter(a => a.status === 'ativa').map(a => a.client_id);
+      const inadimplentes = assinaturas.filter(a => a.status === 'inadimplente').map(a => a.client_id);
+      
+      setClientesAssinantes([...ativos, ...inadimplentes]);
+      setClientesAtivos(ativos);
+      setClientesInadimplentes(inadimplentes);
     }
   }, [assinaturas]);
 
@@ -104,7 +112,7 @@ const Clientes = () => {
     setOpen(false);
     setSelectedClient(null);
     reset();
-    refetchAssinantesCount();
+    refetchAssinantesDetalhado();
   };
 
   const handleEdit = (cliente: Cliente) => {
@@ -149,7 +157,17 @@ const Clientes = () => {
       cliente.phone.includes(searchTerm)
     );
 
-    // Removendo o filtro de assinantes, mantendo apenas a busca por texto
+    // Aplicar filtros de assinantes se necessário
+    if (showOnlySubscribers) {
+      if (filterType === 'ativos') {
+        return matchesSearch && clientesAtivos.includes(cliente.id);
+      } else if (filterType === 'inadimplentes') {
+        return matchesSearch && clientesInadimplentes.includes(cliente.id);
+      } else {
+        return matchesSearch && clientesAssinantes.includes(cliente.id);
+      }
+    }
+
     return matchesSearch;
   });
 
@@ -200,6 +218,16 @@ const Clientes = () => {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatEmail(e.target.value);
     setValue('email', formattedValue);
+  };
+
+  const handleShowSubscribers = (type: 'all' | 'ativos' | 'inadimplentes') => {
+    setShowOnlySubscribers(true);
+    setFilterType(type);
+  };
+
+  const handleClearFilter = () => {
+    setShowOnlySubscribers(false);
+    setFilterType('all');
   };
 
   return (
@@ -318,12 +346,30 @@ const Clientes = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div
-                  className="text-3xl font-bold text-center cursor-pointer hover:text-yellow-600 transition"
-                  onClick={() => setShowOnlySubscribers(true)}
-                  title="Clique para ver apenas assinantes"
-                >
-                  {isLoadingAssinantesCount ? '...' : assinantesCount}
+                <div className="space-y-2">
+                  <div
+                    className="text-3xl font-bold text-center cursor-pointer hover:text-yellow-600 transition"
+                    onClick={() => handleShowSubscribers('all')}
+                    title="Clique para ver todos os assinantes"
+                  >
+                    {isLoadingAssinantesDetalhado ? '...' : assinantesDetalhado?.total || 0}
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <div
+                      className="text-green-600 font-semibold cursor-pointer hover:text-green-700 transition"
+                      onClick={() => handleShowSubscribers('ativos')}
+                      title="Clique para ver apenas assinantes ativos"
+                    >
+                      Ativos: {assinantesDetalhado?.ativos || 0}
+                    </div>
+                    <div
+                      className="text-orange-500 font-semibold cursor-pointer hover:text-orange-700 transition"
+                      onClick={() => handleShowSubscribers('inadimplentes')}
+                      title="Clique para ver apenas assinantes inadimplentes"
+                    >
+                      Inadimplentes: {assinantesDetalhado?.inadimplentes || 0}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -334,7 +380,7 @@ const Clientes = () => {
           <div className="mb-2 flex justify-end">
             <button
               className="text-sm px-8 py-2 rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition border border-yellow-300 font-semibold"
-              onClick={() => setShowOnlySubscribers(false)}
+              onClick={handleClearFilter}
             >
               Limpar filtro de assinantes
             </button>
@@ -355,20 +401,17 @@ const Clientes = () => {
               <Card 
                 key={cliente.id} 
                 className={`${!cliente.active ? "opacity-70" : ""} ${
-                  showOnlySubscribers && clientesAssinantes.includes(cliente.id) ? "border-primary bg-primary/10" : ""
+                  showOnlySubscribers && clientesAssinantes.includes(cliente.id) 
+                    ? clientesAtivos.includes(cliente.id)
+                      ? "border-green-500 bg-green-700/10"
+                      : "border-primary bg-primary/10"
+                    : ""
                 }`}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">
                     {cliente.name}
-                    {!cliente.active && (
-                      <Badge variant="destructive">Inativo</Badge>
-                    )}
-                    {showOnlySubscribers && clientesAssinantes.includes(cliente.id) && (
-                      <Badge variant="outline" className="bg-primary/30 text-primary border-primary">
-                        Assinante
-                      </Badge>
-                    )}
+                    
                   </CardTitle>
                   <div className="flex items-center space-x-2">
                     <TooltipProvider>
