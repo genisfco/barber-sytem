@@ -50,11 +50,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
          return; // Barbearia já carregada, não precisa buscar novamente
       }
 
-      const { data: barberShop, error } = await supabase
+      // Timeout para a consulta da barbearia
+      const barberShopPromise = supabase
         .from('barber_shops')
         .select('*')
         .eq('admin_id', user.id)
         .single();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout na busca da barbearia')), 10000)
+      );
+
+      const { data: barberShop, error } = await Promise.race([
+        barberShopPromise,
+        timeoutPromise
+      ]) as any;
 
       if (error && error.code !== 'PGRST116') {
          console.error("AuthContext: Erro ao buscar barbearia:", error);
@@ -281,21 +291,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("AuthContext: useEffect - Inicializando autenticação...");
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        if (error) {
+          console.error("AuthContext: Erro ao obter sessão:", error);
+          throw error;
+        }
+        
+        console.log("AuthContext: Sessão obtida:", !!session);
         setSession(session);
+        
         if (session?.user) {
           console.log("AuthContext: Sessão inicial encontrada, buscando barbearia...");
           const isInAuthPath = location.pathname.includes('/auth');
-          await setUserBarberShop(session.user, isInAuthPath);
+          try {
+            await setUserBarberShop(session.user, isInAuthPath);
+          } catch (barberShopError) {
+            console.error("AuthContext: Erro ao buscar barbearia, mas continuando:", barberShopError);
+            // Não deixa o erro da barbearia travar o carregamento
+          }
         }
       } catch (error) {
         console.error("AuthContext: useEffect - Erro ao inicializar autenticação:", error);
-        if (!ignore) setIsLoading(false);
+        // Garante que isLoading seja false mesmo com erro
+        if (!ignore) {
+          setIsLoading(false);
+          setSession(null);
+        }
       } finally {
-        if (!ignore) setIsLoading(false);
-        console.log("AuthContext: useEffect - Inicialização finalizada.");
+        if (!ignore) {
+          setIsLoading(false);
+          console.log("AuthContext: useEffect - Inicialização finalizada.");
+        }
       }
     };
+
+    // Timeout de segurança para evitar travamento infinito
+    const timeout = setTimeout(() => {
+      if (!ignore) {
+        console.warn("AuthContext: Timeout de inicialização atingido (15s)");
+        setIsLoading(false);
+      }
+    }, 15000);
 
     initializeAuth();
 
@@ -307,7 +342,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session) {
           console.log("AuthContext: onAuthStateChange - Nova sessão ou refresh, buscando barbearia...");
           if (session.user) {
-            await setUserBarberShop(session.user, true);
+            try {
+              await setUserBarberShop(session.user, true);
+            } catch (barberShopError) {
+              console.error("AuthContext: onAuthStateChange - Erro ao buscar barbearia:", barberShopError);
+              // Não deixa o erro da barbearia travar o processo
+            }
           }
         } else {
           console.log("AuthContext: onAuthStateChange - Sessão removida.");
@@ -323,6 +363,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       ignore = true;
+      clearTimeout(timeout);
       console.log("AuthContext: useEffect cleanup - Cancelando inscrição de auth state change.");
       subscription.unsubscribe();
     };

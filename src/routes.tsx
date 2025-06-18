@@ -3,6 +3,8 @@ import { useAuth } from "./contexts/AuthContext";
 import { useBarberShopContext } from "./contexts/BarberShopContext";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
+import { DebugInfo } from "./components/ui/debug-info";
+import { useEffect, useState } from "react";
 
 // Páginas
 import Auth from "./pages/Auth";
@@ -28,22 +30,57 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading: isAuthLoading } = useAuth();
   const { selectedBarberShop } = useBarberShopContext();
   const location = useLocation();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Timeout de segurança para evitar travamento infinito
+  useEffect(() => {
+    if (isAuthLoading) {
+      const timeout = setTimeout(() => {
+        console.warn("ProtectedRoute: Timeout de carregamento atingido (10s)");
+        setLoadingTimeout(true);
+      }, 10000); // 10 segundos
+
+      return () => clearTimeout(timeout);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [isAuthLoading]);
 
   console.log("ProtectedRoute:", {
     pathname: location.pathname,
-    session: !!session, // Convert to boolean for cleaner log
-    selectedBarberShop: !!selectedBarberShop, // Convert to boolean
-    isAuthLoading
+    session: !!session,
+    selectedBarberShop: !!selectedBarberShop,
+    isAuthLoading,
+    loadingTimeout
   });
 
   // Verifica se é uma URL de confirmação de email
   const isEmailConfirmation = location.search.includes('type=recovery') || 
                             location.search.includes('type=signup');
 
+  // Se atingiu timeout ou está carregando há muito tempo, mostra erro
+  if (loadingTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Erro de Carregamento</h2>
+          <p className="text-gray-500 mb-4">O carregamento está demorando mais que o esperado</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Recarregar Página
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold mb-2">Carregando...</h2>
           <p className="text-gray-500">Aguarde um momento</p>
         </div>
@@ -75,7 +112,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Se tiver sessão mas não tiver barbearia selecionada E NÃO ESTIVER NA PÁGINA DE CADASTRO DE BARBEARIA
+  // Se tiver sessão mas não tiver barbearia  E NÃO ESTIVER NA PÁGINA DE CADASTRO DE BARBEARIA
   if (session && !selectedBarberShop && location.pathname !== '/cadastro-barbearia') {
      console.log("ProtectedRoute: Usuário logado sem barbearia, redirecionando para /cadastro-barbearia.");
     return <Navigate to="/cadastro-barbearia" replace />;
@@ -98,6 +135,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         <Header />
         <main className="flex-1">{children}</main>
       </div>
+      <DebugInfo />
     </div>
   );
 };
