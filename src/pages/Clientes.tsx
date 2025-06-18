@@ -80,6 +80,7 @@ const Clientes = () => {
         .eq('clients.barber_shop_id', selectedBarberShop.id)
         .eq('subscription_plans.barber_shop_id', selectedBarberShop.id)
         .eq('status', 'ativa');
+        
 
       if (error) throw error;
       return data || [];

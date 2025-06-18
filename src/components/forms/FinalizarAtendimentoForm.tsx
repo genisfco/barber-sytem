@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useServicos } from "@/hooks/useServicos";
 import { useProdutos } from "@/hooks/useProdutos";
+import { useAssinaturaCliente } from "@/hooks/useAssinaturas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -16,6 +17,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Agendamento } from "@/types/agendamento";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Crown, Gift } from "lucide-react";
 
 type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
 
@@ -45,7 +48,10 @@ export function FinalizarAtendimentoForm({
   const { marcarComoAtendido } = useAgendamentos();
   const { servicos } = useServicos();
   const { produtos } = useProdutos();
+  const { data: assinaturaCliente } = useAssinaturaCliente(agendamento.client_id);
   const [total, setTotal] = useState(0);
+  const [totalOriginal, setTotalOriginal] = useState(0);
+  const [descontoAssinatura, setDescontoAssinatura] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -63,23 +69,137 @@ export function FinalizarAtendimentoForm({
   // Efeito para calcular o total inicial
   useEffect(() => {
     calcularTotal();
-  }, []);
+  }, [assinaturaCliente]);
 
   const calcularTotal = () => {
     const servicosSelecionados = form.getValues("servicos");
     const produtosSelecionados = form.getValues("produtos");
 
-    const totalServicos = servicosSelecionados.reduce((sum, servicoId) => {
+    let totalServicos = 0;
+    let totalProdutos = 0;
+    let descontoTotal = 0;
+
+    // Calcular total de serviços com benefícios de assinatura
+    servicosSelecionados.forEach(servicoId => {
+      const servico = servicos?.find(s => s.id === servicoId);
+      if (!servico) return;
+
+      const precoOriginal = servico.price;
+      let precoFinal = precoOriginal;
+
+      // Verificar se há benefício de assinatura para este serviço
+      if (assinaturaCliente) {
+        const beneficioServico = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+          b => b.service_id === servicoId
+        );
+
+        if (beneficioServico) {
+          const tipoBeneficio = beneficioServico.benefit_types.name;
+          
+          if (tipoBeneficio === 'servico_gratuito') {
+            precoFinal = 0; // Serviço gratuito
+            descontoTotal += precoOriginal;
+          } else if (tipoBeneficio === 'servico_desconto' && beneficioServico.discount_percentage) {
+            const desconto = (precoOriginal * beneficioServico.discount_percentage) / 100;
+            precoFinal = precoOriginal - desconto;
+            descontoTotal += desconto;
+          }
+        }
+      }
+
+      totalServicos += precoFinal;
+    });
+
+    // Calcular total de produtos com benefícios de assinatura
+    produtosSelecionados.forEach(produto => {
+      const produtoInfo = produtos?.find(p => p.id === produto.id);
+      if (!produtoInfo) return;
+
+      const precoOriginal = produtoInfo.price * produto.quantity;
+      let precoFinal = precoOriginal;
+
+      // Verificar se há benefício de assinatura para este produto
+      if (assinaturaCliente) {
+        const beneficioProduto = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+          b => b.product_id === produto.id
+        );
+
+        if (beneficioProduto) {
+          const tipoBeneficio = beneficioProduto.benefit_types.name;
+          
+          if (tipoBeneficio === 'produto_gratuito') {
+            precoFinal = 0; // Produto gratuito
+            descontoTotal += precoOriginal;
+          } else if (tipoBeneficio === 'produto_desconto' && beneficioProduto.discount_percentage) {
+            const desconto = (precoOriginal * beneficioProduto.discount_percentage) / 100;
+            precoFinal = precoOriginal - desconto;
+            descontoTotal += desconto;
+          }
+        }
+      }
+
+      totalProdutos += precoFinal;
+    });
+
+    const totalComDesconto = totalServicos + totalProdutos;
+    const totalSemDesconto = servicosSelecionados.reduce((sum, servicoId) => {
       const servico = servicos?.find(s => s.id === servicoId);
       return sum + (servico?.price || 0);
-    }, 0);
-
-    const totalProdutos = produtosSelecionados.reduce((sum, produto) => {
+    }, 0) + produtosSelecionados.reduce((sum, produto) => {
       const produtoInfo = produtos?.find(p => p.id === produto.id);
       return sum + ((produtoInfo?.price || 0) * produto.quantity);
     }, 0);
 
-    setTotal(totalServicos + totalProdutos);
+    setTotal(totalComDesconto);
+    setTotalOriginal(totalSemDesconto);
+    setDescontoAssinatura(descontoTotal);
+  };
+
+  // Função para verificar se um serviço tem benefício de assinatura
+  const getBeneficioServico = (servicoId: string) => {
+    if (!assinaturaCliente) return null;
+    
+    return assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+      b => b.service_id === servicoId
+    );
+  };
+
+  // Função para verificar se um produto tem benefício de assinatura
+  const getBeneficioProduto = (produtoId: string) => {
+    if (!assinaturaCliente) return null;
+    
+    return assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+      b => b.product_id === produtoId
+    );
+  };
+
+  // Função para verificar se um produto é gratuito
+  const isProdutoGratuito = (produtoId: string) => {
+    const beneficio = getBeneficioProduto(produtoId);
+    return beneficio?.benefit_types.name === 'produto_gratuito';
+  };
+
+  // Função para verificar se um produto tem desconto
+  const isProdutoComDesconto = (produtoId: string) => {
+    const beneficio = getBeneficioProduto(produtoId);
+    return beneficio?.benefit_types.name === 'produto_desconto';
+  };
+
+  // Função para calcular o preço com benefício
+  const calcularPrecoComBeneficio = (precoOriginal: number, beneficio: any) => {
+    if (!beneficio) return precoOriginal;
+
+    const tipoBeneficio = beneficio.benefit_types.name;
+    
+    if (tipoBeneficio === 'servico_gratuito' || tipoBeneficio === 'produto_gratuito') {
+      return 0;
+    } else if (tipoBeneficio === 'servico_desconto' || tipoBeneficio === 'produto_desconto') {
+      if (beneficio.discount_percentage) {
+        return precoOriginal - (precoOriginal * beneficio.discount_percentage / 100);
+      }
+    }
+    
+    return precoOriginal;
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -94,11 +214,15 @@ export function FinalizarAtendimentoForm({
         if (!servico) {
           throw new Error(`Serviço não encontrado: ${servicoId}`);
         }
+        
+        const beneficio = getBeneficioServico(servicoId);
+        const precoFinal = calcularPrecoComBeneficio(servico.price, beneficio);
+        
         return {
           appointment_id: agendamento.id,
           service_id: servicoId,
           service_name: servico.name,
-          service_price: servico.price,
+          service_price: precoFinal, // Preço com benefício aplicado
           service_duration: servico.duration,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -110,11 +234,15 @@ export function FinalizarAtendimentoForm({
         if (!produtoInfo) {
           throw new Error(`Produto não encontrado: ${produto.id}`);
         }
+        
+        const beneficio = getBeneficioProduto(produto.id);
+        const precoUnitarioFinal = calcularPrecoComBeneficio(produtoInfo.price, beneficio);
+        
         return {
           appointment_id: agendamento.id,
           product_id: produto.id,
           product_name: produtoInfo.name,
-          product_price: produtoInfo.price,
+          product_price: precoUnitarioFinal, // Preço unitário com benefício aplicado
           quantity: produto.quantity,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -144,7 +272,7 @@ export function FinalizarAtendimentoForm({
 
       toast({
         title: "Atendimento finalizado!",
-        description: `Atendimento do cliente ${agendamento.client_name} finalizado com sucesso.`,
+        description: `Atendimento do cliente ${agendamento.client_name} finalizado com sucesso.${assinaturaCliente ? ` Benefícios de assinatura aplicados: R$ ${descontoAssinatura.toFixed(2)}` : ''}`,
       });
 
       onOpenChange(false);
@@ -175,17 +303,30 @@ export function FinalizarAtendimentoForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Finalizar Atendimento</DialogTitle>
+          <DialogTitle>Finalização e Check-up de Atendimento</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <h3 className="font-medium">Cliente</h3>
-              <p>{agendamento.client_name}</p>
+              <h3 className="font-medium text-muted-foreground">Cliente</h3>
+              <div className="flex items-center gap-2">
+                <p className="text-lg text-primary">{agendamento.client_name}</p>
+                {assinaturaCliente && (
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                    <Crown className="w-3 h-3 mr-1" />
+                    Assinante
+                  </Badge>
+                )}
+              </div>
+              {assinaturaCliente && (
+                <p className="text-sm text-muted-foreground">
+                  Plano: {assinaturaCliente.subscription_plans.name}
+                </p>
+              )}
             </div>
             <div>
-              <h3 className="font-medium">Barbeiro</h3>
+              <h3 className="font-medium text-muted-foreground">Barbeiro</h3>
               <p>{agendamento.barber_name}</p>
             </div>
           </div>
@@ -193,37 +334,61 @@ export function FinalizarAtendimentoForm({
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
-                <h3 className="font-medium">Serviços</h3>
+                <h3 className="font-medium mt-10">Serviços</h3>
                 <div className="space-y-2">
                   {servicos && servicos.length > 0 ? (
-                    servicos.map((servico) => (
-                      <FormField
-                        key={servico.id}
-                        control={form.control}
-                        name="servicos"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(servico.id)}
-                                onCheckedChange={(checked) => {
-                                  const current = field.value || [];
-                                  if (checked) {
-                                    field.onChange([...current, servico.id]);
-                                  } else {
-                                    field.onChange(current.filter(id => id !== servico.id));
-                                  }
-                                  calcularTotal();
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              {servico.name} - R$ {servico.price.toFixed(2)}
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                    ))
+                    servicos.map((servico) => {
+                      const beneficio = getBeneficioServico(servico.id);
+                      const precoFinal = calcularPrecoComBeneficio(servico.price, beneficio);
+                      const temBeneficio = beneficio && precoFinal < servico.price;
+                      
+                      return (
+                        <FormField
+                          key={servico.id}
+                          control={form.control}
+                          name="servicos"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(servico.id)}
+                                  onCheckedChange={(checked) => {
+                                    const current = field.value || [];
+                                    if (checked) {
+                                      field.onChange([...current, servico.id]);
+                                    } else {
+                                      field.onChange(current.filter(id => id !== servico.id));
+                                    }
+                                    calcularTotal();
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                <div className="flex items-center gap-2">
+                                  <span>{servico.name}</span>
+                                  {temBeneficio && (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      <Gift className="w-3 h-3 mr-1" />
+                                      {beneficio?.benefit_types.name === 'servico_gratuito' ? 'Grátis' : `${beneficio?.discount_percentage}% OFF`}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  {temBeneficio ? (
+                                    <>
+                                      <span className="line-through text-muted-foreground">R$ {servico.price.toFixed(2)}</span>
+                                      <span className="text-green-600 font-medium">R$ {precoFinal.toFixed(2)}</span>
+                                    </>
+                                  ) : (
+                                    <span>R$ {servico.price.toFixed(2)}</span>
+                                  )}
+                                </div>
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      );
+                    })
                   ) : (
                     <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg">
                       Não há serviços ativos disponíveis.
@@ -233,62 +398,106 @@ export function FinalizarAtendimentoForm({
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-medium">Produtos</h3>
+                <h3 className="font-medium mt-10">Produtos</h3>
                 <div className="space-y-2">
                   {produtos && produtos.length > 0 ? (
-                    produtos.map((produto) => (
-                      <FormField
-                        key={produto.id}
-                        control={form.control}
-                        name="produtos"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.some(p => p.id === produto.id)}
-                                onCheckedChange={(checked) => {
-                                  const current = field.value || [];
-                                  if (checked) {
-                                    field.onChange([...current, { id: produto.id, quantity: 1 }]);
-                                  } else {
-                                    field.onChange(current.filter(p => p.id !== produto.id));
-                                  }
-                                  calcularTotal();
-                                }}
-                                disabled={produto.stock === 0}
-                              />
-                            </FormControl>
-                            <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
-                              {produto.name} - R$ {produto.price.toFixed(2)}
-                              <span className="ml-2 text-sm text-muted-foreground">
-                                (Estoque: {produto.stock})
-                              </span>
-                            </FormLabel>
-                            {field.value?.some(p => p.id === produto.id) && (
-                              <Input
-                                type="number"
-                                min="1"
-                                max={produto.stock}
-                                value={field.value.find(p => p.id === produto.id)?.quantity || 1}
-                                onChange={(e) => {
-                                  const quantidade = parseInt(e.target.value);
-                                  if (quantidade > produto.stock) return;
-                                  
-                                  const current = field.value || [];
-                                  field.onChange(current.map(p => 
-                                    p.id === produto.id 
-                                      ? { ...p, quantity: quantidade } 
-                                      : p
-                                  ));
-                                  calcularTotal();
-                                }}
-                                className="w-20"
-                              />
-                            )}
-                          </FormItem>
-                        )}
-                      />
-                    ))
+                    produtos.map((produto) => {
+                      const beneficio = getBeneficioProduto(produto.id);
+                      const precoUnitarioFinal = calcularPrecoComBeneficio(produto.price, beneficio);
+                      const temBeneficio = beneficio && precoUnitarioFinal < produto.price;
+                      const isGratuito = isProdutoGratuito(produto.id);
+                      const isComDesconto = isProdutoComDesconto(produto.id);
+                      
+                      return (
+                        <FormField
+                          key={produto.id}
+                          control={form.control}
+                          name="produtos"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.some(p => p.id === produto.id)}
+                                  onCheckedChange={(checked) => {
+                                    const current = field.value || [];
+                                    if (checked) {
+                                      // Se for produto gratuito, sempre adiciona com quantidade 1
+                                      const quantidade = isGratuito ? 1 : 1;
+                                      field.onChange([...current, { id: produto.id, quantity: quantidade }]);
+                                    } else {
+                                      field.onChange(current.filter(p => p.id !== produto.id));
+                                    }
+                                    calcularTotal();
+                                  }}
+                                  disabled={produto.stock === 0}
+                                />
+                              </FormControl>
+                              <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
+                                <div className="flex items-center gap-2">
+                                  <span>{produto.name}</span>
+                                  {temBeneficio && (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      <Gift className="w-3 h-3 mr-1" />
+                                      {isGratuito ? 'Grátis (1 unidade)' : `${beneficio?.discount_percentage}% OFF`}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  {temBeneficio ? (
+                                    <>
+                                      <span className="line-through text-muted-foreground">R$ {produto.price.toFixed(2)}</span>
+                                      <span className="text-green-600 font-medium">R$ {precoUnitarioFinal.toFixed(2)}</span>
+                                    </>
+                                  ) : (
+                                    <span>R$ {produto.price.toFixed(2)}</span>
+                                  )}
+                                  <span className="text-muted-foreground">
+                                    (Estoque: {produto.stock})
+                                  </span>
+                                </div>
+                              </FormLabel>
+                              {field.value?.some(p => p.id === produto.id) && (
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max={isGratuito ? 1 : produto.stock}
+                                  value={field.value.find(p => p.id === produto.id)?.quantity || 1}
+                                  onChange={(e) => {
+                                    const quantidade = parseInt(e.target.value);
+                                    
+                                    // Se for produto gratuito, força quantidade 1
+                                    if (isGratuito) {
+                                      const current = field.value || [];
+                                      field.onChange(current.map(p => 
+                                        p.id === produto.id 
+                                          ? { ...p, quantity: 1 } 
+                                          : p
+                                      ));
+                                      calcularTotal();
+                                      return;
+                                    }
+                                    
+                                    // Para produtos com desconto ou sem benefício, valida normalmente
+                                    if (quantidade > produto.stock) return;
+                                    
+                                    const current = field.value || [];
+                                    field.onChange(current.map(p => 
+                                      p.id === produto.id 
+                                        ? { ...p, quantity: quantidade } 
+                                        : p
+                                    ));
+                                    calcularTotal();
+                                  }}
+                                  className="w-20"
+                                  disabled={isGratuito}
+                                  title={isGratuito ? "Produto gratuito limitado a 1 unidade" : ""}
+                                />
+                              )}
+                            </FormItem>
+                          )}
+                        />
+                      );
+                    })
                   ) : (
                     <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg">
                       Não há produtos ativos disponíveis.
@@ -298,7 +507,7 @@ export function FinalizarAtendimentoForm({
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-medium">Forma de Pagamento</h3>
+                <h3 className="font-medium mt-10">Forma de Pagamento</h3>
                 <FormField
                   control={form.control}
                   name="payment_method"
@@ -326,7 +535,15 @@ export function FinalizarAtendimentoForm({
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-medium">Total</h3>
-                  <p className="text-2xl font-bold">R$ {total.toFixed(2)}</p>
+                  <div className="space-y-1">
+                    {assinaturaCliente && descontoAssinatura > 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        <span className="line-through">R$ {totalOriginal.toFixed(2)}</span>
+                        <span className="ml-2 text-green-600">- R$ {descontoAssinatura.toFixed(2)} (Assinatura)</span>
+                      </div>
+                    )}
+                    <p className="text-2xl font-bold">R$ {total.toFixed(2)}</p>
+                  </div>
                 </div>
                 <Button type="button" onClick={handleFinalizarClick}>Finalizar Atendimento</Button>
               </div>
@@ -342,6 +559,13 @@ export function FinalizarAtendimentoForm({
                 <p className="text-green-700">
                   Tem certeza que deseja finalizar o atendimento do cliente <span className="font-bold">{agendamento.client_name}</span>?
                 </p>
+                {assinaturaCliente && descontoAssinatura > 0 && (
+                  <div className="text-sm text-green-600 bg-green-100 p-3 rounded-lg">
+                    <p className="font-medium">Benefícios de Assinatura Aplicados:</p>
+                    <p>Desconto total: R$ {descontoAssinatura.toFixed(2)}</p>
+                    <p>Plano: {assinaturaCliente.subscription_plans.name}</p>
+                  </div>
+                )}
                 <p className="text-2xl font-bold text-green-700">
                   Total: R$ {total.toFixed(2)}
                 </p>
