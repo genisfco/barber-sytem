@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       const timeout = setTimeout(() => {
         console.warn("ProtectedRoute: Timeout de carregamento atingido (10s)");
         setLoadingTimeout(true);
-      }, 10000); // 10 segundos
+      }, 5000); // 10 segundos
 
       return () => clearTimeout(timeout);
     } else {
@@ -63,14 +63,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2 text-red-600">Erro de Carregamento</h2>
-          <p className="text-gray-500 mb-4">O carregamento está demorando mais que o esperado</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Recarregar Página
-          </button>
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Aguarde o Carregamento</h2>
+          <p className="text-gray-300 mb-4">Desculpe se está demorando mais que o esperado.</p>          
         </div>
       </div>
     );

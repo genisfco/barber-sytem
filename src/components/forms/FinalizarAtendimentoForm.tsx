@@ -28,9 +28,7 @@ const formSchema = z.object({
     id: z.string(),
     quantity: z.number().min(1, "A quantidade deve ser maior que zero")
   })),
-  payment_method: z.enum(["Dinheiro", "cartao_credito", "cartao_debito", "PIX"], {
-    required_error: "Selecione a forma de pagamento"
-  })
+  payment_method: z.string().optional(),
 });
 
 interface FinalizarAtendimentoFormProps {
@@ -207,6 +205,9 @@ export function FinalizarAtendimentoForm({
       if (servicos === undefined || produtos === undefined) {
         throw new Error("Dados de serviços ou produtos ainda não carregados completamente.");
       }
+      if (total > 0 && !values.payment_method) {
+        throw new Error("Selecione a forma de pagamento.");
+      }
 
       // Atualiza o agendamento com os serviços e produtos selecionados
       const servicosSelecionados = values.servicos.map(servicoId => {
@@ -303,7 +304,7 @@ export function FinalizarAtendimentoForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Finalização e Check-up de Atendimento</DialogTitle>
+          <DialogTitle>Finalização e Checklist de Atendimento</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -334,7 +335,7 @@ export function FinalizarAtendimentoForm({
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
-                <h3 className="font-medium mt-10">Serviços</h3>
+                <h3 className="font-medium mt-10 text-muted-foreground ">Serviços Realizados</h3>
                 <div className="space-y-2">
                   {servicos && servicos.length > 0 ? (
                     servicos.map((servico) => {
@@ -398,7 +399,7 @@ export function FinalizarAtendimentoForm({
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-medium mt-10">Produtos</h3>
+                <h3 className="font-medium mt-10 text-muted-foreground">Produtos</h3>
                 <div className="space-y-2">
                   {produtos && produtos.length > 0 ? (
                     produtos.map((produto) => {
@@ -506,31 +507,33 @@ export function FinalizarAtendimentoForm({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="font-medium mt-10">Forma de Pagamento</h3>
-                <FormField
-                  control={form.control}
-                  name="payment_method"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a forma de pagamento" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                          <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                          <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                          <SelectItem value="PIX">PIX</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {total > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-medium mt-10 text-muted-foreground">Forma de Pagamento</h3>
+                  <FormField
+                    control={form.control}
+                    name="payment_method"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a forma de pagamento" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                            <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                            <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                            <SelectItem value="PIX">PIX</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <div className="flex justify-between items-center">
                 <div>
