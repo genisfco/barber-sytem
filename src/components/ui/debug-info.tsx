@@ -10,7 +10,7 @@ export const DebugInfo = () => {
   // Só mostra em desenvolvimento
   if (import.meta.env.PROD) return null;
 
-  return (
+  /*return (
     <div className="fixed bottom-4 right-4 bg-black/80 text-white p-4 rounded-lg text-xs max-w-xs z-50">
       <h3 className="font-bold mb-2">Debug Info</h3>
       <div className="space-y-1">
@@ -22,5 +22,5 @@ export const DebugInfo = () => {
         <div>BarberShop ID: {selectedBarberShop?.id || "N/A"}</div>
       </div>
     </div>
-  );
+  );*/
 }; 

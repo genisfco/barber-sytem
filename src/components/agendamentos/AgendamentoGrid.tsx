@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBarbers } from "@/hooks/useBarbers";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useBarberShopUnavailability } from "@/hooks/useBarberShopUnavailability";
 import { horarios, converterHorariosFuncionamento } from "@/constants/horarios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
@@ -30,6 +31,7 @@ interface AgendamentoGridProps {
 export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, onHorarioSelect }: AgendamentoGridProps) {
   const { barbers } = useBarbers();
   const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
+  const { verificarSeBarbeariaIndisponivel } = useBarberShopUnavailability();
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
@@ -37,6 +39,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
   const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
   const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
   const [horariosFuncionamento, setHorariosFuncionamento] = useState<any[]>([]);
+  const [isBarbeariaFechada, setIsBarbeariaFechada] = useState(false);
 
   // Formatamos a data para o padrão yyyy-MM-dd
   const dataFormatada = format(date, "yyyy-MM-dd");
@@ -76,6 +79,16 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
       setHorariosDisponiveis(horariosDoDia);
     }
   }, [date, horariosFuncionamento]);
+
+  // Verificar se a barbearia está fechada na data selecionada
+  useEffect(() => {
+    const verificarBarbeariaFechada = async () => {
+      const fechada = await verificarSeBarbeariaIndisponivel(date);
+      setIsBarbeariaFechada(fechada);
+    };
+
+    verificarBarbeariaFechada();
+  }, [date, verificarSeBarbeariaIndisponivel]);
 
   const handleHorarioClick = (barbeiroId: string, horario: string) => {
     setSelectedBarber(barbeiroId);
@@ -205,6 +218,21 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
     return (
       <div className="flex items-center justify-center h-full">
         <p>Carregando barbeiros...</p>
+      </div>
+    );
+  }
+
+  // Verificar se a barbearia está fechada na data selecionada
+  if (isBarbeariaFechada) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4">
+        <h2 className="text-xl font-semibold">
+          {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
+        </h2>
+        <p className="text-red-600 font-medium text-center">
+          Agendamento Indisponível.<br />
+          Barbearia fechada para o dia selecionado.
+        </p>
       </div>
     );
   }

@@ -91,7 +91,7 @@ export default function Auth() {
           </p>
           {sessionExpired && (
             <div className="mt-4 p-2 bg-yellow-100 text-yellow-800 rounded">
-              Sua sessão expirou. Por favor, faça login novamente.
+              Por favor, faça login novamente.
             </div>
           )}
           {loggedOut && (

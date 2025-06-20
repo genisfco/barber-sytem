@@ -224,6 +224,9 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
   // Verifica se existe indisponibilidade para a data selecionada
   const indisponibilidadeExistente = dataSelecionada ? buscarIndisponibilidadeExistente(dataSelecionada) : null;
   const estaIndisponivel = !!indisponibilidadeExistente;
+  
+  // Verifica se a indisponibilidade é por "Loja Fechada"
+  const isLojaFechada = indisponibilidadeExistente?.reason === "Loja Fechada";
 
   // Função para verificar se um horário está dentro do período selecionado
   const isHorarioSelecionado = (horario: string) => {
@@ -299,9 +302,30 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
     }
   };
 
+  // Handler para o clique do botão quando é loja fechada
+  const handleLojaFechadaClick = () => {
+    toast({
+      variant: 'destructive',
+      title: 'Loja Fechada',
+      description: 'Não é possível remover o registro.',
+    });
+  };
+
+  // Handler para o submit do formulário
+  const handleSubmit = (data: IndisponivelFormValues) => {
+    // Se é loja fechada, não permite remover
+    if (isLojaFechada) {
+      handleLojaFechadaClick();
+      return;
+    }
+    
+    // Chama o onSubmit original
+    onSubmit(data);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormItem className="flex flex-col">          
           <div className="text-lg font-semibold mb-4">{barbeiroName}</div>
         </FormItem>
@@ -485,7 +509,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
             variant={estaIndisponivel ? "destructive" : "default"}
             disabled={diaSemanaSemHorario}
           >
-            {estaIndisponivel ? "Remover Indisponibilidade" : "Registrar Indisponibilidade"}
+            {isLojaFechada ? "Loja Fechada" : estaIndisponivel ? "Remover Indisponibilidade" : "Registrar Indisponibilidade"}
           </Button>
         </div>
       </form>
