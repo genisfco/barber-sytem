@@ -434,7 +434,7 @@ const Index = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {barbers?.map((barbeiro) => {
+            {barbers?.filter(b => b.active).map((barbeiro) => {
               const status = getBarbeiroStatus(barbeiro.id);
               return (
                 <div key={barbeiro.id} className="flex items-center justify-between p-4 bg-background/50 rounded-lg">

@@ -78,7 +78,7 @@ export function AgendamentoCalendar({ date, onDateSelect }: AgendamentoCalendarP
                   className="w-full"
                 >
                   <Store className="h-4 w-4 mr-2" />
-                  Fechar Barbearia no Dia
+                  Fechar Barbearia na Data
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

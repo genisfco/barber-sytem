@@ -54,20 +54,20 @@ export function useBarberShopUnavailability() {
         }
       }
       
-      return { message: "Barbearia indisponibilizada com sucesso" };
+      return { message: "Agenda fechada com sucesso." };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["indisponibilidades"] });
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       toast({
-        title: "Barbearia indisponibilizada!",
+        title: "Barbearia indisponibilizada na Data!",
         description: data.message,
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erro ao indisponibilizar barbearia",
-        description: error.message || "Ocorreu um erro ao tentar indisponibilizar a barbearia.",
+        description: error.message || "Ocorreu um erro ao tentar fechar a agenda da barbearia.",
         variant: "destructive",
       });
     },
@@ -90,13 +90,13 @@ export function useBarberShopUnavailability() {
 
       if (error) throw error;
       
-      return { message: "Barbearia disponibilizada com sucesso" };
+      return { message: "Agenda aberta com sucesso" };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["indisponibilidades"] });
       queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
       toast({
-        title: "Barbearia disponibilizada!",
+        title: "Barbearia disponibilizada na Data!",
         description: data.message,
       });
     },

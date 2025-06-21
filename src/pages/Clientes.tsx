@@ -323,17 +323,7 @@ const Clientes = () => {
           </Dialog>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
+        
 
         <div className="flex justify-center mt-4 mb-2">
           <div className="w-full max-w-xs">
@@ -376,16 +366,29 @@ const Clientes = () => {
           </div>
         </div>
 
-        {showOnlySubscribers && (
-          <div className="mb-2 flex justify-end">
+        <div className="flex justify-between items-center space-x-5">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          {showOnlySubscribers && (
+          <div className="flex justify-end">
             <button
-              className="text-sm px-8 py-2 rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition border border-yellow-300 font-semibold"
+              className="text-sm px-8 py-5 pt-3 pb-3 rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition border border-yellow-300 font-semibold"
               onClick={handleClearFilter}
             >
-              Limpar filtro de assinantes
+              Limpar Filtro
             </button>
           </div>
-        )}
+          )}
+        </div>
+
+        
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (

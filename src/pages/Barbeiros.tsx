@@ -337,7 +337,7 @@ const Barbeiros = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {selectedBarber?.active 
-                ? "Tem certeza que deseja desativar este barbeiro? Esta ação pode ser revertida posteriormente."
+                ? "Tem certeza que deseja desativar este barbeiro?"
                 : "Tem certeza que deseja reativar este barbeiro?"
               }
             </AlertDialogDescription>
