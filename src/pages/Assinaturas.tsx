@@ -233,7 +233,7 @@ const Assinaturas = () => {
     defaultValues: {
       client_id: "",
       subscription_plan_id: "",
-      start_date: new Date().toISOString().slice(0, 10),
+      start_date: getHojeISO(),
       end_date: "",
       status: "ativa"
     }
@@ -978,7 +978,11 @@ const Assinaturas = () => {
 
   // Utilitário para obter data de hoje no formato yyyy-MM-dd
   function getHojeISO() {
-    return new Date().toISOString().slice(0, 10);
+    const hoje = new Date();
+    const year = hoje.getFullYear();
+    const month = String(hoje.getMonth() + 1).padStart(2, '0');
+    const day = String(hoje.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   // Estado para controlar o modal de confirmação de status

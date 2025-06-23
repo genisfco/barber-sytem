@@ -522,7 +522,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               description: `Serviços: ${appointment.servicos.map(s => s.service_name).join(', ')} - Cliente: ${appointment.client_name}`,
               payment_method: appointment.payment_method || 'Dinheiro',
               category: 'servicos',
-              payment_date: new Date().toISOString().slice(0, 10),
+              payment_date: appointment.date,
               barber_shop_id: appointment.barber_shop_id,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -545,7 +545,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               description: `Produtos: ${appointment.produtos.map(p => `(${p.quantity}x) ${p.product_name}`).join(', ')} - Cliente: ${appointment.client_name}`,
               payment_method: appointment.payment_method || 'Dinheiro',
               category: 'produtos',
-              payment_date: new Date().toISOString().slice(0, 10),
+              payment_date: appointment.date,
               barber_shop_id: appointment.barber_shop_id,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()

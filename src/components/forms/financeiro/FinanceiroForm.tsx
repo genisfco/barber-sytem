@@ -59,12 +59,21 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
 
   async function onSubmit(values: FormValues) {
     try {
-      const data = new Date(values.data);
-      data.setHours(0, 0, 0, 0);
-
       // Validar o tipo
       if (tipo !== "receita" && tipo !== "despesa") {
         throw new Error(`Tipo inválido: ${tipo}`);
+      }
+
+      // Corrigir: salvar a data exatamente como selecionada pelo usuário (YYYY-MM-DD)
+      let payment_date = "";
+      if (typeof values.data === "string") {
+        payment_date = values.data;
+      } else if (values.data instanceof Date) {
+        // Converter para string local YYYY-MM-DD sem UTC
+        const year = values.data.getFullYear();
+        const month = String(values.data.getMonth() + 1).padStart(2, '0');
+        const day = String(values.data.getDate()).padStart(2, '0');
+        payment_date = `${year}-${month}-${day}`;
       }
 
       const transacaoData = {
@@ -73,7 +82,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         description: values.descricao,
         payment_method: values.metodo_pagamento,
         category: values.category,
-        payment_date: data.toISOString().slice(0, 10),
+        payment_date,
       };
 
       if (transacao) {
