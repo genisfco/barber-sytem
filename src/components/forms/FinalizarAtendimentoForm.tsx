@@ -13,12 +13,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format } from "date-fns";
+import { format, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Agendamento } from "@/types/agendamento";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Gift } from "lucide-react";
+import { Crown, Gift, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
 
@@ -51,6 +52,22 @@ export function FinalizarAtendimentoForm({
   const [totalOriginal, setTotalOriginal] = useState(0);
   const [descontoAssinatura, setDescontoAssinatura] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+  // Verificar se a assinatura é válida para o dia da semana do agendamento
+  const isAssinaturaValidaParaData = () => {
+    if (!assinaturaCliente || !assinaturaCliente.subscription_plans.available_days) {
+      return false;
+    }
+
+    // Criar a data de forma mais robusta, evitando problemas de fuso horário
+    const [ano, mes, dia] = agendamento.date.split('-').map(Number);
+    const dataAgendamento = new Date(ano, mes - 1, dia); // mes - 1 porque getMonth() retorna 0-11
+    const diaSemana = getDay(dataAgendamento); // 0 = Domingo, 1 = Segunda, etc.
+    
+    return assinaturaCliente.subscription_plans.available_days.includes(diaSemana);
+  };
+
+  const assinaturaValida = isAssinaturaValidaParaData();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,8 +102,8 @@ export function FinalizarAtendimentoForm({
       const precoOriginal = servico.price;
       let precoFinal = precoOriginal;
 
-      // Verificar se há benefício de assinatura para este serviço
-      if (assinaturaCliente) {
+      // Verificar se há benefício de assinatura para este serviço E se a assinatura é válida para a data
+      if (assinaturaCliente && assinaturaValida) {
         const beneficioServico = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
           b => b.service_id === servicoId
         );
@@ -116,8 +133,8 @@ export function FinalizarAtendimentoForm({
       const precoOriginal = produtoInfo.price * produto.quantity;
       let precoFinal = precoOriginal;
 
-      // Verificar se há benefício de assinatura para este produto
-      if (assinaturaCliente) {
+      // Verificar se há benefício de assinatura para este produto E se a assinatura é válida para a data
+      if (assinaturaCliente && assinaturaValida) {
         const beneficioProduto = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
           b => b.product_id === produto.id
         );
@@ -155,7 +172,7 @@ export function FinalizarAtendimentoForm({
 
   // Função para verificar se um serviço tem benefício de assinatura
   const getBeneficioServico = (servicoId: string) => {
-    if (!assinaturaCliente) return null;
+    if (!assinaturaCliente || !assinaturaValida) return null;
     
     return assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
       b => b.service_id === servicoId
@@ -164,7 +181,7 @@ export function FinalizarAtendimentoForm({
 
   // Função para verificar se um produto tem benefício de assinatura
   const getBeneficioProduto = (produtoId: string) => {
-    if (!assinaturaCliente) return null;
+    if (!assinaturaCliente || !assinaturaValida) return null;
     
     return assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
       b => b.product_id === produtoId
@@ -198,6 +215,22 @@ export function FinalizarAtendimentoForm({
     }
     
     return precoOriginal;
+  };
+
+  // Função para obter o nome do dia da semana
+  const getNomeDiaSemana = (data: string) => {
+    // Criar a data de forma mais robusta, evitando problemas de fuso horário
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const dataObj = new Date(ano, mes - 1, dia); // mes - 1 porque getMonth() retorna 0-11
+    return format(dataObj, 'EEEE', { locale: ptBR });
+  };
+
+  // Função para obter os nomes dos dias permitidos
+  const getDiasPermitidos = () => {
+    if (!assinaturaCliente?.subscription_plans.available_days) return [];
+    
+    const nomesDias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return assinaturaCliente.subscription_plans.available_days.map(dia => nomesDias[dia]);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -272,8 +305,9 @@ export function FinalizarAtendimentoForm({
       await marcarComoAtendido.mutateAsync(agendamentoAtualizado);
 
       toast({
+        variant: "success",
         title: "Atendimento finalizado!",
-        description: `Atendimento do cliente ${agendamento.client_name} finalizado com sucesso.${assinaturaCliente ? ` Benefícios de assinatura aplicados: R$ ${descontoAssinatura.toFixed(2)}` : ''}`,
+        description: `Atendimento do cliente ${agendamento.client_name} finalizado com sucesso.`,
       });
 
       onOpenChange(false);
@@ -312,7 +346,7 @@ export function FinalizarAtendimentoForm({
             <div>
               <h3 className="font-medium text-muted-foreground">Cliente</h3>
               <div className="flex items-center gap-2">
-                <p className="text-lg text-primary">{agendamento.client_name}</p>
+                <p className="text-lm">{agendamento.client_name}</p>
                 {assinaturaCliente && (
                   <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
                     <Crown className="w-3 h-3 mr-1" />
@@ -321,9 +355,18 @@ export function FinalizarAtendimentoForm({
                 )}
               </div>
               {assinaturaCliente && (
-                <p className="text-sm text-muted-foreground">
-                  Plano: {assinaturaCliente.subscription_plans.name}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Plano: {assinaturaCliente.subscription_plans.name}
+                  </p>
+                  {!assinaturaValida && (
+                    <Alert className="p-1 border-red-200 bg-red-100">                        
+                      <AlertDescription className="text-red-700 text-sm ml-5">
+                        Benefícios não disponíveis hoje
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
               )}
             </div>
             <div>
@@ -539,7 +582,7 @@ export function FinalizarAtendimentoForm({
                 <div>
                   <h3 className="font-medium">Total</h3>
                   <div className="space-y-1">
-                    {assinaturaCliente && descontoAssinatura > 0 && (
+                    {assinaturaCliente && descontoAssinatura > 0 && assinaturaValida && (
                       <div className="text-sm text-muted-foreground">
                         <span className="line-through">R$ {totalOriginal.toFixed(2)}</span>
                         <span className="ml-2 text-green-600">- R$ {descontoAssinatura.toFixed(2)} (Assinatura)</span>
@@ -557,32 +600,37 @@ export function FinalizarAtendimentoForm({
         <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
           <AlertDialogContent className="bg-green-50 border-green-200">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-green-600 text-center">Confirmar Finalização</AlertDialogTitle>
+              <AlertDialogTitle className="text-green-800 text-center">Confirmar Finalização</AlertDialogTitle>
               <AlertDialogDescription className="space-y-4 text-center">
                 <p className="text-green-700">
                   Tem certeza que deseja finalizar o atendimento do cliente <span className="font-bold">{agendamento.client_name}</span>?
                 </p>
-                {assinaturaCliente && descontoAssinatura > 0 && (
+                {assinaturaCliente && descontoAssinatura > 0 && assinaturaValida && (
                   <div className="text-sm text-green-600 bg-green-100 p-3 rounded-lg">
-                    <p className="font-medium">Benefícios de Assinatura Aplicados:</p>
+                    <p className="font-medium">Benefícios da Assinatura Aplicados:</p>
                     <p>Desconto total: R$ {descontoAssinatura.toFixed(2)}</p>
                     <p>Plano: {assinaturaCliente.subscription_plans.name}</p>
+                  </div>
+                )}
+                {assinaturaCliente && !assinaturaValida && (
+                  <div className="text-sm text-red-600 bg-red-100 p-3 rounded-lg">
+                    <p className="font-medium">Benefícios da Assinatura não aplicados:</p>
+                    <p>({getNomeDiaSemana(agendamento.date)}) não está nos dias permitidos do plano.</p>                    
                   </div>
                 )}
                 <p className="text-2xl font-bold text-green-700">
                   Total: R$ {total.toFixed(2)}
                 </p>
                 <div className="text-sm text-green-600 bg-green-100 p-4 rounded-lg space-y-2">
-                  <p>Apenas confirme a finalização se o cliente já pagou o valor total do atendimento.</p>
-                  <p><span className="font-bold">ATENÇÃO:</span> Esta ação não poderá ser desfeita.</p>
+                  <p>Confirme a finalização apenas se o cliente já pagou o valor total do atendimento.</p>                  
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200">Não</AlertDialogCancel>
+              <AlertDialogCancel className="bg-red-500 hover:bg-red-700">Não</AlertDialogCancel>
               <AlertDialogAction 
                 onClick={handleConfirmFinalizar}
-                className="bg-green-600 text-white hover:bg-green-700"
+                className="bg-green-700 text-white hover:bg-green-900"
               >
                 Sim, Finalizar
               </AlertDialogAction>

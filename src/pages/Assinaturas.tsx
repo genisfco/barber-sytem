@@ -46,6 +46,7 @@ interface PlanoType {
   active: boolean;
   barber_shop_id: string;
   max_benefits_per_month: number;
+  available_days: number[]; // novo campo array
   service_benefits?: {
     [key: string]: {
       type: "" | "gratuito" | "desconto";
@@ -152,30 +153,23 @@ const Assinaturas = () => {
   });
 
   // Buscar planos ativos (já existe, mas vamos buscar todos para exibir no topo)
-  const { data: planos, isLoading: isLoadingPlanos, refetch: refetchPlanos } = useQuery<PlanoType[]>({ // Adicionado tipo PlanoType[]
+  const { data: planos, isLoading: isLoadingPlanos, refetch: refetchPlanos } = useQuery<PlanoType[]>({
     queryKey: ["planos-ativos", selectedBarberShop?.id],
     queryFn: async () => {
-      if (!selectedBarberShop || !benefitTypes) { // Depende de benefitTypes estar carregado
+      if (!selectedBarberShop || !benefitTypes) {
         throw new Error("Barbearia não selecionada ou tipos de benefício não carregados");
       }
       const { data, error } = await supabase
         .from("subscription_plans")
-        .select(`
-          *,
-          subscription_plan_benefits(*)
-        `)
+        .select(`*, subscription_plan_benefits(*)`)
         .eq('barber_shop_id', selectedBarberShop.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-
-      // Processa os dados para agrupar os benefícios
       return (data || []).map((plano: any) => {
         const service_benefits: PlanoType['service_benefits'] = {};
         const product_benefits: PlanoType['product_benefits'] = {};
-
         plano.subscription_plan_benefits.forEach((benefit: any) => {
           const benefitTypeName = benefitTypes.find((bt: any) => bt.id === benefit.benefit_type_id)?.name;
-
           if (benefit.service_id) {
             if (benefitTypeName === 'servico_gratuito') {
               service_benefits[benefit.service_id] = { type: 'gratuito' };
@@ -190,17 +184,16 @@ const Assinaturas = () => {
             }
           }
         });
-
-        const { subscription_plan_benefits, ...rest } = plano; // Remove o array de benefícios crus
-
+        const { subscription_plan_benefits, ...rest } = plano;
         return {
           ...rest,
           service_benefits,
-          product_benefits
+          product_benefits,
+          available_days: plano.available_days || []
         } as PlanoType;
       });
     },
-    enabled: !!selectedBarberShop && !!benefitTypes // Habilita a query apenas quando a barbearia e os tipos de benefício estiverem carregados
+    enabled: !!selectedBarberShop && !!benefitTypes
   });
 
   // Buscar pagamentos das assinaturas
@@ -316,12 +309,11 @@ const Assinaturas = () => {
   }
 
   const mutationPlano = useMutation({
-    mutationFn: async (data: PlanoFormData) => {
+    mutationFn: async (data: PlanoFormData & { diasSelecionados: number[] }) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }
-
-      // Primeiro, inserir o plano
+      // Inserir plano com available_days
       const { data: planoInserido, error: errorPlano } = await supabase
         .from("subscription_plans")
         .insert({
@@ -331,11 +323,11 @@ const Assinaturas = () => {
           duration_months: Number(data.duration_months),
           active: data.active,
           barber_shop_id: selectedBarberShop.id,
-          max_benefits_per_month: Number(data.max_benefits_per_month)
+          max_benefits_per_month: Number(data.max_benefits_per_month),
+          available_days: data.diasSelecionados
         })
         .select()
         .single();
-
       if (errorPlano) throw errorPlano;
 
       // Inserir benefícios de serviços
@@ -402,42 +394,32 @@ const Assinaturas = () => {
             throw errorProductBenefits;
           }
         }
-      }
-    },
-    onError: (error) => {
-      console.error("Erro na mutação do plano:", error);
-      toast.error("Erro ao salvar o plano. Verifique o console para mais detalhes.");
+      }      
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planos-ativos"] });
       resetPlano();
+      setDiasSelecionados([]);
+      setOpenPlano(false);
+      toast.success("Plano criado com sucesso!");
       refetchPlanos();
-      setOpenPlano(false); // Garante que o diálogo feche
+    },
+    onError: (error) => {
+      console.error("Erro na mutação do plano:", error);
+      toast.error("Erro ao salvar o plano. Verifique o console para mais detalhes.");
     }
   });
-  function onSubmitPlano(data: PlanoFormData) {
+  function onSubmitPlano(data: PlanoFormData & { diasSelecionados: number[] }) {
     console.log('Dados do formulário:', data);
     mutationPlano.mutate(data);
   }
 
   const mutationEditPlano = useMutation({
-    mutationFn: async (data: PlanoFormData) => { // Alterado o tipo de 'data' para PlanoFormData
+    mutationFn: async (data: PlanoFormData & { diasSelecionados: number[] }) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }
-
-      // 1. Deletar benefícios existentes
-      const { error: deleteError } = await supabase
-        .from("subscription_plan_benefits")
-        .delete()
-        .eq("subscription_plan_id", data.id);
-      
-      if (deleteError) {
-        console.error("Erro ao deletar benefícios antigos:", deleteError);
-        throw deleteError;
-      }
-
-      // 2. Atualizar o plano principal
+      // Atualizar plano com available_days
       const { error } = await supabase
         .from("subscription_plans")
         .update({
@@ -446,13 +428,14 @@ const Assinaturas = () => {
           price: Number(data.price),
           duration_months: Number(data.duration_months),
           active: data.active,
-          max_benefits_per_month: Number(data.max_benefits_per_month) // Incluído aqui também
+          max_benefits_per_month: Number(data.max_benefits_per_month),
+          available_days: data.diasSelecionados
         })
         .eq("id", data.id)
         .eq("barber_shop_id", selectedBarberShop.id);
       if (error) throw error;
 
-      // 3. Inserir benefícios de serviços (reutilizando lógica da mutação de criação)
+      // Inserir benefícios de serviços (reutilizando lógica da mutação de criação)
       if (data.service_benefits) {
         const serviceBenefits = Object.entries(data.service_benefits)
           .filter(([_, benefit]) => benefit.type !== "")
@@ -485,7 +468,7 @@ const Assinaturas = () => {
         }
       }
 
-      // 4. Inserir benefícios de produtos (reutilizando lógica da mutação de criação)
+      // Inserir benefícios de produtos (reutilizando lógica da mutação de criação)
       if (data.product_benefits) {
         const productBenefits = Object.entries(data.product_benefits)
           .filter(([_, benefit]) => benefit.type !== "")
@@ -516,23 +499,29 @@ const Assinaturas = () => {
             throw errorProductBenefits;
           }
         }
-      }
+      }      
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planos-ativos"] });
-      setEditingPlano(null); // Limpa o plano em edição
+      setEditingPlano(null);
+      setOpenPlano(false);
       resetPlano();
+      setDiasSelecionados([]);
+      toast.success("Plano editado com sucesso!");
       refetchPlanos();
-      setOpenPlano(false); // Garante que o diálogo feche
+    },
+    onError: (error) => {
+      console.error("Erro na mutação do plano:", error);
+      toast.error("Erro ao editar o plano. Verifique o console para mais detalhes.");
     }
   });
-  function onSubmitPlanoEdit(data: PlanoFormData) { // Alterado o tipo de 'data' para PlanoFormData
+  function onSubmitPlanoEdit(data: PlanoFormData & { diasSelecionados: number[] }) {
     if (!selectedBarberShop) {
       toast.error("Barbearia não selecionada");
       return;
     }
 
-    const dataToMutate: PlanoFormData = {
+    const dataToMutate: PlanoFormData & { diasSelecionados: number[] } = {
       ...data,
       id: editingPlano?.id, // Garante que o ID do plano em edição seja usado
     };
@@ -989,8 +978,7 @@ const Assinaturas = () => {
 
   // Utilitário para obter data de hoje no formato yyyy-MM-dd
   function getHojeISO() {
-    const hoje = new Date();
-    return hoje.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+    return new Date().toISOString().slice(0, 10);
   }
 
   // Estado para controlar o modal de confirmação de status
@@ -1005,6 +993,7 @@ const Assinaturas = () => {
     setOpenPlano(false);
     setEditingPlano(null);
     resetPlano();
+    setDiasSelecionados([]);
   };
 
   // Efeito para preencher o formulário quando um plano é selecionado para edição
@@ -1057,6 +1046,55 @@ const Assinaturas = () => {
   const { servicos } = useServicos();
   const { produtos } = useProdutos();
 
+  // Dias da semana para seleção
+  const DIAS_SEMANA = [
+    { value: 0, label: 'Dom' },
+    { value: 1, label: 'Seg' },
+    { value: 2, label: 'Ter' },
+    { value: 3, label: 'Qua' },
+    { value: 4, label: 'Qui' },
+    { value: 5, label: 'Sex' },
+    { value: 6, label: 'Sáb' },
+  ];
+
+  // Estado para dias selecionados (criação/edição)
+  const [diasSelecionados, setDiasSelecionados] = useState<number[]>([]);
+
+  // Preencher diasSelecionados ao editar um plano
+  useEffect(() => {
+    if (editingPlano) {
+      setValuePlano("name", editingPlano.name);
+      setValuePlano("description", editingPlano.description || "");
+      setValuePlano("price", Number(editingPlano.price));
+      setValuePlano("duration_months", Number(editingPlano.duration_months));
+      setValuePlano("active", editingPlano.active);
+      setValuePlano("max_benefits_per_month", Number(editingPlano.max_benefits_per_month));
+      // Preencher benefícios de serviços
+      if (editingPlano.service_benefits) {
+        Object.entries(editingPlano.service_benefits).forEach(([serviceId, benefit]: [string, { type: "" | "gratuito" | "desconto"; discount?: number; }]) => {
+          setValuePlano(`service_benefits.${serviceId}.type`, benefit.type);
+          if (benefit.discount) {
+            setValuePlano(`service_benefits.${serviceId}.discount`, Number(benefit.discount));
+          }
+        });
+      }
+      // Preencher benefícios de produtos
+      if (editingPlano.product_benefits) {
+        Object.entries(editingPlano.product_benefits).forEach(([productId, benefit]: [string, { type: "" | "gratuito" | "desconto"; discount?: number; }]) => {
+          setValuePlano(`product_benefits.${productId}.type`, benefit.type);
+          if (benefit.discount) {
+            setValuePlano(`product_benefits.${productId}.discount`, Number(benefit.discount));
+          }
+        });
+      }
+      // Preencher dias selecionados a partir do array
+      setDiasSelecionados(editingPlano.available_days || []);
+    } else {
+      resetPlano();
+      setDiasSelecionados([]);
+    }
+  }, [editingPlano, setValuePlano, resetPlano]);
+
   // Renderização condicional para loading
   if (isLoading || isLoadingPlanos || isLoadingPagamentos) {
     return (
@@ -1085,7 +1123,10 @@ const Assinaturas = () => {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmitPlano((data) => {
-                console.log('Dados do formulário:', data);
+                if (diasSelecionados.length === 0) {
+                  toast.error("Selecione ao menos um dia da semana para o plano.");
+                  return;
+                }
                 const formData = {
                   ...data,
                   price: Number(data.price),
@@ -1108,7 +1149,8 @@ const Assinaturas = () => {
                         discount: value.discount ? Number(value.discount) : undefined
                       }
                     ])
-                  )
+                  ),
+                  diasSelecionados
                 };
                 mutationPlano.mutate(formData);
               })} className="space-y-4">
@@ -1229,7 +1271,7 @@ const Assinaturas = () => {
 
                 {/* Limites de Benefícios */}
                 <div className="space-y-4 border-t border-border/50 pt-4">
-                  <h3 className="font-medium">Limites de Benefícios</h3>
+                  <h3 className="font-medium">Limites de Uso dos Benefícios</h3>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -1253,6 +1295,45 @@ const Assinaturas = () => {
                         {...registerPlano("max_benefits_per_month")}
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Adicionar campo de seleção de dias no formulário de criação de plano */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Dias da Semana Permitidos</h3>
+                  <div className="flex flex-wrap gap-4 items-center mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={diasSelecionados.length === DIAS_SEMANA.length}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setDiasSelecionados(DIAS_SEMANA.map(d => d.value));
+                          } else {
+                            setDiasSelecionados([]);
+                          }
+                        }}
+                      />
+                      Todos os dias
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    {DIAS_SEMANA.map((dia) => (
+                      <label key={dia.value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={diasSelecionados.includes(dia.value)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setDiasSelecionados([...diasSelecionados, dia.value]);
+                            } else {
+                              setDiasSelecionados(diasSelecionados.filter(d => d !== dia.value));
+                            }
+                          }}
+                        />
+                        {dia.label}
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -1281,7 +1362,14 @@ const Assinaturas = () => {
                   Edite os dados do plano de assinatura
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmitPlano(onSubmitPlanoEdit)} className="space-y-4">
+              <form onSubmit={handleSubmitPlano((data) => {
+                if (diasSelecionados.length === 0) {
+                  toast.error("Selecione ao menos um dia da semana para o plano.");
+                  return;
+                }
+                const formData = { ...data, diasSelecionados };
+                onSubmitPlanoEdit(formData);
+              })} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome do Plano</Label>
@@ -1399,7 +1487,7 @@ const Assinaturas = () => {
 
                 {/* Limites de Benefícios */}
                 <div className="space-y-4 border-t border-border/50 pt-4">
-                  <h3 className="font-medium">Limites de Benefícios</h3>
+                  <h3 className="font-medium">Limites de Uso dos Benefícios</h3>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -1423,6 +1511,45 @@ const Assinaturas = () => {
                         {...registerPlano("max_benefits_per_month")}
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Adicionar campo de seleção de dias no formulário de criação de plano */}
+                <div className="space-y-4 border-t border-border/50 pt-4">
+                  <h3 className="font-medium">Dias da Semana Permitidos</h3>
+                  <div className="flex flex-wrap gap-4 items-center mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={diasSelecionados.length === DIAS_SEMANA.length}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setDiasSelecionados(DIAS_SEMANA.map(d => d.value));
+                          } else {
+                            setDiasSelecionados([]);
+                          }
+                        }}
+                      />
+                      Todos os dias
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    {DIAS_SEMANA.map((dia) => (
+                      <label key={dia.value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={diasSelecionados.includes(dia.value)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setDiasSelecionados([...diasSelecionados, dia.value]);
+                            } else {
+                              setDiasSelecionados(diasSelecionados.filter(d => d !== dia.value));
+                            }
+                          }}
+                        />
+                        {dia.label}
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -1484,7 +1611,7 @@ const Assinaturas = () => {
                   <div className="text-sm text-muted-foreground space-y-1">
                     <p>{plano.description}</p>
                     <p>Status: <b className={plano.active ? 'text-green-600' : 'text-red-600'}>{plano.active ? 'Ativo' : 'Inativo'}</b></p>
-                    <p>Limite de benefícios: <b>{plano.max_benefits_per_month === 0 ? 'Ilimitado' : plano.max_benefits_per_month}</b></p>
+                    
                   </div>
                 </CardContent>
               </Card>
@@ -1793,7 +1920,7 @@ const Assinaturas = () => {
                 min={(() => {
                   // Buscar assinatura para pegar start_date
                   const assinatura = assinaturas?.find(a => a.id === assinaturaParaPagamento?.id);
-                  return assinatura?.start_date || getHojeISO();
+                  return assinatura?.start_date?.slice(0, 10) || getHojeISO();
                 })()}
                 max={getHojeISO()}
               />

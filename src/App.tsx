@@ -13,7 +13,14 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner
+        toastOptions={{
+          classNames: {
+            success: 'bg-green-600 text-white border-green-700',
+            error: 'bg-red-600 text-white border-red-700',
+          },
+        }}
+      />
       <BrowserRouter>
         <BarberShopProvider>
           <AuthProvider>

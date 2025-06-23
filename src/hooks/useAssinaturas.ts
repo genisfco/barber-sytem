@@ -20,6 +20,7 @@ interface AssinaturaCliente {
     active: boolean;
     barber_shop_id: string;
     max_benefits_per_month: number;
+    available_days: number[];
     subscription_plan_benefits: Array<{
       id: string;
       subscription_plan_id: string;
