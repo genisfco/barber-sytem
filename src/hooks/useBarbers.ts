@@ -36,7 +36,7 @@ export function useBarbers() {
   });
 
   const createBarber = useMutation({
-    mutationFn: async (barber: Omit<Barber, 'id' | 'created_at' | 'updated_at' | 'barber_shop_id' | 'active'>) => {
+    mutationFn: async (barber: Omit<Barber, 'id' | 'created_at' | 'updated_at'>) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }

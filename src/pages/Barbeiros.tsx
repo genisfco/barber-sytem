@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Power, Calendar } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Power, Calendar, Check, Circle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,14 +27,29 @@ import { Database } from "@/integrations/supabase/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IndisponivelForm } from "@/components/forms/BarberIndisponivelForm";
 import { Badge } from "@/components/ui/badge";
+import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type Barber = Database['public']['Tables']['barbers']['Row'];
+
+// Dias da semana para seleção
+const DIAS_SEMANA = [
+  { value: 0, label: 'Dom' },
+  { value: 1, label: 'Seg' },
+  { value: 2, label: 'Ter' },
+  { value: 3, label: 'Qua' },
+  { value: 4, label: 'Qui' },
+  { value: 5, label: 'Sex' },
+  { value: 6, label: 'Sáb' },
+];
 
 type BarberFormData = {
   name: string;
   email: string;
   phone: string;
   commission_rate: number;
+  available_days: number[];
+  barber_shop_id: string;
+  active: boolean;
 };
 
 const Barbeiros = () => {
@@ -44,22 +59,34 @@ const Barbeiros = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
   const [selectedBarberIndisponivel, setSelectedBarberIndisponivel] = useState<{id: string, name: string} | null>(null);
+  const [diasSelecionados, setDiasSelecionados] = useState<number[]>([0,1,2,3,4,5,6]);
   const { register, handleSubmit, reset, setValue } = useForm<BarberFormData>({
     defaultValues: {
-      commission_rate: 30
+      commission_rate: 30,
+      available_days: [0,1,2,3,4,5,6],
+      active: true
     }
   });
   const { barbers, isLoading, createBarber, updateBarber, toggleBarberStatus } = useBarbers();
+  const { selectedBarberShop } = useBarberShopContext();
 
   const onSubmit = async (data: BarberFormData) => {
     try {
+      const formData = {
+        ...data,
+        available_days: diasSelecionados,
+        barber_shop_id: selectedBarberShop?.id || "",
+        active: true
+      };
+      
       if (selectedBarber) {
-        await updateBarber.mutateAsync({ id: selectedBarber.id, barber: data });
+        await updateBarber.mutateAsync({ id: selectedBarber.id, barber: formData });
       } else {
-        await createBarber.mutateAsync(data);
+        await createBarber.mutateAsync(formData);
       }
       setOpen(false);
       reset();
+      setDiasSelecionados([0,1,2,3,4,5,6]);
     } catch (error) {
       // Erro já tratado pelo hook
     }
@@ -71,6 +98,9 @@ const Barbeiros = () => {
     setValue("email", barber.email || "");
     setValue("phone", barber.phone || "");
     setValue("commission_rate", barber.commission_rate);
+    setValue("available_days", barber.available_days || [0,1,2,3,4,5,6]);
+    setValue("active", barber.active);
+    setDiasSelecionados(barber.available_days || [0,1,2,3,4,5,6]);
     setOpen(true);
   };
 
@@ -213,6 +243,43 @@ const Barbeiros = () => {
                   {...register("commission_rate", { valueAsNumber: true })}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Dias Disponíveis para Atendimento</Label>
+                <div className="flex flex-wrap gap-4 items-center mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={diasSelecionados.length === DIAS_SEMANA.length}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setDiasSelecionados(DIAS_SEMANA.map(d => d.value));
+                        } else {
+                          setDiasSelecionados([]);
+                        }
+                      }}
+                    />
+                    Todos os dias
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  {DIAS_SEMANA.map((dia) => (
+                    <label key={dia.value} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={diasSelecionados.includes(dia.value)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setDiasSelecionados([...diasSelecionados, dia.value]);
+                          } else {
+                            setDiasSelecionados(diasSelecionados.filter(d => d !== dia.value));
+                          }
+                        }}
+                      />
+                      {dia.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -305,6 +372,7 @@ const Barbeiros = () => {
                   <p>Email: {barber.email}</p>
                   <p>Telefone: {barber.phone}</p>
                   <p>Taxa de Comissão: {barber.commission_rate}%</p>
+                 
                 </div>
                 <TooltipProvider>
                   <Tooltip>

@@ -1,6 +1,4 @@
-import { Database as DatabaseGenerated } from './types.generated';
-
-export interface Database extends DatabaseGenerated {
+export interface Database {
   public: {
     Tables: {
       barber_shops: {
@@ -202,31 +200,37 @@ export interface Database extends DatabaseGenerated {
       barbers: {
         Row: {
           id: string
+          barber_shop_id: string
           name: string
-          email: string
-          phone: string
+          email: string | null
+          phone: string | null
           active: boolean
           commission_rate: number
+          available_days: number[] | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
+          barber_shop_id: string
           name: string
-          email: string
-          phone: string
+          email?: string | null
+          phone?: string | null
           active?: boolean
           commission_rate?: number
+          available_days?: number[] | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
+          barber_shop_id?: string
           name?: string
-          email?: string
-          phone?: string
+          email?: string | null
+          phone?: string | null
           active?: boolean
           commission_rate?: number
+          available_days?: number[] | null
           created_at?: string
           updated_at?: string
         }
