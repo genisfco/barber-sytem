@@ -108,4 +108,31 @@ export function useAssinaturasAtivas() {
     },
     enabled: !!selectedBarberShop
   });
+}
+
+export function useBeneficiosRestantesCliente(clientSubscriptionId: string | null, maxBenefitsPerMonth: number | null) {
+  return useQuery<{ usados: number; max: number } | null>({
+    queryKey: ["beneficios-restantes", clientSubscriptionId, maxBenefitsPerMonth, new Date().getMonth(), new Date().getFullYear()],
+    queryFn: async () => {
+      if (!clientSubscriptionId || !maxBenefitsPerMonth) return null;
+      const now = new Date();
+      const ano = now.getFullYear();
+      const mes = String(now.getMonth() + 1).padStart(2, '0');
+      function getUltimoDiaDoMes(ano: number, mes: number) {
+        return new Date(ano, mes, 0).getDate();
+      }
+      const ultimoDia = getUltimoDiaDoMes(ano, Number(mes));
+      const inicioMes = `${ano}-${mes}-01`;
+      const fimMes = `${ano}-${mes}-${String(ultimoDia).padStart(2, '0')}`;
+      const { data, error } = await supabase
+        .from('subscription_benefits_usage')
+        .select('id')
+        .eq('client_subscription_id', clientSubscriptionId)
+        .gte('created_at', inicioMes)
+        .lte('created_at', fimMes);
+      if (error) throw error;
+      return { usados: data.length, max: maxBenefitsPerMonth };
+    },
+    enabled: !!clientSubscriptionId && !!maxBenefitsPerMonth
+  });
 } 

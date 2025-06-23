@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarberShopContext } from "@/contexts/BarberShopContext";
+import { useBeneficiosRestantesCliente, useAssinaturaCliente } from "@/hooks/useAssinaturas";
 
 type ClienteFormData = {
   name: string;
@@ -338,7 +339,7 @@ const Clientes = () => {
               <CardContent>
                 <div className="space-y-2">
                   <div
-                    className="text-3xl font-bold text-center cursor-pointer hover:text-yellow-600 transition"
+                    className="text-3xl font-bold text-center cursor-pointer hover:text-primary transition"
                     onClick={() => handleShowSubscribers('all')}
                     title="Clique para ver todos os assinantes"
                   >
@@ -414,7 +415,6 @@ const Clientes = () => {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">
                     {cliente.name}
-                    
                   </CardTitle>
                   <div className="flex items-center space-x-2">
                     <TooltipProvider>
@@ -448,6 +448,9 @@ const Clientes = () => {
                   <div className="text-sm text-muted-foreground">
                     <p>Email: {cliente.email}</p>
                     <p>Telefone: {cliente.phone}</p>
+                    {showOnlySubscribers && clientesAssinantes.includes(cliente.id) && (
+                      <BeneficiosCliente clienteId={cliente.id} />
+                    )}
                     {cliente.notes && <p>Observações: {cliente.notes}</p>}
                   </div>
                 </CardContent>
@@ -527,5 +530,20 @@ const Clientes = () => {
     </TooltipProvider>
   );
 };
+
+function BeneficiosCliente({ clienteId }: { clienteId: string }) {
+  // Buscar assinatura do cliente
+  const { data: assinatura } = useAssinaturaCliente(clienteId);
+  const clientSubscriptionId = assinatura?.id || null;
+  const maxBenefits = assinatura?.subscription_plans?.max_benefits_per_month || null;
+  const { data: beneficios, isLoading } = useBeneficiosRestantesCliente(clientSubscriptionId, maxBenefits);
+
+  if (!assinatura || !maxBenefits) return null;
+  return (
+    <span className="text-xs font-normal text-green-700 bg-green-100 rounded px-2 py-1">
+      {isLoading ? 'Carregando benefícios...' : `Benefícios disponíveis: ${Math.max(0, maxBenefits - (beneficios?.usados || 0))} de ${maxBenefits}`}
+    </span>
+  );
+}
 
 export default Clientes;
