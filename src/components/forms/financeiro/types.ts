@@ -14,7 +14,7 @@ export type FormValues = {
   valor: string;
   descricao: string;
   metodo_pagamento?: string;
-  category: "servicos" | "produtos" | "comissoes" | "despesas_fixas" | "outros";
+  category: "assinaturas" | "servicos" | "produtos" | "comissoes" | "despesas_fixas" | "outros";
 };
 
 export interface FinanceiroFormProps {
