@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { converterHorariosFuncionamento } from "@/constants/horarios";
 import { supabase } from '@/integrations/supabase/client';
-import { DayOfWeek } from '@/types/barberShop';
+import { DayOfWeek, DAYS_OF_WEEK } from '@/types/barberShop';
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,6 +16,7 @@ import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../../agendamento/schema";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useBarbers } from "@/hooks/useBarbers";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DataHorarioFieldsProps {
@@ -36,6 +37,7 @@ export function DataHorarioFields({
   agendamentoParaEditar,
 }: DataHorarioFieldsProps) {
   const { verificarDisponibilidadeBarbeiro } = useAgendamentos();
+  const { barbers } = useBarbers();
   const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
   const [horariosFuncionamento, setHorariosFuncionamento] = useState<any[]>([]);
 
@@ -100,8 +102,32 @@ export function DataHorarioFields({
     return false;
   };
 
+  // Função para verificar se o barbeiro está disponível na data selecionada
+  const isBarbeiroDisponivelNaData = (barbeiroId: string) => {
+    if (!date || !barbers) return true;
+    
+    const barbeiro = barbers.find(b => b.id === barbeiroId);
+    if (!barbeiro) return true;
+    
+    const diaSemana = date.getDay() as DayOfWeek;
+    
+    // Se o barbeiro não tem dias disponíveis definidos, considera disponível
+    if (!barbeiro.available_days || barbeiro.available_days.length === 0) {
+      return true;
+    }
+    
+    // Verifica se o dia da semana está na lista de dias disponíveis do barbeiro
+    return barbeiro.available_days.includes(diaSemana);
+  };
+
   const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
     if (!date || !barbeiroId) return true;
+
+    // Verifica se o barbeiro está disponível na data selecionada
+    const barbeiroDisponivelNaData = isBarbeiroDisponivelNaData(barbeiroId);
+    if (!barbeiroDisponivelNaData) {
+      return true;
+    }
 
     const barbeiroBloqueadoNoHorario = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada, horario);
     if (barbeiroBloqueadoNoHorario) {
@@ -143,6 +169,18 @@ export function DataHorarioFields({
   };
 
   const getMotivoIndisponibilidade = (barbeiroId: string, horario: string) => {
+    // Verifica se o barbeiro está disponível na data selecionada
+    const barbeiroDisponivelNaData = isBarbeiroDisponivelNaData(barbeiroId);
+    if (!barbeiroDisponivelNaData) {
+      const diaSemana = date?.getDay() as DayOfWeek;
+      const nomeDia = DAYS_OF_WEEK[diaSemana];
+      
+      // Sábado (6) e Domingo (0) usam "no", outros dias usam "na"
+      const preposicao = diaSemana === 0 || diaSemana === 6 ? "no" : "na";
+      
+      return `Barbeiro não disponível ${preposicao} ${nomeDia}`;
+    }
+
     if (isHorarioPassado(horario)) {
       return "Horário expirado";
     }

@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from '@/integrations/supabase/client';
-import { DayOfWeek } from '@/types/barberShop';
+import { DayOfWeek, DAYS_OF_WEEK } from '@/types/barberShop';
 
 interface AgendamentoGridProps {
   barberShopId: string;
@@ -214,6 +214,30 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
     return "Horário disponível"; // Se chegou aqui, o horário deveria estar disponível.
   };
 
+  // Função para verificar se o barbeiro está disponível na data selecionada
+  const isBarbeiroDisponivelNaData = (barbeiro: any) => {
+    const diaSemana = date.getDay() as DayOfWeek;
+    
+    // Se o barbeiro não tem dias disponíveis definidos, considera disponível
+    if (!barbeiro.available_days || barbeiro.available_days.length === 0) {
+      return true;
+    }
+    
+    // Verifica se o dia da semana está na lista de dias disponíveis do barbeiro
+    return barbeiro.available_days.includes(diaSemana);
+  };
+
+  // Função para obter o nome do dia da semana
+  const getNomeDiaSemana = (date: Date) => {
+    const diaSemana = date.getDay() as DayOfWeek;
+    const nomeDia = DAYS_OF_WEEK[diaSemana];
+    
+    // Sábado (6) e Domingo (0) usam "no", outros dias usam "na"
+    const preposicao = diaSemana === 0 || diaSemana === 6 ? "no" : "na";
+    
+    return `${preposicao} ${nomeDia}`;
+  };
+
   if (barbers.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -260,54 +284,61 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {barbers?.filter(barbeiro => barbeiro.active).map((barbeiro) => (
-          <Card key={barbeiro.id} className="overflow-hidden bg-white border shadow-sm">
-            <CardHeader className="bg-primary text-primary-foreground">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg">{barbeiro.name}</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-4 gap-2">
-                {horariosDisponiveis.map((horario) => {
-                  const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
-                  const horario_passado = isHorarioPassado(horario);
-                  const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
-                  const motivoIndisponibilidade = getMotivoIndisponibilidade(barbeiro.id, horario);
+        {barbers?.filter(barbeiro => barbeiro.active).map((barbeiro) => {
+          const barbeiroDisponivelNaData = isBarbeiroDisponivelNaData(barbeiro);
+          
+          return (
+            <Card key={barbeiro.id} className="overflow-hidden bg-white border shadow-sm">
+              <CardHeader className="bg-primary text-primary-foreground">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg">{barbeiro.name}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {barbeiroDisponivelNaData ? (
+                  <div className="grid grid-cols-4 gap-2">
+                    {horariosDisponiveis.map((horario) => {
+                      const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
+                      const horario_passado = isHorarioPassado(horario);
+                      const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
+                      const motivoIndisponibilidade = getMotivoIndisponibilidade(barbeiro.id, horario);
 
-                  // Debugging logs
-                  console.log(`Barbeiro: ${barbeiro.name}, Horário: ${horario}, Data: ${dataFormatada}`);
-                  console.log(`isHorarioIndisponivel: ${horario_barbeiro_indisponivel}, Motivo: ${motivoIndisponibilidade}`);
-                  console.log("Agendamentos para a data:", agendamentos);
-
-                  return (
-                    <TooltipProvider key={`${barbeiro.id}-${horario}`}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
-                              hora_agenda_indisponivel
-                                ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
-                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                            }`}
-                            onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
-                          >
-                            {horario}
-                          </div>
-                        </TooltipTrigger>
-                        {hora_agenda_indisponivel && (
-                          <TooltipContent>
-                            <p>{motivoIndisponibilidade}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                      return (
+                        <TooltipProvider key={`${barbeiro.id}-${horario}`}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
+                                  hora_agenda_indisponivel
+                                    ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
+                                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                                }`}
+                                onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
+                              >
+                                {horario}
+                              </div>
+                            </TooltipTrigger>
+                            {hora_agenda_indisponivel && (
+                              <TooltipContent>
+                                <p>{motivoIndisponibilidade}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 mt-14 space-y-2">
+                    <p className="text-red-600 font-medium text-center">
+                      Barbeiro não disponível para Atendimentos {getNomeDiaSemana(date)}.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Dialog open={openForm} onOpenChange={setOpenForm}>
