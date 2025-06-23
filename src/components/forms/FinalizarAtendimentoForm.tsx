@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Crown, Gift, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
 
@@ -52,6 +54,12 @@ export function FinalizarAtendimentoForm({
   const [totalOriginal, setTotalOriginal] = useState(0);
   const [descontoAssinatura, setDescontoAssinatura] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+  const [alertaLimiteBeneficio, setAlertaLimiteBeneficio] = useState<{
+    max: number;
+    usados: number;
+    tentandoUsar: number;
+  } | null>(null);
 
   // Verificar se a assinatura é válida para o dia da semana do agendamento
   const isAssinaturaValidaParaData = () => {
@@ -233,6 +241,30 @@ export function FinalizarAtendimentoForm({
     return assinaturaCliente.subscription_plans.available_days.map(dia => nomesDias[dia]);
   };
 
+  // Função para obter o último dia do mês
+  function getUltimoDiaDoMes(ano: string, mes: string) {
+    // Meses no JS são 0-11, então subtrai 1
+    return new Date(Number(ano), Number(mes), 0).getDate();
+  }
+
+  // Função utilitária para checar o limite de benefícios usados no mês
+  async function checarLimiteBeneficiosNoMes(client_subscription_id: string, dataAtendimento: string) {
+    const [ano, mes] = dataAtendimento.split('-');
+    const ultimoDia = getUltimoDiaDoMes(ano, mes);
+    const inicioMes = `${ano}-${mes}-01`;
+    const fimMes = `${ano}-${mes}-${String(ultimoDia).padStart(2, '0')}`;
+
+    const { data, error } = await supabase
+      .from('subscription_benefits_usage')
+      .select('id')
+      .eq('client_subscription_id', client_subscription_id)
+      .gte('created_at', inicioMes)
+      .lte('created_at', fimMes);
+
+    if (error) throw error;
+    return data.length;
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (servicos === undefined || produtos === undefined) {
@@ -248,10 +280,8 @@ export function FinalizarAtendimentoForm({
         if (!servico) {
           throw new Error(`Serviço não encontrado: ${servicoId}`);
         }
-        
         const beneficio = getBeneficioServico(servicoId);
         const precoFinal = calcularPrecoComBeneficio(servico.price, beneficio);
-        
         return {
           appointment_id: agendamento.id,
           service_id: servicoId,
@@ -262,16 +292,13 @@ export function FinalizarAtendimentoForm({
           updated_at: new Date().toISOString()
         };
       });
-
       const produtosSelecionados = values.produtos.map(produto => {
         const produtoInfo = produtos.find(p => p.id === produto.id);
         if (!produtoInfo) {
           throw new Error(`Produto não encontrado: ${produto.id}`);
         }
-        
         const beneficio = getBeneficioProduto(produto.id);
         const precoUnitarioFinal = calcularPrecoComBeneficio(produtoInfo.price, beneficio);
-        
         return {
           appointment_id: agendamento.id,
           product_id: produto.id,
@@ -282,12 +309,10 @@ export function FinalizarAtendimentoForm({
           updated_at: new Date().toISOString()
         };
       });
-
       const totalDuration = servicosSelecionados.reduce((sum, servico) => {
         const servicoInfo = servicos?.find(s => s.id === servico.service_id);
         return sum + (servicoInfo?.duration || 0);
       }, 0);
-
       const agendamentoAtualizado = {
         ...agendamento,
         servicos: servicosSelecionados,
@@ -300,18 +325,65 @@ export function FinalizarAtendimentoForm({
         updated_at: new Date().toISOString(),
         payment_date: new Date().toISOString().slice(0, 10),
       };
-
       // Marca como atendido e lança os valores no financeiro
       await marcarComoAtendido.mutateAsync(agendamentoAtualizado);
+
+      // Registro dos usos de benefícios na tabela subscription_benefits_usage
+      if (assinaturaCliente && assinaturaValida) {
+        const client_subscription_id = assinaturaCliente.id;
+        const appointment_id = agendamento.id;
+        // Serviços com benefício
+        for (const servicoId of values.servicos) {
+          const beneficio = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+            b => b.service_id === servicoId
+          );
+          if (beneficio) {
+            const servico = servicos.find(s => s.id === servicoId);
+            const original_price = servico.price;
+            const final_price = calcularPrecoComBeneficio(servico.price, beneficio);
+            const discount_applied = original_price - final_price;
+            await supabase.from('subscription_benefits_usage').insert({
+              client_subscription_id,
+              appointment_id,
+              subscription_plan_benefit_id: beneficio.id,
+              original_price,
+              final_price,
+              discount_applied,
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+        // Produtos com benefício
+        for (const produto of values.produtos) {
+          const beneficio = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+            b => b.product_id === produto.id
+          );
+          if (beneficio) {
+            const produtoInfo = produtos.find(p => p.id === produto.id);
+            const original_price = produtoInfo.price;
+            const final_price = calcularPrecoComBeneficio(produtoInfo.price, beneficio);
+            const discount_applied = original_price - final_price;
+            await supabase.from('subscription_benefits_usage').insert({
+              client_subscription_id,
+              appointment_id,
+              subscription_plan_benefit_id: beneficio.id,
+              original_price,
+              final_price,
+              discount_applied,
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+      }
 
       toast({
         variant: "success",
         title: "Atendimento finalizado!",
         description: `Atendimento do cliente ${agendamento.client_name} finalizado com sucesso.`,
       });
-
       onOpenChange(false);
     } catch (error) {
+      console.error('Erro ao finalizar atendimento:', error);
       toast({
         variant: "destructive",
         title: "Erro ao finalizar atendimento",
@@ -320,7 +392,40 @@ export function FinalizarAtendimentoForm({
     }
   }
 
-  const handleFinalizarClick = () => {
+  const handleFinalizarClick = async () => {
+    if (assinaturaCliente && assinaturaValida) {
+      const client_subscription_id = assinaturaCliente.id;
+      const max_benefits_per_month = assinaturaCliente.subscription_plans.max_benefits_per_month;
+      const dataAtendimento = agendamento.date;
+      let usosNoAtendimento = 0;
+      // Pega os valores atuais do formulário
+      const servicosSelecionados = form.getValues("servicos");
+      const produtosSelecionados = form.getValues("produtos");
+      servicosSelecionados.forEach(servicoId => {
+        const beneficio = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+          b => b.service_id === servicoId
+        );
+        if (beneficio) usosNoAtendimento += 1;
+      });
+      produtosSelecionados.forEach(produto => {
+        const beneficio = assinaturaCliente.subscription_plans.subscription_plan_benefits.find(
+          b => b.product_id === (produto.id || produto)
+        );
+        if (beneficio) usosNoAtendimento += 1;
+      });
+      const usosNoMes = await checarLimiteBeneficiosNoMes(client_subscription_id, dataAtendimento);
+      if (
+        max_benefits_per_month > 0 &&
+        (usosNoMes + usosNoAtendimento) > max_benefits_per_month
+      ) {
+        setAlertaLimiteBeneficio({
+          max: max_benefits_per_month,
+          usados: usosNoMes,
+          tentandoUsar: usosNoAtendimento,
+        });
+        return;
+      }
+    }
     setConfirmDialogOpen(true);
   };
 
@@ -596,6 +701,28 @@ export function FinalizarAtendimentoForm({
             </form>
           </Form>
         </div>
+
+        <AlertDialog open={!!alertaLimiteBeneficio} onOpenChange={v => { if (!v) setAlertaLimiteBeneficio(null); }}>
+          <AlertDialogContent className="bg-red-500 border-red-500">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Atenção: Limite de Benefícios atingido!</AlertDialogTitle>
+              <AlertDialogDescription className="text-white">
+                <div>
+                  Limite de Benefícios no mês: {alertaLimiteBeneficio?.max} <br />
+                  Qtde que deseja usar agora: {alertaLimiteBeneficio?.tentandoUsar} <br />
+                  Qtde já utilizada no mês: {alertaLimiteBeneficio?.usados} <br /><br />
+                  Informe ao cliente que ele já atingiu o limite de benefícios do mês <br />                  
+                  Retire algum benefício e tente finalizar o atendimento novamente.
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction className="bg-secondary" onClick={() => setAlertaLimiteBeneficio(null)}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
           <AlertDialogContent className="bg-green-50 border-green-200">

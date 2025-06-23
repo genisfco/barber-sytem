@@ -1064,6 +1064,25 @@ const Assinaturas = () => {
   // Estado para dias selecionados (criação/edição)
   const [diasSelecionados, setDiasSelecionados] = useState<number[]>([]);
 
+  // Atualiza automaticamente o campo de limite de benefícios conforme seleção
+  useEffect(() => {
+    const serviceBenefits = watchPlano("service_benefits") || {};
+    const productBenefits = watchPlano("product_benefits") || {};
+    const countSelected = [
+      ...Object.values(serviceBenefits),
+      ...Object.values(productBenefits)
+    ].filter((benefit: any) => benefit && benefit.type && benefit.type !== "").length;
+    // Só atualiza se não for ilimitado
+    if (watchPlano("max_benefits_per_month") !== 0) {
+      setValuePlano("max_benefits_per_month", countSelected * 5);
+    }
+  }, [
+    watchPlano("service_benefits"),
+    watchPlano("product_benefits"),
+    watchPlano("max_benefits_per_month"),
+    setValuePlano
+  ]);
+
   // Preencher diasSelecionados ao editar um plano
   useEffect(() => {
     if (editingPlano) {
@@ -1275,7 +1294,7 @@ const Assinaturas = () => {
 
                 {/* Limites de Benefícios */}
                 <div className="space-y-4 border-t border-border/50 pt-4">
-                  <h3 className="font-medium">Limites de Uso dos Benefícios</h3>
+                  <h3 className="font-medium">Limite de Uso Mensal dos Benefícios</h3>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -1285,7 +1304,7 @@ const Assinaturas = () => {
                           setValuePlano("max_benefits_per_month", checked ? 0 : 1);
                         }}
                       />
-                      <Label htmlFor="benefits_unlimited">Sem limites de uso</Label>
+                      <Label htmlFor="benefits_unlimited">Sem limites de uso mensal</Label>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="max_benefits_per_month">Máximo de benefícios por mês</Label>
@@ -1304,7 +1323,7 @@ const Assinaturas = () => {
 
                 {/* Adicionar campo de seleção de dias no formulário de criação de plano */}
                 <div className="space-y-4 border-t border-border/50 pt-4">
-                  <h3 className="font-medium">Dias da Semana Permitidos</h3>
+                  <h3 className="font-medium">Dias Permitidos para Uso da Assinatura</h3>
                   <div className="flex flex-wrap gap-4 items-center mb-2">
                     <label className="flex items-center gap-2 cursor-pointer font-semibold">
                       <input
@@ -1491,7 +1510,7 @@ const Assinaturas = () => {
 
                 {/* Limites de Benefícios */}
                 <div className="space-y-4 border-t border-border/50 pt-4">
-                  <h3 className="font-medium">Limites de Uso dos Benefícios</h3>
+                  <h3 className="font-medium">Limite de Uso Mensal dos Benefícios</h3>
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
@@ -1501,7 +1520,7 @@ const Assinaturas = () => {
                           setValuePlano("max_benefits_per_month", checked ? 0 : 1);
                         }}
                       />
-                      <Label htmlFor="benefits_unlimited">Sem limites de uso</Label>
+                      <Label htmlFor="benefits_unlimited">Sem limites de uso mensal</Label>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="max_benefits_per_month">Máximo de benefícios por mês</Label>
@@ -1520,7 +1539,7 @@ const Assinaturas = () => {
 
                 {/* Adicionar campo de seleção de dias no formulário de criação de plano */}
                 <div className="space-y-4 border-t border-border/50 pt-4">
-                  <h3 className="font-medium">Dias da Semana Permitidos</h3>
+                  <h3 className="font-medium">Dias Permitidos para Uso da Assinatura</h3>
                   <div className="flex flex-wrap gap-4 items-center mb-2">
                     <label className="flex items-center gap-2 cursor-pointer font-semibold">
                       <input
