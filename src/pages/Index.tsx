@@ -50,6 +50,18 @@ const Index = () => {
     return `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
   };
 
+  const agendamentosCompletos = agendamentosFiltrados
+    ?.filter(agendamento => {
+      // Não mostrar agendamentos indisponíveis 
+      if (["indisponivel"].includes(agendamento.status)) {
+        return false;
+      }
+      
+      // Incluir todos os agendamentos do dia (passados, atuais e futuros)
+      return true;
+    })
+    ?.sort((a, b) => b.time.localeCompare(a.time));
+
   const proximosAgendamentos = agendamentosFiltrados
     ?.filter(agendamento => {
       // Incluir agendamentos do horário atual e futuros
@@ -345,81 +357,123 @@ const Index = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6 bg-secondary border-none">
-          <h2 className="font-display text-xl mb-4">Lista de Agendamentos</h2>
+          <h2 className="font-display text-xl mb-4">Lista de Agendamentos do Dia</h2>
           <div className="space-y-4">
-            {!proximosAgendamentos?.length ? (
+            {!agendamentosCompletos?.length ? (
               <div className="text-muted-foreground">
                 Nenhum agendamento para hoje.
               </div>
             ) : (
-              proximosAgendamentos.map((agendamento) => (
-                <div
-                  key={agendamento.id}
-                  className="flex items-center justify-between p-4 bg-background/50 rounded-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg">
-                      {agendamento.client_name[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-lg">{agendamento.client_name}</p>
-                      <div className="flex flex-col text-sm text-muted-foreground">
-                        <span>Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
-                        <span>Barbeiro: {agendamento.barber_name || "Não definido"}</span>
-                        <span className={cn("font-medium", getStatusColor(agendamento.status))}>
-                          Status: {getStatusText(agendamento.status)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-right">
-                      <p className="text-lg font-medium">{formatTime(agendamento.time)}</p>
-                      <p className="text-sm text-muted-foreground">Hoje</p>
-                    </div>
-                    {agendamento.status !== "atendido" && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleConfirmar(agendamento.id)}
-                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
-                          title="Confirmar horário"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleCancelar(agendamento.id)}
-                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
-                          title="Cancelar agendamento"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditar(agendamento)}
-                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                          title="Editar agendamento"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleAtendido(agendamento)}
-                          className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
-                          title="Cliente atendido"
-                        >
-                          <Scissors className="h-4 w-4" />
-                        </Button>
-                      </div>
+              agendamentosCompletos.map((agendamento) => {
+                const horarioAtualAgenda = getHorarioAtualAgenda();
+                const [hours, minutes] = agendamento.time.split(':').map(Number);
+                const agendamentoTime = new Date();
+                agendamentoTime.setHours(hours, minutes, 0);
+                const agora = new Date();
+                const isPassado = agendamentoTime < agora && !agendamento.time.startsWith(horarioAtualAgenda);
+                const isAtual = agendamento.time.startsWith(horarioAtualAgenda);
+                const isPassadoEAtendido = isPassado && agendamento.status === "atendido";
+                const isPassadoEPendente = isPassado && agendamento.status !== "atendido";
+                
+                return (
+                  <div
+                    key={agendamento.id}
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-lg transition-all",
+                      isPassadoEAtendido 
+                        ? "bg-background/20 opacity-75" 
+                        : isAtual 
+                          ? "bg-background/90 border-2 border-white" 
+                          : isPassadoEPendente
+                            ? "bg-background/70 opacity-65"
+                            : "bg-background/90"
                     )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "h-12 w-12 rounded-full flex items-center justify-center text-lg",
+                        isPassadoEAtendido 
+                          ? "bg-gray-700 text-gray-600" 
+                          : isAtual 
+                            ? "bg-primary" 
+                            : isPassadoEPendente
+                              ? "bg-orange-400 text-white"
+                              : "bg-secondary"
+                      )}>
+                        {agendamento.client_name[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className={cn(
+                          "font-medium text-lg",
+                          isPassadoEAtendido && "text-muted-foreground"
+                        )}>
+                          {agendamento.client_name}
+                        </p>
+                        <div className="flex flex-col text-sm text-muted-foreground">
+                          <span>Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
+                          <span>Barbeiro: {agendamento.barber_name || "Não definido"}</span>
+                          <span className={cn("font-medium", getStatusColor(agendamento.status))}>
+                            Status Atendimento: {getStatusText(agendamento.status)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="text-right">
+                        <p className={cn(
+                          "text-lg font-medium",
+                          isPassadoEAtendido && "text-muted-foreground"
+                        )}>
+                          {formatTime(agendamento.time)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {isPassadoEAtendido ? "Concluído" : isAtual ? "Em Atendimento" : isPassadoEPendente ? "Pendente de Atualização  " : "Próximo Atendimento"}
+                        </p>
+                      </div>
+                      {agendamento.status !== "atendido" && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleConfirmar(agendamento.id)}
+                            className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                            title="Confirmar horário"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCancelar(agendamento.id)}
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                            title="Cancelar agendamento"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditar(agendamento)}
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                            title="Editar agendamento"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleAtendido(agendamento)}
+                            className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                            title="Cliente atendido"
+                          >
+                            <Scissors className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </Card>
