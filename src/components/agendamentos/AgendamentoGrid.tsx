@@ -58,7 +58,6 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
         .order('day_of_week');
 
       if (error) {
-        console.error('Erro ao carregar horários:', error);
         return;
       }
 

@@ -55,7 +55,6 @@ export function DataHorarioFields({
         .order('day_of_week');
 
       if (error) {
-        console.error('Erro ao carregar horários:', error);
         return;
       }
 

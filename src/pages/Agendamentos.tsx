@@ -44,7 +44,6 @@ const Agendamentos = () => {
           barberShopId={selectedBarberShop?.id || ''}
           onHorarioSelect={(horario) => {
             // Aqui você pode adicionar a lógica para lidar com a seleção do horário
-            console.log('Horário selecionado:', horario);
           }}
         />
       </div>

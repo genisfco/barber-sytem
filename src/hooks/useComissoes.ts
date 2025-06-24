@@ -107,7 +107,6 @@ export function useComissoes(
         .single();
 
       if (barberFetchError) {
-        console.error("Erro ao buscar nome do barbeiro:", barberFetchError);
         throw new Error("Erro ao buscar informações do barbeiro.");
       }
 
@@ -168,7 +167,6 @@ export function useComissoes(
 
         if (fetchError) throw fetchError;
 
-        console.log(`✅ Encontradas ${comissoes?.length || 0} comissões pendentes para marcar como pagas.`);
 
         // Atualiza o status de todas as comissões
         const { error } = await supabase
@@ -187,7 +185,6 @@ export function useComissoes(
         // Calcula o total de comissões
         const totalComissao = comissoes.reduce((sum, comissao) => sum + Number(comissao.total_commission), 0);
 
-        console.log(`💵 Total das comissões pendentes: ${totalComissao}`);
 
         // Lança a despesa total das comissões usando o ID da barbearia selecionada
         const { error: despesaError } = await supabase
@@ -223,7 +220,6 @@ export function useComissoes(
       }
     },
     onError: (error: any) => {
-      console.error("Detalhes do erro ao atualizar comissão:", error);
       toast.error("Erro ao atualizar status da comissão");
     },
   });

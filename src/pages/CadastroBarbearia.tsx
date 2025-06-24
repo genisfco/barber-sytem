@@ -62,14 +62,11 @@ export default function CadastroBarbearia() {
 
   useEffect(() => {
     const checkUser = async () => {
-      console.log("CadastroBarbearia: Verificando usuário logado...");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log("CadastroBarbearia: Usuário não logado, redirecionando para /auth");
         navigate('/auth');
         return;
       }
-      console.log("CadastroBarbearia: Usuário logado encontrado:", user.id);
       setUser(user);
 
       const { data: barberShop, error: fetchError } = await supabase
@@ -79,12 +76,9 @@ export default function CadastroBarbearia() {
         .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-         console.error("CadastroBarbearia: Erro ao buscar barbearia:", fetchError);
       } else if (barberShop) {
-        console.log("CadastroBarbearia: Barbearia encontrada, redirecionando para /dashboard");
         navigate('/dashboard');
       } else {
-        console.log("CadastroBarbearia: Nenhuma barbearia encontrada para este usuário.");
       }
     };
 
@@ -96,7 +90,6 @@ export default function CadastroBarbearia() {
     const [logradouro, numero, bairro, cidade, estado] = watchAddress;
     
     if (!logradouro || !numero || !bairro || !cidade || !estado) {
-      console.log('Campos de endereço incompletos:', { logradouro, numero, bairro, cidade, estado });
       setCoordinates(null);
       setValue('latitude', undefined);
       setValue('longitude', undefined);
@@ -104,7 +97,6 @@ export default function CadastroBarbearia() {
     }
 
     const address = `${logradouro}, ${numero} - ${bairro}, ${cidade} - ${estado}`;
-    console.log('Tentando geocodificar endereço:', address);
     
     try {
       const geocoder = new google.maps.Geocoder();
@@ -115,15 +107,12 @@ export default function CadastroBarbearia() {
           const lat = location.lat();
           const lng = location.lng();
           
-          console.log('Coordenadas encontradas:', { lat, lng });
-          
           setCoordinates({ lat, lng });
           setValue('latitude', lat);
           setValue('longitude', lng);
           setMapCenter({ lat, lng });
           setError(null);
         } else {
-          console.error('Erro na geocodificação:', status);
           setCoordinates(null);
           setValue('latitude', undefined);
           setValue('longitude', undefined);
@@ -131,7 +120,6 @@ export default function CadastroBarbearia() {
         }
       });
     } catch (err) {
-      console.error('Erro ao geocodificar endereço:', err);
       setCoordinates(null);
       setValue('latitude', undefined);
       setValue('longitude', undefined);
@@ -272,15 +260,12 @@ export default function CadastroBarbearia() {
       setValue('cidade', data.localidade);
       setValue('estado', data.uf);
     } catch (err) {
-      console.error('Erro ao buscar CEP:', err);
       setError('Erro ao buscar CEP');
     }
   };
 
   const onSubmit = async (data: FormData) => {
-    console.log("CadastroBarbearia: Formulário submetido. Dados:", data);
     if (!user) {
-      console.log("CadastroBarbearia: Usuário não disponível ao submeter, abortando.");
       setError('Erro: Usuário não logado.');
       return;
     }
@@ -305,20 +290,16 @@ export default function CadastroBarbearia() {
         logo_url: null,
       };
 
-      console.log("CadastroBarbearia: Tentando inserir dados da barbearia:", barberShopData);
-
       const { error: createError } = await supabase
         .from('barber_shops')
         .insert([barberShopData]);
 
       if (createError) {
-        console.error("CadastroBarbearia: Erro ao criar barbearia no Supabase:", createError);
         setError(createError.message || 'Erro ao criar barbearia');
         setLoading(false);
         return;
       }
 
-      console.log("CadastroBarbearia: Barbearia criada com sucesso!");
       setLoading(false);
       setSuccess(true);
       setTimeout(() => {
@@ -326,7 +307,6 @@ export default function CadastroBarbearia() {
       }, 10000); // 10 segundos
       return;
     } catch (err: any) {
-      console.error("CadastroBarbearia: Erro durante a submissão do formulário:", err);
       setError(err.message || 'Erro ao criar barbearia');
       setLoading(false);
     }

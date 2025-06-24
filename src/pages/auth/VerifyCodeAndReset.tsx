@@ -44,7 +44,6 @@ export function VerifyCodeAndReset() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('VerifyCodeAndReset: Iniciando handleSubmit. Definindo loading como true.');
     setLoading(true);
 
     if (newPassword !== confirmNewPassword) {
@@ -62,14 +61,10 @@ export function VerifyCodeAndReset() {
 
     try {
       await verifyAndResetPassword(email, code, newPassword);
-      console.log('VerifyCodeAndReset: Senha alterada com sucesso. Definindo loading como false.');
       setLoading(false);
       toast.success('Senha alterada com sucesso');
-      console.log('VerifyCodeAndReset: Redirecionando para /auth...');
       navigate('/auth');
-      console.log('VerifyCodeAndReset: Redirecionamento para /auth iniciado.');
     } catch (error: any) {
-      console.log('VerifyCodeAndReset: Erro durante o processo. Definindo loading como false.');
       toast.error(error.message || 'Erro ao verificar código ou alterar senha');
       setLoading(false);
     }

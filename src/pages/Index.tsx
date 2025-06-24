@@ -413,7 +413,7 @@ const Index = () => {
                           <span>Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
                           <span>Barbeiro: {agendamento.barber_name || "Não definido"}</span>
                           <span className={cn("font-medium", getStatusColor(agendamento.status))}>
-                            Status Atendimento: {getStatusText(agendamento.status)}
+                            Agend. Cliente: {getStatusText(agendamento.status)}
                           </span>
                         </div>
                       </div>

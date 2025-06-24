@@ -24,8 +24,6 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      console.log("Auth.tsx: Tentando fazer login com:", { email });
-      
       const loginPromise = signIn({ email, password });
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("O login demorou muito. Por favor, tente novamente.")), 10000) // 10 segundos
@@ -33,10 +31,8 @@ export default function Auth() {
 
       await Promise.race([loginPromise, timeoutPromise]);
       
-      console.log("Auth.tsx: Login realizado com sucesso.");
       navigate("/");
     } catch (error) {
-      console.error("Auth.tsx: Erro durante o login:", error);
       toast({
         title: "Erro ao fazer login",
         description: error instanceof Error ? error.message : "Verifique suas credenciais e tente novamente.",
@@ -44,7 +40,6 @@ export default function Auth() {
       });
     } finally {
       setIsLoading(false);
-      console.log("Auth.tsx: Finalizando loading.");
     }
   };
 
@@ -60,16 +55,13 @@ export default function Auth() {
 
     setIsResettingPassword(true);
     try {
-      console.log("Auth.tsx: Iniciando processo de recuperação de senha para:", email);
       await resetPassword(email);
-      console.log("Auth.tsx: Email de recuperação enviado com sucesso");
       toast({
         title: "Email enviado",
         description: "Verifique sua caixa de entrada para instruções de recuperação de senha. Se não encontrar o email, verifique também a pasta de spam.",
         duration: 5000, // 5 segundos
       });
     } catch (error) {
-      console.error("Auth.tsx: Erro ao enviar email de recuperação:", error);
       toast({
         title: "Erro ao enviar email",
         description: error instanceof Error ? error.message : "Não foi possível enviar o email de recuperação.",

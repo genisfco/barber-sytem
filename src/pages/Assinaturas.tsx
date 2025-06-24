@@ -357,7 +357,6 @@ const Assinaturas = () => {
             .insert(serviceBenefits);
           
           if (errorServiceBenefits) {
-            console.error("Erro ao inserir novos benefícios de serviços:", errorServiceBenefits);
             throw errorServiceBenefits;
           }
         }
@@ -390,7 +389,6 @@ const Assinaturas = () => {
             .insert(productBenefits);
           
           if (errorProductBenefits) {
-            console.error("Erro ao inserir novos benefícios de produtos:", errorProductBenefits);
             throw errorProductBenefits;
           }
         }
@@ -405,12 +403,10 @@ const Assinaturas = () => {
       refetchPlanos();
     },
     onError: (error) => {
-      console.error("Erro na mutação do plano:", error);
       toast.error("Erro ao salvar o plano. Verifique o console para mais detalhes.");
     }
   });
   function onSubmitPlano(data: PlanoFormData & { diasSelecionados: number[] }) {
-    console.log('Dados do formulário:', data);
     mutationPlano.mutate(data);
   }
 
@@ -462,7 +458,6 @@ const Assinaturas = () => {
             .insert(serviceBenefits);
           
           if (errorServiceBenefits) {
-            console.error("Erro ao inserir novos benefícios de serviços:", errorServiceBenefits);
             throw errorServiceBenefits;
           }
         }
@@ -495,7 +490,6 @@ const Assinaturas = () => {
             .insert(productBenefits);
           
           if (errorProductBenefits) {
-            console.error("Erro ao inserir novos benefícios de produtos:", errorProductBenefits);
             throw errorProductBenefits;
           }
         }
@@ -511,7 +505,6 @@ const Assinaturas = () => {
       refetchPlanos();
     },
     onError: (error) => {
-      console.error("Erro na mutação do plano:", error);
       toast.error("Erro ao editar o plano. Verifique o console para mais detalhes.");
     }
   });

@@ -351,7 +351,7 @@ const Clientes = () => {
                       onClick={() => handleShowSubscribers('ativos')}
                       title="Clique para ver apenas assinantes ativos"
                     >
-                      Ativos: {assinantesDetalhado?.ativos || 0}
+                      Ativas: {assinantesDetalhado?.ativos || 0}
                     </div>
                     <div
                       className="text-orange-500 font-semibold cursor-pointer hover:text-orange-700 transition"

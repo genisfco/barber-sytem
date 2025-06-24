@@ -392,7 +392,7 @@ export function AgendamentoForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {clientes?.map((cliente) => (
+                        {clientes?.filter(cliente => cliente.active).map((cliente) => (
                           <SelectItem key={cliente.id} value={cliente.id}>
                             {cliente.name}
                           </SelectItem>

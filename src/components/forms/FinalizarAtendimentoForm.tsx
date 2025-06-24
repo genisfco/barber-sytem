@@ -383,7 +383,6 @@ export function FinalizarAtendimentoForm({
       });
       onOpenChange(false);
     } catch (error) {
-      console.error('Erro ao finalizar atendimento:', error);
       toast({
         variant: "destructive",
         title: "Erro ao finalizar atendimento",

@@ -91,7 +91,6 @@ export default function ConfiguracoesBarbearia() {
         .single();
 
       if (fetchError) {
-        console.error("Erro ao buscar barbearia:", fetchError);
         return;
       }
 
@@ -136,7 +135,6 @@ export default function ConfiguracoesBarbearia() {
           .order('day_of_week');
 
         if (horariosError) {
-          console.error("Erro ao buscar horários:", horariosError);
           return;
         }
 
@@ -358,7 +356,6 @@ export default function ConfiguracoesBarbearia() {
         }
       }
     } catch (err: any) {
-      console.error("Erro ao salvar horário:", err);
       setErrorHorarios(err.message || 'Erro ao salvar horário');
     }
   };

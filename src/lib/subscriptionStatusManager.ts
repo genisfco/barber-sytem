@@ -12,7 +12,6 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
   if (!assinatura || !plano || !barberShopId) return;
   // Verificar se a assinatura realmente pertence a esta barbearia
   if (assinatura.subscription_plans.barber_shop_id !== barberShopId) {
-    console.warn("Tentativa de atualizar assinatura que não pertence à barbearia selecionada.", assinatura);
     return;
   }
   const hoje = new Date();

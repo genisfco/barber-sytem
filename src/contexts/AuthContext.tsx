@@ -43,10 +43,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      console.log("AuthContext: Buscando barbearia para o usuário:", user.id);
       // Primeiro, verifica se a barbearia já está no contexto
       if (selectedBarberShop && selectedBarberShop.admin_id === user.id) {
-         console.log("AuthContext: Barbearia já no contexto.", selectedBarberShop.id);
          return; // Barbearia já carregada, não precisa buscar novamente
       }
 
@@ -67,19 +65,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       ]) as any;
 
       if (error && error.code !== 'PGRST116') {
-         console.error("AuthContext: Erro ao buscar barbearia:", error);
          throw error; // Propaga o erro para ser tratado
       }
 
       if (barberShop) {
-        console.log("AuthContext: Barbearia encontrada:", barberShop.id);
         setSelectedBarberShop(barberShop);
         // Só redireciona para / se não estiver em uma página de autenticação E não for um fluxo de auth
         if (!location.pathname.includes('/auth') && !isAuthFlow) {
              navigate("/");
         }
       } else {
-        console.log("AuthContext: Nenhuma barbearia encontrada para este usuário.");
         setSelectedBarberShop(null);
         // Redireciona para configuração APENAS se não estiver já na página de configuração E não for um fluxo de auth
          if (location.pathname !== '/cadastro-barbearia' && !isAuthFlow) {
@@ -87,7 +82,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
          }
       }
     } catch (error: any) {
-      console.error("AuthContext: Erro no setUserBarberShop:", error);
       setSelectedBarberShop(null);
        // Redireciona para configuração em caso de erro APENAS se não estiver já na página de configuração E não for um fluxo de auth
         if (location.pathname !== '/cadastro-barbearia' && !isAuthFlow) {
@@ -99,44 +93,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      console.log("AuthContext: Iniciando logout...");
       await supabase.auth.signOut();
       setSelectedBarberShop(null);
       setSession(null);
-      console.log("AuthContext: Logout bem sucedido, redirecionando para /auth");
       navigate("/auth", { state: { loggedOut: true }, replace: true });
     } catch (error) {
-      console.error("AuthContext: Erro ao fazer logout:", error);
       // Considerar exibir uma mensagem de erro para o usuário, mas não travar
     }
   };
 
   const signIn = async ({ email, password }: { email: string; password: string }) => {
     try {
-      console.log("AuthContext: Iniciando login para", email);
       const { error, data } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
-        console.error("AuthContext: Erro no login:", error);
         throw error;
       }
 
       if (!data.session) {
-        console.error("AuthContext: Nenhuma sessão retornada após login");
         throw new Error("Email ou senha incorretos.");
       }
 
-      console.log("AuthContext: Login bem sucedido, session data:", data.session);
       setSession(data.session);
       
       // Buscar e setar barbearia APENAS após login bem sucedido, marcando como fluxo de auth
       await setUserBarberShop(data.session.user, true); // Passa true para isAuthFlow
       
-      console.log("AuthContext: Login processado. Redirecionamento será tratado por setUserBarberShop ou ProtectedRoute.");
-      // Não redirecionar aqui, deixar o setUserBarberShop ou o ProtectedRoute lidar com isso
-
     } catch (error: any) {
-      console.error("AuthContext: Erro durante o login:", error);
       setSelectedBarberShop(null); // Garante que a barbearia selecionada seja limpa em caso de erro no login
       // Propaga o erro para o componente de login tratar e exibir para o usuário
       throw new Error(error.message || "Erro ao fazer login. Tente novamente.");
@@ -145,8 +128,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resetPassword = async (email: string) => {
     try {
-      console.log("AuthContext: Iniciando recuperação de senha para", email);
-      
       // Verifica se o email é válido
       if (!email || !email.includes('@')) {
         throw new Error("Email inválido");
@@ -157,23 +138,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) {
-        console.error("AuthContext: Erro detalhado na recuperação de senha:", {
-          message: error.message,
-          status: error.status,
-          name: error.name
-        });
         throw error;
       }
-      
-      console.log("AuthContext: Email de recuperação enviado com sucesso");
     } catch (error: any) {
-      console.error("AuthContext: Erro durante a recuperação de senha:", {
-        message: error.message,
-        status: error.status,
-        name: error.name,
-        stack: error.stack
-      });
-      
       // Mensagens de erro mais específicas
       if (error.message?.includes('Email not found')) {
         throw new Error("Este email não está cadastrado no sistema.");
@@ -189,28 +156,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updatePassword = async (newPassword: string) => {
     try {
-      console.log("AuthContext: Iniciando atualização de senha");
-      
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
 
       if (error) {
-        console.error("AuthContext: Erro ao atualizar senha:", error);
         throw error;
       }
-
-      console.log("AuthContext: Senha atualizada com sucesso");
     } catch (error: any) {
-      console.error("AuthContext: Erro durante a atualização de senha:", error);
       throw new Error(error.message || "Erro ao atualizar a senha. Tente novamente.");
     }
   };
 
   const requestPasswordReset = async (email: string) => {
     try {
-      console.log("AuthContext: Iniciando solicitação de reset de senha para", email);
-
       // Verifica se o email é válido
       if (!email || !email.includes('@')) {
         throw new Error("Email inválido");
@@ -221,23 +180,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error("AuthContext: Erro detalhado na solicitação de reset de senha:", {
-          message: error.message,
-          status: error.status,
-          name: error.name
-        });
         throw error;
       }
-
-      console.log("AuthContext: Email de solicitação de reset enviado com sucesso");
     } catch (error: any) {
-      console.error("AuthContext: Erro durante a solicitação de reset de senha:", {
-        message: error.message,
-        status: error.status,
-        name: error.name,
-        stack: error.stack
-      });
-
       // Mensagens de erro mais específicas
       if (error.message?.includes('Email not found')) {
         throw new Error("Este email não está cadastrado no sistema.");
@@ -253,8 +198,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const verifyAndResetPassword = async (email: string, token: string, newPassword: string) => {
     try {
-      console.log("AuthContext: Iniciando verificação de OTP e atualização de senha");
-
       // Verifica o código OTP
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email,
@@ -263,7 +206,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (verifyError) {
-        console.error("AuthContext: Erro ao verificar OTP:", verifyError);
         throw verifyError;
       }
 
@@ -273,13 +215,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (updateError) {
-        console.error("AuthContext: Erro ao atualizar senha após OTP verificado:", updateError);
         throw updateError;
       }
-
-      console.log("AuthContext: OTP verificado e senha atualizada com sucesso");
     } catch (error: any) {
-      console.error("AuthContext: Erro durante a verificação de OTP ou atualização de senha:", error);
       throw new Error(error.message || "Erro ao verificar código ou redefinir a senha. Tente novamente.");
     }
   };
@@ -288,29 +226,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let ignore = false;
 
     const initializeAuth = async () => {
-      console.log("AuthContext: useEffect - Inicializando autenticação...");
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error("AuthContext: Erro ao obter sessão:", error);
           throw error;
         }
         
-        console.log("AuthContext: Sessão obtida:", !!session);
         setSession(session);
         
         if (session?.user) {
-          console.log("AuthContext: Sessão inicial encontrada, buscando barbearia...");
-          const isInAuthPath = location.pathname.includes('/auth');
           try {
-            await setUserBarberShop(session.user, isInAuthPath);
+            await setUserBarberShop(session.user, true);
           } catch (barberShopError) {
-            console.error("AuthContext: Erro ao buscar barbearia, mas continuando:", barberShopError);
             // Não deixa o erro da barbearia travar o carregamento
           }
         }
       } catch (error) {
-        console.error("AuthContext: useEffect - Erro ao inicializar autenticação:", error);
         // Garante que isLoading seja false mesmo com erro
         if (!ignore) {
           setIsLoading(false);
@@ -319,7 +250,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } finally {
         if (!ignore) {
           setIsLoading(false);
-          console.log("AuthContext: useEffect - Inicialização finalizada.");
         }
       }
     };
@@ -327,7 +257,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Timeout de segurança para evitar travamento infinito
     const timeout = setTimeout(() => {
       if (!ignore) {
-        console.warn("AuthContext: Timeout de inicialização atingido (15s)");
         setIsLoading(false);
       }
     }, 15000);
@@ -335,26 +264,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log("AuthContext: onAuthStateChange - Mudança no estado de autenticação detectada", _event);
       if (!ignore) {
         setSession(session);
 
         if (session) {
-          console.log("AuthContext: onAuthStateChange - Nova sessão ou refresh, buscando barbearia...");
           if (session.user) {
             try {
               await setUserBarberShop(session.user, true);
             } catch (barberShopError) {
-              console.error("AuthContext: onAuthStateChange - Erro ao buscar barbearia:", barberShopError);
               // Não deixa o erro da barbearia travar o processo
             }
           }
         } else {
-          console.log("AuthContext: onAuthStateChange - Sessão removida.");
-          setSelectedBarberShop(null);
           // Se a sessão foi removida E não estamos em uma página de autenticação NEM na página de reset de senha, redirecionar para login
            if (!location.pathname.includes('/auth') && location.pathname !== '/reset-password' && location.pathname !== '/cadastro-usuario') {
-               console.log("AuthContext: onAuthStateChange - Sem sessão e fora de páginas de auth/reset/cadastro, redirecionando para /auth");
                navigate("/auth", { state: { sessionExpired: true, from: location.pathname }, replace: true });
            }
         }
@@ -364,10 +287,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       ignore = true;
       clearTimeout(timeout);
-      console.log("AuthContext: useEffect cleanup - Cancelando inscrição de auth state change.");
       subscription.unsubscribe();
     };
-     // Adicionar location.pathname como dependência pode ser necessário para reavaliar redirecionamentos ao mudar de rota
   }, [navigate, setSelectedBarberShop, location.pathname]);
 
   return (

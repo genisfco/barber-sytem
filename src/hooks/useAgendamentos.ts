@@ -460,8 +460,6 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         const commissionRate = barber?.commission_rate ?? 0; // Usar 0 se null ou undefined
         const commissionAmount = totalServiceAmount * (commissionRate / 100);
 
-        console.log(`💵 Comissão calculada para ${appointment.barber_name}: ${commissionAmount}`);
-
         // 8. Verificamos se já existe uma comissão para este agendamento
         if (commissionAmount > 0) {
           const { data: existingCommission, error: searchError } = await supabase

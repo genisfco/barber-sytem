@@ -36,7 +36,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (isAuthLoading) {
       const timeout = setTimeout(() => {
-        console.warn("ProtectedRoute: Timeout de carregamento atingido (10s)");
         setLoadingTimeout(true);
       }, 5000); // 10 segundos
 
@@ -45,14 +44,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       setLoadingTimeout(false);
     }
   }, [isAuthLoading]);
-
-  console.log("ProtectedRoute:", {
-    pathname: location.pathname,
-    session: !!session,
-    selectedBarberShop: !!selectedBarberShop,
-    isAuthLoading,
-    loadingTimeout
-  });
 
   // Verifica se é uma URL de confirmação de email
   const isEmailConfirmation = location.search.includes('type=recovery') || 
@@ -84,19 +75,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Se for uma URL de confirmação de email, permite o acesso direto
   if (isEmailConfirmation) {
-    console.log("ProtectedRoute: É URL de confirmação de email, permitindo acesso.");
     return <>{children}</>;
   }
 
   // Se estiver na página de login, permite acesso direto
   if (location.pathname === '/auth') {
-     console.log("ProtectedRoute: Está na página de login, permitindo acesso.");
     return <>{children}</>;
   }
 
   // Se não houver sessão, redireciona para login
   if (!session) {
-     console.log("ProtectedRoute: Sem sessão, redirecionando para /auth.");
     return (
       <Navigate
         to="/auth"
@@ -108,20 +96,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Se tiver sessão mas não tiver barbearia  E NÃO ESTIVER NA PÁGINA DE CADASTRO DE BARBEARIA
   if (session && !selectedBarberShop && location.pathname !== '/cadastro-barbearia') {
-     console.log("ProtectedRoute: Usuário logado sem barbearia, redirecionando para /cadastro-barbearia.");
     return <Navigate to="/cadastro-barbearia" replace />;
   }
 
   // Se tiver sessão e estiver tentando acessar a página de login (já tratada acima, mas deixamos aqui por segurança)
    if (session && location.pathname === '/auth') {
-      console.log("ProtectedRoute: Usuário logado tentando acessar /auth, redirecionando para /.");
       return <Navigate to="/" replace />; // Redireciona auth para / se logado
    }
 
   // Se chegou aqui, o usuário está logado, tem barbearia selecionada (ou está na página de config)
   // e não está tentando acessar /auth ou URL de confirmação.
   // Permite acesso à rota solicitada.
-   console.log("ProtectedRoute: Usuário logado com barbearia, permitindo acesso a", location.pathname);
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
