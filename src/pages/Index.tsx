@@ -290,14 +290,63 @@ const Index = () => {
   };
 
   const getDiaSemana = (date: Date) => {
-    const dia = format(date, "EEEE", { locale: ptBR }).toUpperCase();
-    return dia.includes("SEGUNDA") ? "SEG" :
-           dia.includes("TERÇA") ? "TER" :
-           dia.includes("QUARTA") ? "QUA" :
-           dia.includes("QUINTA") ? "QUI" :
-           dia.includes("SEXTA") ? "SEX" :
-           dia.includes("SÁBADO") ? "SAB" :
-           "DOM";
+    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return dias[date.getDay()];
+  };
+
+  // Função para ordenar agendamentos conforme a nova sequência
+  const ordenarAgendamentos = (agendamentos: any[]) => {
+    if (!agendamentos?.length) return [];
+    const horarioAtualAgenda = getHorarioAtualAgenda();
+    const agora = new Date();
+
+    // Separar em listas
+    const atuais: any[] = [];
+    const proximos: any[] = [];
+    const passadosPendentes: any[] = [];
+    const passadosAtendidos: any[] = [];
+
+    agendamentos.forEach(a => {
+      const [hours, minutes] = a.time.split(':').map(Number);
+      const agendamentoTime = new Date();
+      agendamentoTime.setHours(hours, minutes, 0, 0);
+      const isAtual = a.time.startsWith(horarioAtualAgenda);
+      const isPassado = agendamentoTime < agora && !isAtual;
+      if (isAtual) {
+        atuais.push(a);
+      } else if (!isPassado) {
+        proximos.push(a);
+      } else if (isPassado && a.status !== "atendido") {
+        passadosPendentes.push(a);
+      } else if (isPassado && a.status === "atendido") {
+        passadosAtendidos.push(a);
+      }
+    });
+
+    // Ordenar cada grupo
+    proximos.sort((a, b) => {
+      const [ha, ma] = a.time.split(':').map(Number);
+      const [hb, mb] = b.time.split(':').map(Number);
+      return ha !== hb ? ha - hb : ma - mb;
+    });
+    passadosPendentes.sort((a, b) => {
+      const [ha, ma] = a.time.split(':').map(Number);
+      const [hb, mb] = b.time.split(':').map(Number);
+      return ha !== hb ? ha - hb : ma - mb;
+    });
+    passadosAtendidos.sort((a, b) => {
+      const [ha, ma] = a.time.split(':').map(Number);
+      const [hb, mb] = b.time.split(':').map(Number);
+      return ha !== hb ? ha - hb : ma - mb;
+    });
+
+    // Concatenar na ordem correta
+    return [
+      ...atuais,
+      ...proximos,
+      ...passadosPendentes,
+      ...passadosAtendidos,
+    ];
   };
 
   const stats = [
@@ -331,8 +380,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
-      <h1 className="text-3xl font-display mb-8">Dashboard</h1>
-      
+            
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
           <Card key={stat.title || stat.value} className="p-6 bg-secondary border-none">
@@ -364,7 +412,7 @@ const Index = () => {
                 Nenhum agendamento para hoje.
               </div>
             ) : (
-              agendamentosCompletos.map((agendamento) => {
+              ordenarAgendamentos(agendamentosCompletos).map((agendamento) => {
                 const horarioAtualAgenda = getHorarioAtualAgenda();
                 const [hours, minutes] = agendamento.time.split(':').map(Number);
                 const agendamentoTime = new Date();
@@ -413,7 +461,7 @@ const Index = () => {
                           <span>Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
                           <span>Barbeiro: {agendamento.barber_name || "Não definido"}</span>
                           <span className={cn("font-medium", getStatusColor(agendamento.status))}>
-                            Agend. Cliente: {getStatusText(agendamento.status)}
+                            Cliente: {getStatusText(agendamento.status)}
                           </span>
                         </div>
                       </div>

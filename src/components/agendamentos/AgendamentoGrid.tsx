@@ -293,9 +293,9 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                   <CardTitle className="text-lg">{barbeiro.name}</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="p-4">
+              <CardContent className="bg-secondary p-2">
                 {barbeiroDisponivelNaData ? (
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-1">
                     {horariosDisponiveis.map((horario) => {
                       const horario_passado = isHorarioPassado(horario);
                       const barbeiro_indisponivel = !verificarDisponibilidadeBarbeiro(barbeiro.id, dataFormatada, horario);
@@ -357,7 +357,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 mt-14 space-y-2">
-                    <p className="text-red-600 font-medium text-center">
+                    <p className="text-white font-medium text-center">
                       Barbeiro não disponível para Atendimentos {getNomeDiaSemana(date)}.
                     </p>
                   </div>
