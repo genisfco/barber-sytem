@@ -471,7 +471,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                                 ? "bg-red-500 text-white cursor-not-allowed opacity-75"
                                 : isSelectedForIndisponibility
                                   ? "bg-red-100 text-red-700"
-                                  : "bg-emerald-50 text-emerald-700"
+                                  : "text-emerald-600"
                             )}
                             onClick={() => {
                               if (!isOccupiedByAppointment) {

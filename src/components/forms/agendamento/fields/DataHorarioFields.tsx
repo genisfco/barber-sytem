@@ -302,7 +302,7 @@ export function DataHorarioFields({
                               ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
                               : field.value === horario
                                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer border border-emerald-200"
+                                : "bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white cursor-pointer "
                           )}
                           onClick={() => {
                             if (!isUnavailable) {

@@ -297,9 +297,41 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                 {barbeiroDisponivelNaData ? (
                   <div className="grid grid-cols-4 gap-2">
                     {horariosDisponiveis.map((horario) => {
-                      const horario_barbeiro_indisponivel = isHorarioIndisponivel(barbeiro.id, horario);
                       const horario_passado = isHorarioPassado(horario);
-                      const hora_agenda_indisponivel = horario_barbeiro_indisponivel || horario_passado;
+                      const barbeiro_indisponivel = !verificarDisponibilidadeBarbeiro(barbeiro.id, dataFormatada, horario);
+                      // Verifica se existe agendamento sobreposto
+                      const agendamento_existente = (agendamentos ?? []).find(
+                        (agendamentoItem) => {
+                          if (
+                            agendamentoItem.barber_id === barbeiro.id &&
+                            agendamentoItem.date === dataFormatada &&
+                            agendamentoItem.status !== 'cancelado'
+                          ) {
+                            const slotMinutesStart = convertToMinutes(horario);
+                            const slotMinutesEnd = slotMinutesStart + 30;
+                            const apptMinutesStart = convertToMinutes(agendamentoItem.time);
+                            const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
+                            const hasOverlap = (
+                              (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
+                              (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
+                              (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd)
+                            );
+                            return hasOverlap;
+                          }
+                          return false;
+                        }
+                      );
+                      let slotClass = "";
+                      if (horario_passado) {
+                        slotClass = "bg-red-100 text-red-600 cursor-not-allowed opacity-85";
+                      } else if (barbeiro_indisponivel) {
+                        slotClass = "bg-red-300 text-red-800 cursor-not-allowed opacity-85";
+                      } else if (agendamento_existente) {
+                        slotClass = "bg-red-500 text-white cursor-not-allowed";
+                      } else {
+                        slotClass = "bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white cursor-pointer";
+                      }
+                      const hora_agenda_indisponivel = horario_passado || barbeiro_indisponivel || agendamento_existente;
                       const motivoIndisponibilidade = getMotivoIndisponibilidade(barbeiro.id, horario);
 
                       return (
@@ -307,11 +339,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div
-                                className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${
-                                  hora_agenda_indisponivel
-                                    ? "bg-red-100 text-red-700 cursor-not-allowed opacity-75"
-                                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                                }`}
+                                className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${slotClass}`}
                                 onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
                               >
                                 {horario}
