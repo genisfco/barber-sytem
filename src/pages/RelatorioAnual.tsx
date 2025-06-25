@@ -34,6 +34,21 @@ const RelatorioAnual = () => {
     (_, i) => anoAtual - 2 + i
   );
 
+  const meses = [
+    { valor: "1", nome: "Janeiro" },
+    { valor: "2", nome: "Fevereiro" },
+    { valor: "3", nome: "Março" },
+    { valor: "4", nome: "Abril" },
+    { valor: "5", nome: "Maio" },
+    { valor: "6", nome: "Junho" },
+    { valor: "7", nome: "Julho" },
+    { valor: "8", nome: "Agosto" },
+    { valor: "9", nome: "Setembro" },
+    { valor: "10", nome: "Outubro" },
+    { valor: "11", nome: "Novembro" },
+    { valor: "12", nome: "Dezembro" },
+  ];
+
   const formatarMoeda = (valor: number) => {
     return valor.toLocaleString("pt-BR", {
       style: "currency",
@@ -74,6 +89,7 @@ const RelatorioAnual = () => {
 
   const formatarCategoria = (categoria: string) => {
     switch (categoria) {
+      case 'assinaturas': return 'Assinaturas';
       case 'servicos': return 'Serviços';
       case 'produtos': return 'Produtos';
       case 'comissoes': return 'Comissões';
@@ -82,6 +98,23 @@ const RelatorioAnual = () => {
       default: return categoria;
     }
   };
+
+  // Função para agrupar transações por mês
+  const totaisPorMes = meses.map((mes, idx) => {
+    const transacoesMes = (relatorio?.transacoes || []).filter(t => {
+      const data = t.payment_date || t.created_at;
+      return new Date(data).getMonth() === idx;
+    });
+    const receitas = transacoesMes.filter(t => t.type === 'receita').reduce((acc, t) => acc + Number(t.value), 0);
+    const despesas = transacoesMes.filter(t => t.type === 'despesa').reduce((acc, t) => acc + Number(t.value), 0);
+    const saldo = receitas - despesas;
+    return {
+      ...mes,
+      receitas,
+      despesas,
+      saldo,
+    };
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -159,59 +192,31 @@ const RelatorioAnual = () => {
             <CardTitle>Saldo do Ano</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">
+            <div className={`text-2xl font-semibold ${relatorio?.saldo > 0 ? 'text-blue-600' : relatorio?.saldo < 0 ? 'text-orange-400' : 'text-gray-400'}`}>
               {formatarMoeda(relatorio?.saldo || 0)}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Transações do Ano</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!ano ? (
-            <div className="text-muted-foreground">
-              Selecione um ano para visualizar as transações.
-            </div>
-          ) : relatorio?.transacoes.length === 0 ? (
-            <div className="text-muted-foreground">
-              Nenhuma transação encontrada para o ano selecionado.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {relatorio?.transacoes.map((transacao) => (
-                <div
-                  key={transacao.id}
-                  className="flex items-center justify-between border-b pb-2"
-                >
-                  <div>
-                    <div className="font-medium">{transacao.description}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {format(new Date(transacao.created_at), "dd/MM/yyyy")} -{" "}
-                      {transacao.category === 'servicos' && 'Serviços'}
-                      {transacao.category === 'produtos' && 'Produtos'}
-                      {transacao.category === 'comissoes' && 'Comissões'}
-                      {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
-                      {transacao.category === 'outros' && 'Outros'}
-                    </div>
-                  </div>
-                  <div
-                    className={`font-medium ${
-                      transacao.type === "receita"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {formatarMoeda(transacao.value)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Cards Mensais */}
+      <div className="grid md:grid-cols-4 gap-4">
+        {totaisPorMes.map((mes) => (
+          <Card key={mes.valor}>
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold">{mes.nome}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-1">
+                <span className="text-gray-200 text-sm">Receita: {formatarMoeda(mes.receitas)}</span>
+                <span className="text-gray-500 text-sm">Despesa: {formatarMoeda(mes.despesas)}</span>
+                <span className={`text-sm font-semibold ${mes.saldo > 0 ? 'text-blue-600' : mes.saldo < 0 ? 'text-orange-400' : 'text-gray-400'}`}>Saldo: {formatarMoeda(mes.saldo)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+            
 
       <DetalhesDialog
         open={openDetalhesReceitas}

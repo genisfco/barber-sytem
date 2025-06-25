@@ -51,7 +51,6 @@ export function DetalhesDialog({ open, onOpenChange, titulo, dados }: DetalhesDi
           <TableHeader>
             <TableRow>
               <TableHead>Categoria</TableHead>
-              <TableHead className="text-right">Quantidade</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
@@ -61,15 +60,14 @@ export function DetalhesDialog({ open, onOpenChange, titulo, dados }: DetalhesDi
                 <TableCell>
                   <div className="font-medium">{item.categoria}</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    {item.metodosPagamento.map((metodo, index) => (
+                    {item.metodosPagamento.map((metodo) => (
                       <div key={metodo.metodo} className="flex justify-between">
                         <span>{metodo.metodo}:</span>
-                        <span>{metodo.quantidade} transações - {formatarMoeda(metodo.valor)}</span>
+                        <span>{formatarMoeda(metodo.valor)}</span>
                       </div>
                     ))}
                   </div>
                 </TableCell>
-                <TableCell className="text-right">{item.quantidade}</TableCell>
                 <TableCell className="text-right">
                   {formatarMoeda(item.valor)}
                 </TableCell>
@@ -77,7 +75,6 @@ export function DetalhesDialog({ open, onOpenChange, titulo, dados }: DetalhesDi
             ))}
             <TableRow className="font-semibold">
               <TableCell>Total</TableCell>
-              <TableCell className="text-right">{totalTransacoes}</TableCell>
               <TableCell className="text-right">
                 {formatarMoeda(total)}
               </TableCell>

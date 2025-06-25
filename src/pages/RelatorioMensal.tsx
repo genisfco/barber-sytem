@@ -99,6 +99,7 @@ const RelatorioMensal = () => {
   const formatarCategoria = (categoria: string) => {
     switch (categoria) {
       case 'servicos': return 'Serviços';
+      case 'assinaturas': return 'Assinaturas';
       case 'produtos': return 'Produtos';
       case 'comissoes': return 'Comissões';
       case 'despesas_fixas': return 'Despesas Fixas';
@@ -196,7 +197,7 @@ const RelatorioMensal = () => {
             <CardTitle>Saldo do Mês</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold">
+            <div className={`text-2xl font-semibold ${relatorio?.saldo > 0 ? 'text-blue-600' : relatorio?.saldo < 0 ? 'text-orange-400' : 'text-gray-400'}`}>
               {formatarMoeda(relatorio?.saldo || 0)}
             </div>
           </CardContent>
@@ -226,8 +227,8 @@ const RelatorioMensal = () => {
                   <div>
                     <div className="font-medium">{transacao.description}</div>
                     <div className="text-sm text-muted-foreground">
-                      {format(new Date(transacao.created_at), "dd/MM/yyyy")} -{" "}
-                      {transacao.category === 'servicos' && 'Serviços'}
+                      {format(new Date(transacao.created_at), "dd/MM/yyyy")} -{" "}                      
+                      {transacao.category === 'servicos' && 'Serviços'}                      
                       {transacao.category === 'produtos' && 'Produtos'}
                       {transacao.category === 'comissoes' && 'Comissões'}
                       {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
@@ -257,13 +258,13 @@ const RelatorioMensal = () => {
         dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'receita'))
           .map(([categoria, dados]) => ({
             categoria: formatarCategoria(categoria),
-            valor: dados.valor,
-            quantidade: dados.quantidade,
-            metodosPagamento: Object.entries(dados.metodosPagamento)
+            valor: (dados as { valor: number }).valor,
+            quantidade: 0,
+            metodosPagamento: Object.entries((dados as { metodosPagamento: Record<string, { valor: number }> }).metodosPagamento)
               .map(([metodo, info]) => ({
                 metodo,
                 valor: info.valor,
-                quantidade: info.quantidade
+                quantidade: 0
               }))
           }))
           .sort((a, b) => b.valor - a.valor)
@@ -277,13 +278,13 @@ const RelatorioMensal = () => {
         dados={Object.entries(agruparPorCategoria(relatorio?.transacoes || [], 'despesa'))
           .map(([categoria, dados]) => ({
             categoria: formatarCategoria(categoria),
-            valor: dados.valor,
-            quantidade: dados.quantidade,
-            metodosPagamento: Object.entries(dados.metodosPagamento)
+            valor: (dados as { valor: number }).valor,
+            quantidade: 0,
+            metodosPagamento: Object.entries((dados as { metodosPagamento: Record<string, { valor: number }> }).metodosPagamento)
               .map(([metodo, info]) => ({
                 metodo,
                 valor: info.valor,
-                quantidade: info.quantidade
+                quantidade: 0
               }))
           }))
           .sort((a, b) => b.valor - a.valor)
