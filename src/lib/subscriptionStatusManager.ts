@@ -24,8 +24,8 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
 
   // 2. Se já passou da data final
   if (end && isAfter(hoje, end)) {
-    // Se passaram mais de 15 dias, status = cancelada
-    if (isAfter(hoje, addDays(end, 15))) {
+    // Se passaram mais de 45 dias, status = cancelada
+    if (isAfter(hoje, addDays(end, 45))) {
       if (assinatura.status !== 'cancelada') {
         await supabase.from('client_subscriptions')
           .update({ status: 'cancelada' })
@@ -33,8 +33,8 @@ export async function atualizarStatusAssinatura(assinatura, pagamentos, plano, b
       }
       return;
     }
-    // Se passaram mais de 7 dias, status = expirada
-    if (isAfter(hoje, addDays(end, 7))) {
+    // Se passaram mais de 30 dias, status = expirada
+    if (isAfter(hoje, addDays(end, 30))) {
       if (assinatura.status !== 'expirada') {
         await supabase.from('client_subscriptions')
           .update({ status: 'expirada' })

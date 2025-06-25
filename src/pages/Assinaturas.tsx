@@ -1763,7 +1763,7 @@ const Assinaturas = () => {
                   corStatus = "text-green-600 font-bold";
                 } else if (somaPagamentosCiclo > 0) {
                   statusPagamento = "Pendente";
-                  corStatus = "text-yellow-600 font-bold";
+                  corStatus = "text-orange-400 font-semibold";
                 } else {
                   statusPagamento = "Aguardando";
                   corStatus = "text-muted-foreground";
@@ -1771,7 +1771,8 @@ const Assinaturas = () => {
               }
 
               // Botão de Renovar Assinatura para expirada/cancelada
-              const podeRenovar = assinatura.status === 'expirada' || assinatura.status === 'cancelada';
+              const podeRenovar = assinatura.status === 'expirada' || 
+                                 (assinatura.status === 'cancelada' && assinatura.end_date && isAfter(hoje, parseISO(assinatura.end_date)));
 
               return (
                 <Card key={assinatura.id}>
@@ -1799,7 +1800,7 @@ const Assinaturas = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="mt-2 text-blue-700 border-blue-400"
+                          className="mt-2 text-blue-500 border-blue-400"
                           onClick={() => setModalRenovar({ assinatura })}
                         >
                           Renovar Assinatura
@@ -1815,7 +1816,7 @@ const Assinaturas = () => {
                         </Button>
                       )}
                       <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'suspensa' })} title="Suspender Assinatura" disabled={assinatura.status === 'suspensa' || loadingStatus === assinatura.id + 'suspensa'}>
-                        <PauseCircle className={assinatura.status === 'suspensa' ? 'text-yellow-600' : ''} />
+                        <PauseCircle className={assinatura.status === 'suspensa' ? 'text-orange-600' : ''} />
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'cancelada' })} title="Cancelar Assinatura" disabled={assinatura.status === 'cancelada' || loadingStatus === assinatura.id + 'cancelada'}>
                         <XCircle className={assinatura.status === 'cancelada' ? 'text-red-600' : ''} />
@@ -1829,7 +1830,12 @@ const Assinaturas = () => {
                           <span>⚠️ Assinatura inadimplente! Regularize os pagamentos para evitar expiração ou cancelamento.</span>
                         </div>
                       )}
-                      <p>Status: <b>{assinatura.status}</b></p>
+                      <p>Status: <b className={
+                        assinatura.status === 'ativa' ? 'text-green-600 font-semibold' :
+                        //assinatura.status === 'inadimplente' ? 'text-orange-400 font-semibold' :
+                        ['suspensa', 'cancelada'].includes(assinatura.status) ? 'text-red-600 font-semibold' :
+                        ''
+                      }>{assinatura.status}</b></p>
                       <p>Status do Pagamento: <b className={corStatus}>{statusPagamento}</b></p>
                       {/* Valor restante ou total pago */}
                       {(() => {
@@ -1842,7 +1848,7 @@ const Assinaturas = () => {
                         } else {
                           const falta = Number(plano.price) - somaPagamentosCiclo;
                           return (
-                            <p className="text-orange-500 font-semibold">Falta pagar: R$ {falta.toFixed(2)}</p>
+                            <p className="text-orange-400 font-semibold">Falta pagar: R$ {falta.toFixed(2)}</p>
                           );
                         }
                       })()}
@@ -2018,7 +2024,7 @@ const Assinaturas = () => {
                     if (somaPagamentosCiclo >= valorPlano) {
                       corCiclo = 'text-green-600';
                     } else {
-                      corCiclo = 'text-orange-500';
+                      corCiclo = 'text-orange-400 font-semibold';
                     }
                   }
                   return (
