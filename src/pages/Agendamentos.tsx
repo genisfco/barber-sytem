@@ -24,33 +24,39 @@ const Agendamentos = () => {
   });
   
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-6">
       <AgendamentosHeader />
 
-      <div className="grid md:grid-cols-[360px,1fr] gap-6">
-        <AgendamentoCalendar 
-          date={date} 
-          onDateSelect={(newDate) => {
-            if (newDate) {
-              const newDateStartOfDay = startOfDay(newDate);
-              setDate(newDateStartOfDay);
-            }
-          }} 
-        />
-        <AgendamentoGrid 
-          date={date} 
+      <div className="grid md:grid-cols-[360px,1fr] gap-3 sm:gap-6">
+        <div className="w-full max-w-full">
+          <AgendamentoCalendar 
+            date={date} 
+            onDateSelect={(newDate) => {
+              if (newDate) {
+                const newDateStartOfDay = startOfDay(newDate);
+                setDate(newDateStartOfDay);
+              }
+            }} 
+          />
+        </div>
+        <div className="w-full max-w-full">
+          <AgendamentoGrid 
+            date={date} 
+            agendamentos={filteredAgendamentos}
+            isLoading={isLoading}
+            barberShopId={selectedBarberShop?.id || ''}
+            onHorarioSelect={(horario) => {
+              // Aqui você pode adicionar a lógica para lidar com a seleção do horário
+            }}
+          />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <AgendamentosTable 
           agendamentos={filteredAgendamentos}
-          isLoading={isLoading}
-          barberShopId={selectedBarberShop?.id || ''}
-          onHorarioSelect={(horario) => {
-            // Aqui você pode adicionar a lógica para lidar com a seleção do horário
-          }}
+          isLoading={isLoading} 
         />
       </div>
-      <AgendamentosTable 
-        agendamentos={filteredAgendamentos}
-        isLoading={isLoading} 
-      />
     </div>
   );
 };

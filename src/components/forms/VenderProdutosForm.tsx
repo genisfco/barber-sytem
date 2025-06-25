@@ -169,7 +169,7 @@ export function VenderProdutosForm({
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="sem_cliente">Nenhum cliente</SelectItem>
-                    {clientes?.map((cliente) => (
+                    {clientes?.filter(cliente => cliente.active).map((cliente) => (
                       <SelectItem key={cliente.id} value={cliente.id}>
                         {cliente.name}
                       </SelectItem>

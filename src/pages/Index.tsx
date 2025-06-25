@@ -404,9 +404,9 @@ const Index = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 bg-secondary border-none">
-          <h2 className="font-display text-xl mb-4">Lista de Agendamentos do Dia</h2>
-          <div className="space-y-4">
+        <Card className="p-4 sm:p-6 bg-secondary border-none">
+          <h2 className="font-display text-lg sm:text-xl mb-2 sm:mb-4">Lista de Agendamentos do Dia</h2>
+          <div className="space-y-3 sm:space-y-4">
             {!agendamentosCompletos?.length ? (
               <div className="text-muted-foreground">
                 Nenhum agendamento para hoje.
@@ -427,7 +427,8 @@ const Index = () => {
                   <div
                     key={agendamento.id}
                     className={cn(
-                      "flex items-center justify-between p-4 rounded-lg transition-all",
+                      // Responsividade: flex-col em mobile, flex-row em telas maiores
+                      "flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-4 rounded-lg transition-all gap-2 sm:gap-0 w-full overflow-x-auto",
                       isPassadoEAtendido 
                         ? "bg-background/20 opacity-75" 
                         : isAtual 
@@ -437,9 +438,9 @@ const Index = () => {
                             : "bg-background/90"
                     )}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4 w-full min-w-0">
                       <div className={cn(
-                        "h-12 w-12 rounded-full flex items-center justify-center text-lg",
+                        "h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center text-base sm:text-lg shrink-0",
                         isPassadoEAtendido 
                           ? "bg-gray-700 text-gray-600" 
                           : isAtual 
@@ -450,36 +451,36 @@ const Index = () => {
                       )}>
                         {agendamento.client_name[0].toUpperCase()}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p className={cn(
-                          "font-medium text-lg",
+                          "font-medium text-base sm:text-lg truncate",
                           isPassadoEAtendido && "text-muted-foreground"
                         )}>
                           {agendamento.client_name}
                         </p>
-                        <div className="flex flex-col text-sm text-muted-foreground">
-                          <span>Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
-                          <span>Barbeiro: {agendamento.barber_name || "Não definido"}</span>
+                        <div className="flex flex-col text-xs sm:text-sm text-muted-foreground">
+                          <span className="truncate">Serviços: {agendamento.servicos?.map(s => s.service_name).join(', ') || 'Serviço não especificado'}</span>
+                          <span className="truncate">Barbeiro: {agendamento.barber_name || "Não definido"}</span>
                           <span className={cn("font-medium", getStatusColor(agendamento.status))}>
                             Cliente: {getStatusText(agendamento.status)}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end gap-1 sm:gap-2 w-full sm:w-auto">
                       <div className="text-right">
                         <p className={cn(
-                          "text-lg font-medium",
+                          "text-base sm:text-lg font-medium",
                           isPassadoEAtendido && "text-muted-foreground"
                         )}>
                           {formatTime(agendamento.time)}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           {isPassadoEAtendido ? "Concluído" : isAtual ? "Em Atendimento" : isPassadoEPendente ? "Pendente de Atualização  " : "Próximo Atendimento"}
                         </p>
                       </div>
                       {agendamento.status !== "atendido" && (
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap sm:flex-nowrap w-full sm:w-auto">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -526,48 +527,47 @@ const Index = () => {
           </div>
         </Card>
 
-        <Card className="p-6 bg-secondary border-none">
-          <h2 className="font-display text-xl mb-4">Status de Atendimentos</h2>
-          <div className="flex justify-between mb-2 px-4">
+        <Card className="p-4 sm:p-6 bg-secondary border-none">
+          <h2 className="font-display text-lg sm:text-xl mb-2 sm:mb-4">Status de Atendimentos</h2>
+          <div className="flex justify-between mb-1 sm:mb-2 px-2 sm:px-4">
             <div className="flex-1"></div>
-            <div className="flex gap-6">
-              <div className="text-sm text-muted-foreground">Horário atual</div>
-              <div className="text-sm text-muted-foreground">Próximo horário</div>
+            <div className="flex gap-4 sm:gap-6">
+              <div className="text-xs sm:text-sm text-muted-foreground">Horário atual</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Próximo horário</div>
             </div>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {barbers?.filter(b => b.active).map((barbeiro) => {
               const status = getBarbeiroStatus(barbeiro.id);
               return (
-                <div key={barbeiro.id} className="flex items-center justify-between p-4 bg-background/50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                      <Scissors className="h-5 w-5" />
+                <div key={barbeiro.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-4 bg-background/50 rounded-lg gap-2 sm:gap-0 w-full overflow-x-auto">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                      <Scissors className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                     <div>
-                      <p className="font-medium">{barbeiro.name}</p>
+                      <p className="font-medium text-base sm:text-lg">{barbeiro.name}</p>
                     </div>
                   </div>
-                  <div className="flex gap-6">
+                  <div className="flex gap-4 sm:gap-6 w-full sm:w-auto">
                     {/* Status atual */}
                     <div className="flex flex-col items-end">
-                      <p className="text-sm font-medium">{status.horarioAtual}</p>
-                      <div className="flex items-center gap-2">
-                        <p className={cn("text-sm font-medium", status.statusAtual.cor)}>
+                      <p className="text-xs sm:text-sm font-medium">{status.horarioAtual}</p>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <p className={cn("text-xs sm:text-sm font-medium", status.statusAtual.cor)}>
                           {status.statusAtual.texto}
                         </p>
-                        <div className={cn("h-3 w-3 rounded-full", status.statusAtual.bgCor)} />
+                        <div className={cn("h-2 w-2 sm:h-3 sm:w-3 rounded-full", status.statusAtual.bgCor)} />
                       </div>
                     </div>
-                    
                     {/* Próximo status */}
                     <div className="flex flex-col items-end">
-                      <p className="text-sm font-medium">{status.proximoHorario}</p>
-                      <div className="flex items-center gap-2">
-                        <p className={cn("text-sm font-medium", status.proximoStatus.cor)}>
+                      <p className="text-xs sm:text-sm font-medium">{status.proximoHorario}</p>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <p className={cn("text-xs sm:text-sm font-medium", status.proximoStatus.cor)}>
                           {status.proximoStatus.texto}
                         </p>
-                        <div className={cn("h-3 w-3 rounded-full", status.proximoStatus.bgCor)} />
+                        <div className={cn("h-2 w-2 sm:h-3 sm:w-3 rounded-full", status.proximoStatus.bgCor)} />
                       </div>
                     </div>
                   </div>

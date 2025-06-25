@@ -404,13 +404,17 @@ const Clientes = () => {
             filteredClientes?.map((cliente) => (
               <Card 
                 key={cliente.id} 
-                className={`${!cliente.active ? "opacity-70" : ""} ${
-                  showOnlySubscribers && clientesAssinantes.includes(cliente.id) 
-                    ? clientesAtivos.includes(cliente.id)
-                      ? "border-green-500 bg-green-700/10"
-                      : "border-primary bg-primary/10"
-                    : ""
-                }`}
+                className={`
+                  ${!cliente.active ? "bg-red-600/40" : ""} 
+                  ${!cliente.active ? "opacity-70" : ""} 
+                  ${
+                    showOnlySubscribers && clientesAssinantes.includes(cliente.id) 
+                      ? clientesAtivos.includes(cliente.id)
+                        ? "border-green-500 bg-green-700/10"
+                        : "border-primary bg-primary/10"
+                      : ""
+                  }
+                `}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">

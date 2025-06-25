@@ -369,7 +369,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
       </div>
 
       <Dialog open={openForm} onOpenChange={setOpenForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl h-[90vh] max-h-[90vh] overflow-y-auto p-2 sm:p-6">
           <DialogHeader>
             <DialogTitle>Novo Agendamento</DialogTitle>
           </DialogHeader>
@@ -384,7 +384,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
       </Dialog>
 
       <Dialog open={openIndisponivelForm} onOpenChange={setOpenIndisponivelForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl h-[90vh] max-h-[90vh] overflow-y-auto p-2 sm:p-6">
           <DialogHeader>
             <DialogTitle>Registrar Indisponibilidade</DialogTitle>
           </DialogHeader>

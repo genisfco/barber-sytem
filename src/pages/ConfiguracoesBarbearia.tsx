@@ -52,7 +52,7 @@ const defaultCenter = {
 };
 
 export default function ConfiguracoesBarbearia() {
-  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [errorDados, setErrorDados] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -252,19 +252,72 @@ export default function ConfiguracoesBarbearia() {
     setValue('barberShopEmail', formattedValue);
   };
 
-  const formatCNPJ = (value: string) => {
+  // Funções de validação de CPF e CNPJ
+  function validarCPF(cpf: string) {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
+    return true;
+  }
+
+  function validarCNPJ(cnpj: string) {
+    cnpj = cnpj.replace(/[^\d]+/g, '');
+    if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+    let tamanho = cnpj.length - 2;
+    let numeros = cnpj.substring(0, tamanho);
+    let digitos = cnpj.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado !== parseInt(digitos.charAt(0))) return false;
+    tamanho = tamanho + 1;
+    numeros = cnpj.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado !== parseInt(digitos.charAt(1))) return false;
+    return true;
+  }
+
+  const formatCnpjOrCpf = (value: string) => {
     const numbers = value.replace(/\D/g, '');
-    const limitedNumbers = numbers.slice(0, 14);
-    
-    if (limitedNumbers.length <= 2) return limitedNumbers;
-    if (limitedNumbers.length <= 5) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2)}`;
-    if (limitedNumbers.length <= 8) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5)}`;
-    if (limitedNumbers.length <= 12) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5, 8)}/${limitedNumbers.slice(8)}`;
-    return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5, 8)}/${limitedNumbers.slice(8, 12)}-${limitedNumbers.slice(12)}`;
+    if (numbers.length <= 11) {
+      // Máscara CPF: 000.000.000-00
+      return numbers
+        .replace(/^(\d{3})(\d)/, '$1.$2')
+        .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1-$2')
+        .slice(0, 14);
+    } else {
+      // Máscara CNPJ: 00.000.000/0000-00
+      return numbers
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .slice(0, 18);
+    }
   };
 
-  const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatCNPJ(e.target.value);
+  const handleCnpjOrCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCnpjOrCpf(e.target.value);
     setValue('barberShopCnpj', formattedValue);
   };
 
@@ -468,13 +521,28 @@ export default function ConfiguracoesBarbearia() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="barberShopCnpj">CNPJ</Label>
+                  <Label htmlFor="barberShopCnpj">CNPJ ou CPF</Label>
                   <Input 
                     id="barberShopCnpj" 
-                    {...register('barberShopCnpj', { required: true })} 
-                    onChange={handleCNPJChange}
+                    {...register('barberShopCnpj', { 
+                      required: true,
+                      validate: value => {
+                        const numbers = value.replace(/\D/g, '');
+                        if (numbers.length === 11) {
+                          return validarCPF(numbers) || 'CPF inválido';
+                        } else if (numbers.length === 14) {
+                          return validarCNPJ(numbers) || 'CNPJ inválido';
+                        }
+                        return 'Digite um CPF ou CNPJ válido';
+                      }
+                    })} 
+                    onChange={handleCnpjOrCpfChange}
                     maxLength={18}
+                    placeholder="Digite o CNPJ ou CPF"
                   />
+                  {errors && errors.barberShopCnpj && (
+                    <span className="text-red-600 text-sm">{errors.barberShopCnpj.message as string}</span>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="barberShopPhone">Telefone</Label>
