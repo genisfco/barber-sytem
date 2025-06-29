@@ -504,14 +504,11 @@ export default function CadastroBarbearia() {
                     )}
                   </GoogleMap>
                 </LoadScript>
-              </div>
-              <p className="text-sm text-gray-200 mt-2">
-                Arraste o marcador para ajustar a localização exata da barbearia
-              </p>
+              </div>              
             </div>
 
             {coordinates && (
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-secondary">
                 Coordenadas: {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
               </div>
             )}
