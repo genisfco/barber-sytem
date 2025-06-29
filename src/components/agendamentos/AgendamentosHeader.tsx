@@ -1,6 +1,3 @@
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-
 export function AgendamentosHeader() {
   return (
     <div className="flex justify-between items-center">

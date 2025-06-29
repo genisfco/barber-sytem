@@ -182,7 +182,7 @@ const Barbeiros = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-display text-barber-dark">Barbeiros</h1>
+        {/*<h1 className="text-2xl font-display text-barber-dark">Barbeiros</h1>*/}
         <Dialog open={open} onOpenChange={(newOpen) => {
           if (!newOpen) {
             setSelectedBarber(null);

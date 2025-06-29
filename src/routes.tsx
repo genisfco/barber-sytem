@@ -4,6 +4,10 @@ import { useBarberShopContext } from "./contexts/BarberShopContext";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import { DebugInfo } from "./components/ui/debug-info";
+import { SidebarProvider, useSidebar } from "./contexts/SidebarContext";
+import { useIsMobile } from "./hooks/use-mobile";
+import { Menu } from "lucide-react";
+import { Button } from "./components/ui/button";
 import { useEffect, useState } from "react";
 
 // Páginas
@@ -25,10 +29,11 @@ import ConfiguracoesBarbearia from "./pages/ConfiguracoesBarbearia.tsx";
 import { RequestResetPassword } from "./pages/auth/RequestResetPassword";
 import { VerifyCodeAndReset } from "./pages/auth/VerifyCodeAndReset";
 
-
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading: isAuthLoading } = useAuth();
   const { selectedBarberShop } = useBarberShopContext();
+  const { toggle } = useSidebar();
+  const isMobile = useIsMobile();
   const location = useLocation();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
@@ -111,11 +116,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     <div className="flex min-h-screen w-full">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Header />
+        {/* Header com botão de toggle para mobile */}
+        <div className="border-b">
+          <div className="flex h-16 items-center px-4 gap-4">
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggle}
+                className="lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
+            <div className="flex-1" />
+            <Header />
+          </div>
+        </div>
         <main className="flex-1">{children}</main>
       </div>
       <DebugInfo />
     </div>
+  );
+};
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <SidebarProvider>
+      <ProtectedRouteContent>{children}</ProtectedRouteContent>
+    </SidebarProvider>
   );
 };
 

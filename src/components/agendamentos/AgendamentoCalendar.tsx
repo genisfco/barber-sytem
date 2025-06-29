@@ -40,7 +40,7 @@ export function AgendamentoCalendar({ date, onDateSelect }: AgendamentoCalendarP
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Calendário</CardTitle>
+        {/* <CardTitle>Calendário</CardTitle> */}
       </CardHeader>
       <CardContent className="space-y-4">
         <Calendar

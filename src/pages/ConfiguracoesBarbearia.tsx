@@ -65,13 +65,13 @@ export default function ConfiguracoesBarbearia() {
   const [errorHorarios, setErrorHorarios] = useState<string | null>(null);
 
   const diasSemana = [
-    { value: 0, label: 'Domingo' },
-    { value: 1, label: 'Segunda-feira' },
-    { value: 2, label: 'Terça-feira' },
-    { value: 3, label: 'Quarta-feira' },
-    { value: 4, label: 'Quinta-feira' },
-    { value: 5, label: 'Sexta-feira' },
-    { value: 6, label: 'Sábado' },
+    { value: 0, label: 'DOM' },
+    { value: 1, label: 'SEG' },
+    { value: 2, label: 'TER' },
+    { value: 3, label: 'QUA' },
+    { value: 4, label: 'QUI' },
+    { value: 5, label: 'SEX' },
+    { value: 6, label: 'SAB' },
   ];
 
   useEffect(() => {
@@ -497,7 +497,7 @@ export default function ConfiguracoesBarbearia() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Configurações da Barbearia</h1>
+      {/* <h1 className="text-2xl font-display text-barber-dark mb-5">Configurações da Barbearia</h1> */}
       
       <Tabs defaultValue="dados" className="space-y-4">
         <TabsList>
@@ -508,7 +508,7 @@ export default function ConfiguracoesBarbearia() {
         <TabsContent value="dados">
           <Card>
             <CardHeader>
-              <CardTitle>Dados da Barbearia</CardTitle>
+              {/* <CardTitle>Dados da Barbearia</CardTitle> */}
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -659,7 +659,7 @@ export default function ConfiguracoesBarbearia() {
         <TabsContent value="horarios">
           <Card>
             <CardHeader>
-              <CardTitle>Horários de Funcionamento</CardTitle>
+              {/* <CardTitle>Horários de Funcionamento</CardTitle> */}
             </CardHeader>
             <CardContent>
               {errorHorarios && (
@@ -677,12 +677,12 @@ export default function ConfiguracoesBarbearia() {
                   const horario = horarios.find(h => h.day_of_week === dia.value);
                   return (
                     <div key={dia.value} className="flex items-center justify-between p-4 border rounded">
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-1">
                         <Switch
                           checked={horario?.is_active ?? false}
                           onCheckedChange={(checked) => handleHorarioChange(dia.value, 'is_active', checked)}
                         />
-                        <span className="font-medium">{dia.label}</span>
+                        <span className="font-medium p-2">{dia.label}</span>
                       </div>
                       <div className="flex items-center space-x-4">
                         <div>

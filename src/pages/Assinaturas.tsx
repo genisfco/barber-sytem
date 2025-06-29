@@ -1125,7 +1125,7 @@ const Assinaturas = () => {
       {/* Planos de assinatura no topo */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-display text-barber-dark">Planos de Assinatura</h1>
+          <h1 className="text-2xl font-display text-barber-dark">Planos</h1>
           {/* Dialog de criação de plano */}
           <Dialog open={openPlano} onOpenChange={setOpenPlano}>
             <DialogTrigger asChild>
@@ -1639,10 +1639,10 @@ const Assinaturas = () => {
       {/* Assinaturas de clientes */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-display text-barber-dark">Assinaturas de Clientes</h1>
+          <h1 className="text-2xl font-display text-barber-dark">Assinaturas</h1>
           <Dialog open={openSubscription} onOpenChange={setOpenSubscription}>
             <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" />Nova Adesão de Assinatura</Button>
+              <Button><Plus className="mr-2 h-4 w-4" />Nova Adesão</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>

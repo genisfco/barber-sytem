@@ -529,26 +529,31 @@ const Index = () => {
 
         <Card className="p-4 sm:p-6 bg-secondary border-none">
           <h2 className="font-display text-lg sm:text-xl mb-2 sm:mb-4">Status de Atendimentos</h2>
-          <div className="flex justify-between mb-1 sm:mb-2 px-2 sm:px-4">
-            <div className="flex-1"></div>
-            <div className="flex gap-4 sm:gap-6">
-              <div className="text-xs sm:text-sm text-muted-foreground">Horário atual</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">Próximo horário</div>
-            </div>
-          </div>
+          {/* Cabeçalho alinhado em grid com largura fixa para o ícone */}
+          {/* <div className="grid grid-cols-[56px_1fr_1fr] gap-4 sm:gap-6 mb-1 sm:mb-2 px-2 sm:px-4">
+            <div></div>
+            <div className="text-xs sm:text-sm text-muted-foreground text-right">Horário atual</div>
+            <div className="text-xs sm:text-sm text-muted-foreground text-right">Próximo horário</div>
+          </div> */}
           <div className="space-y-3 sm:space-y-4">
             {barbers?.filter(b => b.active).map((barbeiro) => {
               const status = getBarbeiroStatus(barbeiro.id);
               return (
-                <div key={barbeiro.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-4 bg-background/50 rounded-lg gap-2 sm:gap-0 w-full overflow-x-auto">
-                  <div className="flex items-center gap-3 sm:gap-4">
+                <div
+                  key={barbeiro.id}
+                  className="grid grid-cols-[56px_1fr_1fr] gap-4 sm:gap-6 items-center p-2 sm:p-4 bg-background/50 rounded-lg w-full overflow-x-auto"
+                >
+                  {/* Coluna 1: Ícone */}
+                  <div className="flex items-center justify-center">
                     <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                       <Scissors className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
-                    <div>
-                      <p className="font-medium text-base sm:text-lg">{barbeiro.name}</p>
-                    </div>
                   </div>
+                  {/* Coluna 2: Nome */}
+                  <div>
+                    <p className="font-medium text-base sm:text-lg">{barbeiro.name}</p>
+                  </div>
+                  {/* Coluna 3: Status atual e próximo status */}
                   <div className="flex gap-4 sm:gap-6 w-full sm:w-auto">
                     {/* Status atual */}
                     <div className="flex flex-col items-end">
@@ -557,17 +562,17 @@ const Index = () => {
                         <p className={cn("text-xs sm:text-sm font-medium", status.statusAtual.cor)}>
                           {status.statusAtual.texto}
                         </p>
-                        <div className={cn("h-2 w-2 sm:h-3 sm:w-3 rounded-full", status.statusAtual.bgCor)} />
+                        {/* <div className={cn("h-2 w-2 sm:h-3 sm:w-3 rounded-full", status.statusAtual.bgCor)} /> */}
                       </div>
                     </div>
                     {/* Próximo status */}
                     <div className="flex flex-col items-end">
                       <p className="text-xs sm:text-sm font-medium">{status.proximoHorario}</p>
                       <div className="flex items-center gap-1 sm:gap-2">
-                        <p className={cn("text-xs sm:text-sm font-medium", status.proximoStatus.cor)}>
+                        <p className={cn("text-right text-xs sm:text-sm font-medium", status.proximoStatus.cor)}>
                           {status.proximoStatus.texto}
                         </p>
-                        <div className={cn("h-2 w-2 sm:h-3 sm:w-3 rounded-full", status.proximoStatus.bgCor)} />
+                        {/* <div className={cn("h-2 w-2 sm:h-3 sm:w-3 rounded-full", status.proximoStatus.bgCor)} /> */}
                       </div>
                     </div>
                   </div>
