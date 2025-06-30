@@ -470,9 +470,9 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                             className={cn(
                               "py-2 px-1 rounded-md text-center font-medium transition-colors text-xs sm:text-sm",
                               isOccupiedByAppointment
-                                ? "bg-red-500 text-white cursor-not-allowed opacity-75"
+                                ? "bg-red-100 text-red-700 cursor-not-allowed"
                                 : isSelectedForIndisponibility
-                                  ? "bg-red-100 text-red-700"
+                                  ? "bg-red-500 text-white cursor-not-allowed"
                                   : "text-emerald-600"
                             )}
                             onClick={() => {
