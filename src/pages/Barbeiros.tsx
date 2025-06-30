@@ -441,7 +441,7 @@ const Barbeiros = () => {
           setSelectedBarberIndisponivel(null);
         }
       }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
           <DialogHeader>
             <DialogTitle>Registrar Indisponibilidade na Agenda</DialogTitle>
           </DialogHeader>

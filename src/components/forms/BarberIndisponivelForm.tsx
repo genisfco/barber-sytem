@@ -329,7 +329,8 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
           <div className="text-lg font-semibold mb-4">{barbeiroName}</div>
         </FormItem>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Grid responsivo: 1 coluna no mobile, 2 colunas no sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Coluna da Esquerda - Calendário */}
           <div>
             <FormField
@@ -347,7 +348,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                       hoje.setHours(0, 0, 0, 0);
                       return date < hoje;
                     }}
-                    className="rounded-md border"
+                    className="rounded-md border w-full"
                   />
                   <FormMessage />
                 </FormItem>
@@ -360,7 +361,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
             {dataSelecionada && (
               <>
                 {diaSemanaSemHorario ? (
-                  <div className="p-5 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="p-3 sm:p-5 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-yellow-900 text-sm">
                       Barbearia sem horário definido de funcionamento para o dia selecionado. <br/>
                       Não precisa registrar indisponibilidade.
@@ -368,12 +369,12 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col sm:flex-row items-center sm:space-x-2 space-y-2 sm:space-y-0">
                       <FormField
                         control={form.control}
                         name="todosHorarios"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 w-full">
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2 sm:p-4 w-full">
                             <div className="space-y-0.5">
                               <FormLabel className="text-base">
                                 Todos Horários
@@ -392,7 +393,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                     </div>
 
                     {!todosHorarios && (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                         <FormField
                           control={form.control}
                           name="horarioInicial"
@@ -405,13 +406,13 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                                 disabled={estaIndisponivel}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-full" >
                                     <SelectValue placeholder="Selecione o horário inicial" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
                                   {horariosDisponiveis.map((horario) => (
-                                    <SelectItem key={horario} value={horario}>
+                                    <SelectItem key={horario} value={horario} className="w-full">
                                       {horario}
                                     </SelectItem>
                                   ))}
@@ -434,7 +435,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                                 disabled={estaIndisponivel}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Selecione o horário final" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -444,6 +445,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                                       key={horario} 
                                       value={horario}
                                       disabled={estaIndisponivel || (horarioInicial && horario <= horarioInicial)}
+                                      className="w-full"
                                     >
                                       {horario}
                                     </SelectItem>
@@ -457,7 +459,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                       </div>
                     )}
 
-                    <div className="grid grid-cols-4 gap-1">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
                       {horariosDisponiveis.map((horario) => {
                         const isOccupiedByAppointment = isHorarioOcupadoPorAgendamento(horario);
                         const isSelectedForIndisponibility = isHorarioSelecionado(horario);
@@ -466,7 +468,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
                           <div
                             key={horario}
                             className={cn(
-                              "py-2 px-1 rounded-md text-center font-medium transition-colors",
+                              "py-2 px-1 rounded-md text-center font-medium transition-colors text-xs sm:text-sm",
                               isOccupiedByAppointment
                                 ? "bg-red-500 text-white cursor-not-allowed opacity-75"
                                 : isSelectedForIndisponibility
@@ -495,11 +497,12 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
@@ -507,6 +510,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
             type="submit"
             variant={estaIndisponivel ? "destructive" : "default"}
             disabled={diaSemanaSemHorario}
+            className="w-full sm:w-auto"
           >
             {isLojaFechada ? "Loja Fechada" : estaIndisponivel ? "Remover Indisponibilidade" : "Registrar Indisponibilidade"}
           </Button>

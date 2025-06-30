@@ -35,7 +35,6 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
   const [selectedHorario, setSelectedHorario] = useState<string | null>(null);
   const [openForm, setOpenForm] = useState(false);
-  const [openIndisponivelForm, setOpenIndisponivelForm] = useState(false);
   const [selectedBarbeiroIndisponivel, setSelectedBarbeiroIndisponivel] = useState<{id: string, name: string} | null>(null);
   const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
   const [horariosFuncionamento, setHorariosFuncionamento] = useState<any[]>([]);
@@ -95,10 +94,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
     setOpenForm(true);
   };
 
-  const handleIndisponivelClick = (barbeiroId: string, barbeiroName: string) => {
-    setSelectedBarbeiroIndisponivel({ id: barbeiroId, name: barbeiroName });
-    setOpenIndisponivelForm(true);
-  };
+  
 
   const isHorarioPassado = (horario: string) => {
     const [hora, minuto] = horario.split(":").map(Number);
@@ -120,52 +116,6 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
     if (hora === hoje.getHours() && minuto <= hoje.getMinutes()) return true;
     
     return false;
-  };
-
-  // Função para verificar se um horário está ocupado para um barbeiro específico
-  const isHorarioIndisponivel = (barbeiroId: string, horario: string) => {
-    // Verifica se o barbeiro está indisponível para o horário específico
-    const barbeiroBloqueadoNoHorario = !verificarDisponibilidadeBarbeiro(barbeiroId, dataFormatada, horario);
-    
-    // Se o barbeiro está indisponível para o horário, retorna true
-    if (barbeiroBloqueadoNoHorario) {
-      return true;
-    }
-    
-    // Verifica se o horário já passou
-    const horarioPassado = isHorarioPassado(horario);
-    if (horarioPassado) {
-      return true;
-    }
-    
-    // Verifica se o horário está ocupado por algum agendamento
-    const horarioOcupado = (agendamentos ?? []).some(
-      (agendamentoItem) => {
-        if (
-          agendamentoItem.barber_id === barbeiroId &&
-          agendamentoItem.date === dataFormatada &&
-          agendamentoItem.status !== 'cancelado' // Excluir agendamentos cancelados
-        ) {
-          const slotMinutesStart = convertToMinutes(horario);
-          const slotMinutesEnd = slotMinutesStart + 30; // Considerando slots de 30 minutos
-
-          const apptMinutesStart = convertToMinutes(agendamentoItem.time);
-          const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
-
-          // Verifica sobreposição
-          const hasOverlap = (
-            (slotMinutesStart >= apptMinutesStart && slotMinutesStart < apptMinutesEnd) ||
-            (slotMinutesEnd > apptMinutesStart && slotMinutesEnd <= apptMinutesEnd) ||
-            (apptMinutesStart >= slotMinutesStart && apptMinutesStart < slotMinutesEnd) // Caso o agendamento seja maior que o slot
-          );
-
-          return hasOverlap;
-        }
-        return false;
-      }
-    );
-
-    return horarioOcupado || false;
   };
 
   // Função para obter o motivo da indisponibilidade
@@ -369,33 +319,13 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
       </div>
 
       <Dialog open={openForm} onOpenChange={setOpenForm}>
-        <DialogContent className="max-w-2xl h-[90vh] max-h-[90vh] overflow-y-auto p-2 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Novo Agendamento</DialogTitle>
-          </DialogHeader>
-          <AgendamentoForm
-            open={openForm}
-            onOpenChange={setOpenForm}
-            horarioInicial={selectedHorario || ""}
-            barbeiroInicial={selectedBarber || ""}
-            dataInicial={date}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={openIndisponivelForm} onOpenChange={setOpenIndisponivelForm}>
-        <DialogContent className="max-w-2xl h-[90vh] max-h-[90vh] overflow-y-auto p-2 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Registrar Indisponibilidade</DialogTitle>
-          </DialogHeader>
-          {selectedBarbeiroIndisponivel && (
-            <IndisponivelForm
-              barbeiroId={selectedBarbeiroIndisponivel.id}
-              barbeiroName={selectedBarbeiroIndisponivel.name}
-              onOpenChange={setOpenIndisponivelForm}
-            />
-          )}
-        </DialogContent>
+        <AgendamentoForm
+          open={openForm}
+          onOpenChange={setOpenForm}
+          horarioInicial={selectedHorario || ""}
+          barbeiroInicial={selectedBarber || ""}
+          dataInicial={date}
+        />
       </Dialog>
     </div>
   );

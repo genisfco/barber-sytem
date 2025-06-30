@@ -367,7 +367,8 @@ export function AgendamentoForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] p-4 max-h-[90vh] overflow-y-auto">
+      
+      <DialogContent className="max-w-3xl max-h-[120vh] overflow-y-auto bg-secondary">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-center">
             {agendamentoParaEditar ? "Editar Agendamento" : "Novo Agendamento"}
