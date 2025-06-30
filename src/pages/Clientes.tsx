@@ -249,7 +249,7 @@ const Clientes = () => {
                 Novo Cliente
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
               <DialogHeader>
                 <DialogTitle>
                   {selectedClient ? "Editar Cliente" : "Cadastrar Novo Cliente"}

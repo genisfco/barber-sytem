@@ -196,7 +196,7 @@ const Barbeiros = () => {
               Novo Barbeiro
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
             <DialogHeader>
               <DialogTitle>
                 {selectedBarber ? "Editar Barbeiro" : "Cadastrar Novo Barbeiro"}

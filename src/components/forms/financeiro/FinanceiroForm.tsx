@@ -113,8 +113,8 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog  open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
         <DialogHeader>
           <DialogTitle>
             {transacao

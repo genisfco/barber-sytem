@@ -128,7 +128,7 @@ const Produtos = () => {
                 Novo Produto
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
               <DialogHeader>
                 <DialogTitle>
                   {selectedProduto ? "Editar Produto" : "Cadastrar Novo Produto"}

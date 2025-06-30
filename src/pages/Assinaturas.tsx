@@ -1644,7 +1644,7 @@ const Assinaturas = () => {
             <DialogTrigger asChild>
               <Button><Plus className="mr-2 h-4 w-4" />Nova Adesão</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
               <DialogHeader>
                 <DialogTitle>Nova Adesão de Assinatura</DialogTitle>
               </DialogHeader>
@@ -1924,7 +1924,7 @@ const Assinaturas = () => {
 
       {/* Modal de pagamento */}
       <Dialog open={openPagamento} onOpenChange={(v) => { setOpenPagamento(v); if (!v) { setAssinaturaParaPagamento(null); resetPagamento(); } }}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
           <DialogHeader>
             <DialogTitle>Registrar Pagamento de Assinatura</DialogTitle>
           </DialogHeader>

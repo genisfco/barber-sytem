@@ -142,7 +142,7 @@ export function VenderProdutosForm({
   }
 
   return (
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
       <DialogHeader>
         <DialogTitle>Vender Produtos</DialogTitle>
         <DialogDescription>

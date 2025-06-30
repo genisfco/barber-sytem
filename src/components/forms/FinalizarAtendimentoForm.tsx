@@ -440,7 +440,7 @@ export function FinalizarAtendimentoForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-secondary">
         <DialogHeader>
           <DialogTitle>Finalização e Checklist de Atendimento</DialogTitle>
         </DialogHeader>
