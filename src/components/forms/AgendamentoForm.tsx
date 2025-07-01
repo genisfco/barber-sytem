@@ -138,6 +138,18 @@ export function AgendamentoForm({
     }
   }, [agendamentoParaEditar, form]);
 
+  // Atualiza os valores do formulário quando as props iniciais mudam
+  useEffect(() => {
+    if (!agendamentoParaEditar) {
+      form.setValue('barbeiroId', barbeiroInicial || '');
+      form.setValue('horario', horarioInicial || '');
+      if (dataInicial) {
+        form.setValue('data', dataInicial);
+        setDataSelecionada(dataInicial);
+      }
+    }
+  }, [horarioInicial, barbeiroInicial, dataInicial, agendamentoParaEditar, form]);
+
   const formatarPreco = (preco: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -385,7 +397,7 @@ export function AgendamentoForm({
                     <FormLabel>Cliente *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -412,7 +424,7 @@ export function AgendamentoForm({
                     <FormLabel>Barbeiro *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>

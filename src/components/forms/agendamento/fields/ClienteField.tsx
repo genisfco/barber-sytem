@@ -19,7 +19,7 @@ export function ClienteField({ form }: ClienteFieldProps) {
       render={({ field }) => (
         <FormItem>
           <FormLabel>Cliente</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <Select onValueChange={field.onChange} value={field.value}>
             <FormControl>
               <SelectTrigger className="truncate">
                 <SelectValue placeholder="Selecione o cliente" />
