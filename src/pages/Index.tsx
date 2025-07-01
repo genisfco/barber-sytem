@@ -78,7 +78,7 @@ const Index = () => {
       }
       
       // Ou se for um horário futuro
-      const [hours, minutes] = agendamento.time.split(':').map(Number);
+      const [hours, minutes] = agendamento.time.split(':');
       const agendamentoTime = new Date();
       agendamentoTime.setHours(parseInt(hours), parseInt(minutes), 0);
       return agendamentoTime > today;
@@ -214,6 +214,7 @@ const Index = () => {
     const minutoAtual = agora.getMinutes();
     
     // Determinar o horário de agendamento atual (arredondando para 00 ou 30 mais próximo)
+    // Se minutos < 30, estamos no intervalo XX:00, senão estamos no intervalo XX:30
     const intervaloAtual = minutoAtual < 30 ? '00' : '30';
     const horarioAtualAgenda = `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
     
@@ -227,119 +228,63 @@ const Index = () => {
       a => a.barber_id === barbeiroId
     ) || [];
     
-    // Função para calcular quando um agendamento termina baseado na duração dos serviços
-    const calcularFimAgendamento = (agendamento: any) => {
-      if (!agendamento.servicos || agendamento.servicos.length === 0) {
-        const [hora, minuto] = agendamento.time.split(':').map(Number);
-        const fim = new Date();
-        fim.setHours(hora, minuto + 30 - 1, 0, 0); // subtrai 1 minuto
-        return fim;
-      }
-      const duracaoTotal = agendamento.servicos.reduce((sum: number, servico: any) => {
-        return sum + (servico.service_duration || 0);
-      }, 0);
-      if (duracaoTotal === 0) {
-        const [hora, minuto] = agendamento.time.split(':').map(Number);
-        const fim = new Date();
-        fim.setHours(hora, minuto + 30 - 1, 0, 0); // subtrai 1 minuto
-        return fim;
-      }
-      const [hora, minuto] = agendamento.time.split(':').map(Number);
-      const fim = new Date();
-      fim.setHours(hora, minuto + duracaoTotal - 1, 0, 0); // subtrai 1 minuto
-      return fim;
-    };
+    // Encontrar o agendamento atual
+    const agendamentoAtual = agendamentosBarbeiro.find(
+      a => a.time.startsWith(horarioAtualAgenda)
+    );
     
-    // Encontrar o agendamento atual (que está ativo no momento)
-    const agendamentoAtual = agendamentosBarbeiro.find(agendamento => {
-      if (agendamento.status === 'cancelado') return false;
-      const fimAgendamento = calcularFimAgendamento(agendamento);
-      const inicioAgendamento = new Date();
-      const [hora, minuto] = agendamento.time.split(':').map(Number);
-      inicioAgendamento.setHours(hora, minuto, 0, 0);
-      return agora >= inicioAgendamento && agora < fimAgendamento;
-    });
-
-    // Calcular o fim do agendamento atual (se houver)
-    let fimAgendamentoAtual: Date | null = null;
-    if (agendamentoAtual) {
-      fimAgendamentoAtual = calcularFimAgendamento(agendamentoAtual);
-    }
-
-    // Determinar status atual
-    let statusAtual;
-    if (!agendamentoAtual) {
-      statusAtual = { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' };
-    } else {
-      switch (agendamentoAtual.status) {
-        case 'pendente':
-          statusAtual = { texto: 'Aguardando confirmação', cor: 'text-orange-600', bgCor: 'bg-orange-500' };
-          break;
-        case 'confirmado':
-          statusAtual = { texto: 'Em atendimento', cor: 'text-yellow-600', bgCor: 'bg-yellow-500' };
-          break;
-        case 'atendido':
-          statusAtual = { texto: 'Cliente atendido', cor: 'text-purple-600', bgCor: 'bg-purple-500' };
-          break;
-        default:
-          statusAtual = { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' };
-      }
-    }
-
-    // Determinar próximo status
-    let proximoStatus;
-    let proximoHorario = proximoHorarioAgenda;
-    if (fimAgendamentoAtual) {
-      // Use a mesma data do fim do atendimento para o próximo slot
-      const proximoSlotDate = new Date(fimAgendamentoAtual);
-      proximoSlotDate.setHours(proximaHora, proximoIntervalo === '30' ? 30 : 0, 0, 0);
-      
-      if (proximoSlotDate < fimAgendamentoAtual) {
-        proximoStatus = statusAtual;
-        // Ajusta o próximo horário para o fim real do atendimento, arredondando para o próximo slot de 30 minutos
-        const fim = new Date(fimAgendamentoAtual);
-        fim.setMinutes(Math.ceil(fim.getMinutes() / 30) * 30);
-        fim.setSeconds(0, 0);
-        proximoHorario = `${fim.getHours().toString().padStart(2, '0')}:${fim.getMinutes().toString().padStart(2, '0')}`;
-      } else {
-        // Se o próximo slot for IGUAL ou depois do fim do atendimento, mostra "Disponível"
-        proximoStatus = { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' };
-      }
-    } else {
-      // Lógica antiga para o próximo agendamento
-      // Encontrar o próximo agendamento futuro
-      const agendamentosOrdenados = agendamentosBarbeiro
-        .filter(a => a.status !== 'cancelado')
+    // Encontrar próximo agendamento
+    let agendamentoProximo = agendamentosBarbeiro.find(
+      a => a.time.startsWith(proximoHorarioAgenda)
+    );
+    
+    // Se não encontrar, procure outros horários futuros
+    if (!agendamentoProximo) {
+      const horariosAgendados = agendamentosBarbeiro
+        .filter(a => {
+          // Extrair apenas hora e minuto para comparação
+          const horarioAgendamento = a.time.substring(0, 5);
+          
+          // Verificar se é um horário futuro
+          if (minutoAtual < 30) {
+            // Se estamos no intervalo XX:00-XX:29
+            return (horarioAgendamento > horarioAtualAgenda);
+          } else {
+            // Se estamos no intervalo XX:30-XX:59
+            return (horarioAgendamento > horarioAtualAgenda);
+          }
+        })
         .sort((a, b) => a.time.localeCompare(b.time));
-      let agendamentoProximo = null;
-      for (const agendamento of agendamentosOrdenados) {
-        const [hora, minuto] = agendamento.time.split(':').map(Number);
-        const horarioAgendamento = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
-        if (horarioAgendamento > horarioAtualAgenda) {
-          agendamentoProximo = agendamento;
-          break;
-        }
-      }
-      if (!agendamentoProximo) {
-        proximoStatus = { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' };
-      } else {
-        switch (agendamentoProximo.status) {
-          case 'pendente':
-            proximoStatus = { texto: 'Aguardando confirmação', cor: 'text-orange-600', bgCor: 'bg-orange-500' };
-            break;
-          case 'confirmado':
-            proximoStatus = { texto: 'Aguardando cliente', cor: 'text-blue-600', bgCor: 'bg-blue-500' };
-            break;
-          default:
-            proximoStatus = { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' };
-        }
+      
+      if (horariosAgendados.length > 0) {
+        agendamentoProximo = horariosAgendados[0];
       }
     }
-
+    
+    // Determinar status atual
+    const statusAtual = !agendamentoAtual 
+      ? { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }
+      : agendamentoAtual.status === 'pendente'
+        ? { texto: 'Aguardando confirmação', cor: 'text-orange-600', bgCor: 'bg-orange-500' }
+        : agendamentoAtual.status === 'confirmado'
+          ? { texto: 'Em atendimento', cor: 'text-yellow-600', bgCor: 'bg-yellow-500' }
+          : agendamentoAtual.status === 'atendido'
+            ? { texto: 'Cliente atendido', cor: 'text-purple-600', bgCor: 'bg-purple-500' }
+            : { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }; // cancelado ou outros status
+    
+    // Determinar próximo status
+    const proximoStatus = !agendamentoProximo
+      ? { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }
+      : agendamentoProximo.status === 'pendente'
+        ? { texto: 'Aguardando confirmação', cor: 'text-orange-600', bgCor: 'bg-orange-500' }
+        : agendamentoProximo.status === 'confirmado'
+          ? { texto: 'Aguardando cliente', cor: 'text-blue-600', bgCor: 'bg-blue-500' }
+          : { texto: 'Disponível', cor: 'text-green-600', bgCor: 'bg-green-500' }; // cancelado ou outros status
+    
     return {
       horarioAtual: horarioAtualAgenda,
       statusAtual,
-      proximoHorario,
+      proximoHorario: agendamentoProximo ? agendamentoProximo.time.substring(0, 5) : proximoHorarioAgenda,
       proximoStatus
     };
   };
