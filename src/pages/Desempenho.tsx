@@ -1,30 +1,28 @@
 import { ChartContainer } from "@/components/ui/chart";
 import { Card } from "@/components/ui/card";
-import { useAgendamentos } from "@/hooks/useAgendamentos";
+import { useDesempenhos } from "@/hooks/useDesempenhos";
 import { useTransacoes } from "@/hooks/useTransacoes";
 import { useBarbers } from "@/hooks/useBarbers";
 import { useClientes } from "@/hooks/useClientes";
 import { useEffect, useState, useMemo } from "react";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDate, getDaysInMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDate, getDaysInMonth, format as formatDateFns } from "date-fns";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ptBR } from "date-fns/locale";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const STATUS_COLORS = {
   atendido: "#7c3aed",
   confirmado: "#22c55e",
   pendente: "#eab308",
-  cancelado: "#ef4444",
-  indisponivel: "#64748b",
-  liberado: "#0ea5e9"
+  cancelado: "#ef4444"
 };
 
 const ALL_STATUS = [
   'atendido',
   'confirmado',
   'pendente',
-  'cancelado',
-  'indisponivel',
-  'liberado'
+  'cancelado'
 ];
 
 function filtrarPorPeriodo(agendamentos, inicio, fim) {
@@ -57,27 +55,79 @@ function formatMoney(value) {
 
 const Desempenho = () => {
   const today = new Date();
-  const { agendamentos = [] } = useAgendamentos();
+  const { agendamentos = [], isLoading, filtrarPorPeriodo, agruparPorStatus, barbeiroMaisAtendimentos, ticketMedio, ticketMedioAgendamento } = useDesempenhos();
   const { transacoes = [] } = useTransacoes();
   const { barbers = [] } = useBarbers();
   const { clientes = [] } = useClientes();
   const [dataAtual, setDataAtual] = useState(new Date());
+
+  // Estados de offset para navegação
+  const [semanaOffset, setSemanaOffset] = useState(0);
+  const [quinzenaOffset, setQuinzenaOffset] = useState(0);
+  const [mesOffset, setMesOffset] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => setDataAtual(new Date()), 1000 * 60);
     return () => clearInterval(timer);
   }, []);
 
-  // Períodos
-  const semanaInicio = startOfWeek(today, { weekStartsOn: 1 });
-  const semanaFim = endOfWeek(today, { weekStartsOn: 1 });
-  const mesInicio = startOfMonth(today);
-  const mesFim = endOfMonth(today);
-  const diaHoje = getDate(today);
-  const diasNoMes = getDaysInMonth(today);
-  // Quinzena: 1-15 ou 16-fim
-  const quinzenaInicio = diaHoje <= 15 ? new Date(today.getFullYear(), today.getMonth(), 1) : new Date(today.getFullYear(), today.getMonth(), 16);
-  const quinzenaFim = diaHoje <= 15 ? new Date(today.getFullYear(), today.getMonth(), 15) : mesFim;
+  // Funções para calcular períodos com offset
+  function getSemanaComOffset(offset) {
+    const base = new Date(today);
+    base.setDate(base.getDate() + offset * 7);
+    const inicio = startOfWeek(base, { weekStartsOn: 1 });
+    const fim = endOfWeek(base, { weekStartsOn: 1 });
+    return { inicio, fim };
+  }
+  function getMesComOffset(offset) {
+    const base = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+    const inicio = startOfMonth(base);
+    const fim = endOfMonth(base);
+    return { inicio, fim };
+  }
+  function getQuinzenaComOffset(offset) {
+    // Quinzena: 1-15 ou 16-fim
+    // offset 0 = quinzena atual, -1 = anterior, +1 = próxima (não pode passar de 0)
+    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let quinzenaBase = 0;
+    if (base.getDate() > 15) quinzenaBase = 1;
+    let totalOffset = quinzenaBase + offset;
+    let ano = base.getFullYear();
+    let mes = base.getMonth();
+    while (totalOffset < 0) {
+      mes--;
+      if (mes < 0) {
+        mes = 11;
+        ano--;
+      }
+      totalOffset += 2;
+    }
+    while (totalOffset > 1) {
+      mes++;
+      if (mes > 11) {
+        mes = 0;
+        ano++;
+      }
+      totalOffset -= 2;
+    }
+    const diasNoMes = getDaysInMonth(new Date(ano, mes));
+    if (totalOffset === 0) {
+      return {
+        inicio: new Date(ano, mes, 1),
+        fim: new Date(ano, mes, 15),
+      };
+    } else {
+      return {
+        inicio: new Date(ano, mes, 16),
+        fim: new Date(ano, mes, diasNoMes),
+      };
+    }
+  }
+
+  // Períodos com offset
+  const { inicio: semanaInicio, fim: semanaFim } = getSemanaComOffset(semanaOffset);
+  const { inicio: mesInicio, fim: mesFim } = getMesComOffset(mesOffset);
+  const { inicio: quinzenaInicio, fim: quinzenaFim } = getQuinzenaComOffset(quinzenaOffset);
 
   // Agendamentos filtrados
   const agendamentosSemana = useMemo(() => filtrarPorPeriodo(agendamentos, semanaInicio, semanaFim), [agendamentos, semanaInicio, semanaFim]);
@@ -89,46 +139,16 @@ const Desempenho = () => {
   const statusQuinzena = useMemo(() => agruparPorStatus(agendamentosQuinzena), [agendamentosQuinzena]);
   const statusMes = useMemo(() => agruparPorStatus(agendamentosMes), [agendamentosMes]);
 
-  // Faturamento por período
-  function faturamentoPorPeriodo(transacoes, inicio, fim) {
-    return transacoes.filter(t => t.type === "receita" && t.payment_date >= format(inicio, "yyyy-MM-dd") && t.payment_date <= format(fim, "yyyy-MM-dd")).reduce((acc, t) => acc + Number(t.value), 0);
+  // Faturamento por período (usando agendamentos atendidos)
+  function faturamentoBruto(agendamentos) {
+    return agendamentos.filter(a => a.status === "atendido").reduce((acc, a) => acc + Number(a.final_price), 0);
   }
-  const faturamentoSemana = faturamentoPorPeriodo(transacoes, semanaInicio, semanaFim);
-  const faturamentoQuinzena = faturamentoPorPeriodo(transacoes, quinzenaInicio, quinzenaFim);
-  const faturamentoMes = faturamentoPorPeriodo(transacoes, mesInicio, mesFim);
+  const faturamentoSemana = faturamentoBruto(agendamentosSemana);
+  const faturamentoQuinzena = faturamentoBruto(agendamentosQuinzena);
+  const faturamentoMes = faturamentoBruto(agendamentosMes);
 
-  // Barbeiro com mais atendimentos
-  function barbeiroMaisAtendimentos(agendamentos) {
-    const counts = agendamentos.filter(a => a.status === "atendido").reduce((acc, a) => {
-      acc[a.barber_id] = (acc[a.barber_id] || 0) + 1;
-      return acc;
-    }, {});
-    const values = Object.values(counts).map(Number);
-    const max = values.length ? Math.max(...values) : 0;
-    const id = Object.keys(counts).find(key => Number(counts[key]) === max);
-    const barbeiro = barbers.find(b => b.id === id);
-    return barbeiro ? `${barbeiro.name} (${max})` : "-";
-  }
-
-  // Ticket médio por cliente
-  function ticketMedio(agendamentos) {
-    const atendidos = agendamentos.filter(a => a.status === "atendido");
-    if (!atendidos.length) return 0;
-    const total = atendidos.reduce((acc, a) => acc + Number(a.final_price), 0);
-    const clientesUnicos = new Set(atendidos.map(a => a.client_id)).size;
-    return clientesUnicos ? total / clientesUnicos : 0;
-  }
-
-  // Ticket médio por agendamento
-  function ticketMedioAgendamento(agendamentos) {
-    const atendidos = agendamentos.filter(a => a.status === "atendido");
-    if (!atendidos.length) return 0;
-    const total = atendidos.reduce((acc, a) => acc + Number(a.final_price), 0);
-    return total / atendidos.length;
-  }
-
-  // Componente de gráfico de pizza
-  function PizzaStatus({ data }) {
+  // Componente de gráfico de barras horizontais
+  function BarrasStatus({ data }) {
     const total = data.reduce((sum, item) => sum + item.value, 0);
     if (total === 0) {
       return (
@@ -138,17 +158,30 @@ const Desempenho = () => {
       );
     }
     return (
-      <ResponsiveContainer width="100%" height={250}>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name}: ${percent}%`}>
-            {data.map((entry, idx) => (
-              <Cell key={`cell-${entry.status}`} fill={STATUS_COLORS[entry.status] || "#8884d8"} />
-            ))}
-          </Pie>
-          <Tooltip formatter={(value, name, props) => [`${value} (${props.payload.percent}%)`, name]} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
+      <div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis type="number" allowDecimals={false} />
+            <YAxis 
+              dataKey="name" 
+              type="category" 
+              width={100}
+              tick={{ fill: '#e5e7eb', fontWeight: 500 }}
+            />
+            <Tooltip formatter={(value, name, props) => [`${value} (${props.payload.percent}%)`, name]} />
+            <Bar dataKey="value" isAnimationActive fill="#7c3aed">
+              {data.map((entry, idx) => (
+                <Cell key={`cell-${entry.status}`} fill={STATUS_COLORS[entry.status] || "#8884d8"} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     );
   }
 
@@ -167,42 +200,112 @@ const Desempenho = () => {
     return `(${format(inicio, 'dd/MM/yyyy')} - ${format(fim, 'dd/MM/yyyy')})`;
   }
 
+  // Função para obter o nome do mês
+  function nomeMes(data) {
+    return formatDateFns(data, "MMMM yyyy", { locale: ptBR });
+  }
+
+  // Funções para navegação
+  const podeAvancarSemana = semanaOffset < 0;
+  const podeAvancarQuinzena = quinzenaOffset < 0;
+  const podeAvancarMes = mesOffset < 0;
+
   return (
     <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
       {/* <h1 className="text-2xl font-bold mb-6">Desempenho da Barbearia</h1> */}
       <div className="space-y-8">
-        {/* Semana atual */}
+        {/* Semana */}
         <Card className="p-6 bg-secondary border-none">
-          <h2 className="text-lg font-semibold mb-4">Semana Atual <span className="text-sm font-normal text-muted-foreground">{periodoFormatado(semanaInicio, semanaFim)}</span></h2>
-          <div className="flex gap-8 mb-4 flex-wrap">
-            <MetricCard title="Faturamento" value={formatMoney(faturamentoSemana)} />
-            <MetricCard title="Barbeiro com mais atendimentos" value={barbeiroMaisAtendimentos(agendamentosSemana)} />
+          <div className="flex items-center justify-between mb-4">
+            <button
+              className="p-1 hover:bg-accent rounded disabled:opacity-50"
+              onClick={() => setSemanaOffset((o) => o - 1)}
+              aria-label="Semana anterior"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-lg font-semibold">
+              Semana
+              <span className="text-sm font-normal text-foreground ml-2">{periodoFormatado(semanaInicio, semanaFim)}</span>
+            </h2>
+            <button
+              className="p-1 hover:bg-accent rounded disabled:opacity-50"
+              onClick={() => setSemanaOffset((o) => o + 1)}
+              aria-label="Semana seguinte"
+              disabled={!podeAvancarSemana}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="flex gap-8 mb-4 flex-wrap justify-center items-center text-center">
+            <MetricCard title="Faturamento Bruto" value={formatMoney(faturamentoSemana)} />
+            <MetricCard title="Barbeiro com mais atendimentos" value={barbeiroMaisAtendimentos(agendamentosSemana, barbers)} />
             <MetricCard title="Ticket médio por cliente" value={formatMoney(ticketMedio(agendamentosSemana))} />
             <MetricCard title="Ticket médio por agendamento" value={formatMoney(ticketMedioAgendamento(agendamentosSemana))} />
           </div>
-          <PizzaStatus data={statusSemana} />
+          <BarrasStatus data={statusSemana} />
         </Card>
-        {/* Quinzena atual */}
+        {/* Quinzena */}
         <Card className="p-6 bg-secondary border-none">
-          <h2 className="text-lg font-semibold mb-4">Quinzena Atual <span className="text-sm font-normal text-muted-foreground">{periodoFormatado(quinzenaInicio, quinzenaFim)}</span></h2>
-          <div className="flex gap-8 mb-4 flex-wrap">
-            <MetricCard title="Faturamento" value={formatMoney(faturamentoQuinzena)} />
-            <MetricCard title="Barbeiro com mais atendimentos" value={barbeiroMaisAtendimentos(agendamentosQuinzena)} />
+          <div className="flex items-center justify-between mb-4">
+            <button
+              className="p-1 hover:bg-accent rounded disabled:opacity-50"
+              onClick={() => setQuinzenaOffset((o) => o - 1)}
+              aria-label="Quinzena anterior"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-lg font-semibold">
+              Quinzena
+              <span className="text-sm font-normal text-foreground ml-2">{periodoFormatado(quinzenaInicio, quinzenaFim)}</span>
+            </h2>
+            <button
+              className="p-1 hover:bg-accent rounded disabled:opacity-50"
+              onClick={() => setQuinzenaOffset((o) => o + 1)}
+              aria-label="Quinzena seguinte"
+              disabled={!podeAvancarQuinzena}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="flex gap-8 mb-4 flex-wrap justify-center items-center text-center">
+            <MetricCard title="Faturamento Bruto" value={formatMoney(faturamentoQuinzena)} />
+            <MetricCard title="Barbeiro com mais atendimentos" value={barbeiroMaisAtendimentos(agendamentosQuinzena, barbers)} />
             <MetricCard title="Ticket médio por cliente" value={formatMoney(ticketMedio(agendamentosQuinzena))} />
             <MetricCard title="Ticket médio por agendamento" value={formatMoney(ticketMedioAgendamento(agendamentosQuinzena))} />
           </div>
-          <PizzaStatus data={statusQuinzena} />
+          <BarrasStatus data={statusQuinzena} />
         </Card>
-        {/* Mês atual */}
+        {/* Mês */}
         <Card className="p-6 bg-secondary border-none">
-          <h2 className="text-lg font-semibold mb-4">Mês Atual <span className="text-sm font-normal text-muted-foreground">{periodoFormatado(mesInicio, mesFim)}</span></h2>
-          <div className="flex gap-8 mb-4 flex-wrap">
-            <MetricCard title="Faturamento" value={formatMoney(faturamentoMes)} />
-            <MetricCard title="Barbeiro com mais atendimentos" value={barbeiroMaisAtendimentos(agendamentosMes)} />
+          <div className="flex items-center justify-between mb-4">
+            <button
+              className="p-1 hover:bg-accent rounded disabled:opacity-50"
+              onClick={() => setMesOffset((o) => o - 1)}
+              aria-label="Mês anterior"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-lg font-semibold">
+              {nomeMes(mesInicio)}
+              {/* <span className="text-sm font-normal text-muted-foreground ml-2">{periodoFormatado(mesInicio, mesFim)}</span> */}
+            </h2>
+            <button
+              className="p-1 hover:bg-accent rounded disabled:opacity-50"
+              onClick={() => setMesOffset((o) => o + 1)}
+              aria-label="Mês seguinte"
+              disabled={!podeAvancarMes}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="flex gap-8 mb-4 flex-wrap justify-center items-center text-center">
+            <MetricCard title="Faturamento Bruto" value={formatMoney(faturamentoMes)} />
+            <MetricCard title="Barbeiro com mais atendimentos" value={barbeiroMaisAtendimentos(agendamentosMes, barbers)} />
             <MetricCard title="Ticket médio por cliente" value={formatMoney(ticketMedio(agendamentosMes))} />
             <MetricCard title="Ticket médio por agendamento" value={formatMoney(ticketMedioAgendamento(agendamentosMes))} />
           </div>
-          <PizzaStatus data={statusMes} />
+          <BarrasStatus data={statusMes} />
         </Card>
       </div>
     </div>
