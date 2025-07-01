@@ -39,6 +39,7 @@ export function Sidebar() {
     { href: "/produtos", label: "Produtos", icon: Package },
     { href: "/assinaturas", label: "Assinaturas", icon: CreditCard },
     { href: "/financeiro", label: "Financeiro", icon: DollarSign },
+    // { href: "/desempenho", label: "Desempenho", icon: TrendingUp },
     { href: "/relatorio-mensal", label: "Relatório Mensal", icon: BarChart },
     { href: "/relatorio-anual", label: "Relatório Anual", icon: TrendingUp },
     { href: "/configuracoes-barbearia", label: "Configurações", icon: Settings },

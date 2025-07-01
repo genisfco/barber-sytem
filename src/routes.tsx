@@ -28,6 +28,7 @@ import CadastroBarbearia from "./pages/CadastroBarbearia.tsx";
 import ConfiguracoesBarbearia from "./pages/ConfiguracoesBarbearia.tsx";
 import { RequestResetPassword } from "./pages/auth/RequestResetPassword";
 import { VerifyCodeAndReset } from "./pages/auth/VerifyCodeAndReset";
+import Desempenho from "./pages/Desempenho";
 
 const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading: isAuthLoading } = useAuth();
@@ -42,7 +43,7 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
     if (isAuthLoading) {
       const timeout = setTimeout(() => {
         setLoadingTimeout(true);
-      }, 5000); // 10 segundos
+      }, 5000); // 5 segundos
 
       return () => clearTimeout(timeout);
     } else {
@@ -251,6 +252,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <ConfiguracoesBarbearia />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/desempenho"
+        element={
+          <ProtectedRoute>
+            <Desempenho />
           </ProtectedRoute>
         }
       />
