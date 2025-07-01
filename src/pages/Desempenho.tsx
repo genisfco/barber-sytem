@@ -9,7 +9,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, getDate, getD
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ptBR } from "date-fns/locale";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis } from "recharts";
 
 const STATUS_COLORS = {
   atendido: "#7c3aed",
@@ -165,16 +165,34 @@ const Desempenho = () => {
             layout="vertical"
             margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
+            {/* <CartesianGrid strokeDasharray="3 3" /> */}
             <XAxis type="number" allowDecimals={false} />
             <YAxis 
               dataKey="name" 
               type="category" 
               width={100}
-              tick={{ fill: '#e5e7eb', fontWeight: 500 }}
+              tick={{ fill: '#e5e7eb', fontWeight: 200, fontSize: 12 }}
             />
-            <Tooltip formatter={(value, name, props) => [`${value} (${props.payload.percent}%)`, name]} />
-            <Bar dataKey="value" isAnimationActive fill="#7c3aed">
+            <Tooltip 
+              formatter={(value, name, props) => [`${value} (${props.payload.percent}%)`]} 
+            />
+            <Bar dataKey="value" isAnimationActive fill="#7c3aed"
+              label={({ x, y, width, height, value, index }) => {
+                const entry = data[index];
+                const color = STATUS_COLORS[entry.status] || '#8884d8';
+                return (
+                  <text
+                    x={x + width + 8}
+                    y={y + height / 2}
+                    fill={color}
+                    fontWeight={600}
+                    alignmentBaseline="middle"
+                  >
+                    {value}
+                  </text>
+                );
+              }}
+            >
               {data.map((entry, idx) => (
                 <Cell key={`cell-${entry.status}`} fill={STATUS_COLORS[entry.status] || "#8884d8"} />
               ))}
