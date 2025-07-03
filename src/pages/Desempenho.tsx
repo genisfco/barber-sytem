@@ -10,6 +10,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recha
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis } from "recharts";
+import { Tooltip as RechartsTooltip } from "recharts";
 
 const STATUS_COLORS = {
   atendido: "#7c3aed",
@@ -157,6 +158,17 @@ const Desempenho = () => {
         </div>
       );
     }
+    // Tooltip customizado
+    function CustomTooltip({ active, payload }) {
+      if (active && payload && payload.length) {
+        return (
+          <div style={{ background: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 13, color: '#222', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {payload[0].payload.percent}%
+          </div>
+        );
+      }
+      return null;
+    }
     return (
       <div>
         <ResponsiveContainer width="100%" height={180}>
@@ -173,9 +185,7 @@ const Desempenho = () => {
               width={100}
               tick={{ fill: '#e5e7eb', fontWeight: 200, fontSize: 12 }}
             />
-            <Tooltip 
-              formatter={(value, name, props) => [`${value} (${props.payload.percent}%)`]} 
-            />
+            <RechartsTooltip content={CustomTooltip} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
             <Bar dataKey="value" isAnimationActive fill="#7c3aed"
               label={({ x, y, width, height, value, index }) => {
                 const entry = data[index];
