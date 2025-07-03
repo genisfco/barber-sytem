@@ -38,7 +38,7 @@ const Servicos = () => {
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [isSemComissao, setIsSemComissao] = useState(true); // padrão: sem comissão
-  const { register, handleSubmit, reset, setValue, control, watch } = useForm<ServicoFormData>({
+  const { register, handleSubmit, reset, setValue, control, watch, formState: { errors } } = useForm<ServicoFormData>({
     defaultValues: {
       has_commission: false, // padrão: sem comissão
     }
@@ -62,6 +62,15 @@ const Servicos = () => {
       payload.commission_value = null;
       payload.commission_extra_type = null;
       payload.commission_extra_value = null;
+    } else {
+      if (!payload.commission_type || payload.commission_type === "") {
+        payload.commission_type = null;
+        payload.commission_value = null;
+      }
+      if (!payload.commission_extra_type || payload.commission_extra_type === "") {
+        payload.commission_extra_type = null;
+        payload.commission_extra_value = null;
+      }
     }
     if (selectedServico) {
       await updateServico.mutateAsync({
@@ -74,11 +83,6 @@ const Servicos = () => {
     setOpen(false);
     setSelectedServico(null);
     reset();
-  };
-
-  const onSubmitWithResumo = (data: ServicoFormData) => {
-    setPendingFormData(data);
-    setShowResumoDialog(true);
   };
 
   const handleEdit = (servico: Servico) => {
@@ -257,7 +261,10 @@ const Servicos = () => {
                 {selectedServico ? "Editar Serviço" : "Cadastrar Novo Serviço"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmitWithResumo)} className="space-y-4">
+            <form onSubmit={handleSubmit((data) => {
+              setPendingFormData(data);
+              setShowResumoDialog(true);
+            })} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome do serviço</Label>
                 <Input
@@ -340,9 +347,24 @@ const Servicos = () => {
                   type="number"
                   step="0.01"
                   placeholder="Ex: 30 para 30% ou 10 para R$10,00"
-                  {...register("commission_value", { valueAsNumber: true })}
+                  {...register("commission_value", {
+                    valueAsNumber: true,
+                    validate: (value) => {
+                      if (
+                        !isSemComissao &&
+                        (watchCommissionType === "percentual" || watchCommissionType === "fixo") &&
+                        (!value || isNaN(value) || value <= 0)
+                      ) {
+                        return "Preencha um valor maior que zero para a comissão";
+                      }
+                      return true;
+                    }
+                  })}
                   disabled={isSemComissao || !watchCommissionType || watchCommissionType === ''}
                 />
+                {errors.commission_value && (
+                  <span className="text-red-500 text-xs">{errors.commission_value.message}</span>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="commission_extra_type">Tipo de Adicional</Label>
@@ -365,9 +387,24 @@ const Servicos = () => {
                   type="number"
                   step="0.01"
                   placeholder="Ex: 10 para 10% ou 5 para R$5,00"
-                  {...register("commission_extra_value", { valueAsNumber: true })}
+                  {...register("commission_extra_value", {
+                    valueAsNumber: true,
+                    validate: (value) => {
+                      if (
+                        !isSemComissao &&
+                        (watchCommissionExtraType === "percentual" || watchCommissionExtraType === "fixo") &&
+                        (!value || isNaN(value) || value <= 0)
+                      ) {
+                        return "Preencha um valor maior que zero para o adicional";
+                      }
+                      return true;
+                    }
+                  })}
                   disabled={isSemComissao || !watchCommissionExtraType || watchCommissionExtraType === ''}
                 />
+                {errors.commission_extra_value && (
+                  <span className="text-red-500 text-xs">{errors.commission_extra_value.message}</span>
+                )}
               </div>
               {(preview.detalhes.length > 0 || preview.texto) && (
                 <div className="bg-muted p-3 rounded-lg text-sm mt-2">
