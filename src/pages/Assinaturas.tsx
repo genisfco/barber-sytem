@@ -431,6 +431,39 @@ const Assinaturas = () => {
         .eq("barber_shop_id", selectedBarberShop.id);
       if (error) throw error;
 
+      // --- NOVO: Remover benefícios antigos que não estão mais presentes ---
+      // Buscar benefícios atuais do plano
+      const { data: beneficiosAtuais, error: errorBuscaBeneficios } = await supabase
+        .from("subscription_plan_benefits")
+        .select("id, service_id, product_id")
+        .eq("subscription_plan_id", data.id);
+      if (errorBuscaBeneficios) throw errorBuscaBeneficios;
+
+      // IDs dos benefícios que devem permanecer (do formulário)
+      const idsServicosNovos = Object.keys(data.service_benefits || {}).filter(
+        (id) => data.service_benefits[id].type !== ""
+      );
+      const idsProdutosNovos = Object.keys(data.product_benefits || {}).filter(
+        (id) => data.product_benefits[id].type !== ""
+      );
+
+      // Identificar benefícios a remover
+      const idsParaRemover = (beneficiosAtuais || []).filter((beneficio) => {
+        if (beneficio.service_id && !idsServicosNovos.includes(beneficio.service_id)) return true;
+        if (beneficio.product_id && !idsProdutosNovos.includes(beneficio.product_id)) return true;
+        return false;
+      }).map((b) => b.id);
+
+      // Deletar benefícios removidos
+      if (idsParaRemover.length > 0) {
+        const { error: errorDelete } = await supabase
+          .from("subscription_plan_benefits")
+          .delete()
+          .in("id", idsParaRemover);
+        if (errorDelete) throw errorDelete;
+      }
+      // --- FIM NOVO ---
+
       // Inserir benefícios de serviços (reutilizando lógica da mutação de criação)
       if (data.service_benefits) {
         const serviceBenefits = Object.entries(data.service_benefits)
