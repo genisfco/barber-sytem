@@ -29,8 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ProdutoFormData = Omit<Produto, "id" | "created_at" | "updated_at" | "active"> & {
-  commission_type?: 'percentual' | 'fixo' | '' | null;
-  commission_extra_type?: 'percentual' | 'fixo' | '' | null;
+  bonus_type?: 'percentual' | 'fixo' | null;
 };
 
 const Produtos = () => {
@@ -46,91 +45,51 @@ const Produtos = () => {
     }
   });
   const { produtos, isLoading, createProduto, updateProduto, toggleProdutoStatus } = useProdutosAdmin();
-  const watchCommissionType = useWatch({ control, name: "commission_type" });
-  const watchCommissionValue = useWatch({ control, name: "commission_value" });
-  const watchCommissionExtraType = useWatch({ control, name: "commission_extra_type" });
-  const watchCommissionExtraValue = useWatch({ control, name: "commission_extra_value" });
+  const watchBonusType = useWatch({ control, name: "bonus_type" });
+  const watchBonusValue = useWatch({ control, name: "bonus_value" });
   const watchHasCommission = watch('has_commission', false);
   const [showResumoDialog, setShowResumoDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<ProdutoFormData | null>(null);
 
   function calcularPreviewComissao(data: ProdutoFormData) {
     if (data.has_commission === false) {
-      return { detalhes: [], texto: 'Comissão: Sem comissão' };
+      return { detalhes: [], texto: 'Bonus: Sem comissão' };
     }
     const valorProduto = data.price || 0;
-    let comissao = 0;
+    let bonus = 0;
     let detalhes = [];
-    let adicional = 0;
     let texto = "";
-    let usandoPadraoBarbeiro = false;
 
-    if (data.commission_type === "percentual" && data.commission_value) {
-      comissao = valorProduto * (data.commission_value / 100);
-      detalhes.push(`${data.commission_value}% de R$ ${valorProduto.toFixed(2)} = R$ ${comissao.toFixed(2)}`);
-    } else if (data.commission_type === "fixo" && data.commission_value) {
-      comissao = data.commission_value;
-      detalhes.push(`Valor fixo: R$ ${comissao.toFixed(2)}`);
+    if (data.bonus_type === "percentual" && data.bonus_value) {
+      bonus = valorProduto * (data.bonus_value / 100);
+      detalhes.push(`Bonus: ${data.bonus_value}% de R$ ${valorProduto.toFixed(2)} = R$ ${bonus.toFixed(2)}`);
+    } else if (data.bonus_type === "fixo" && data.bonus_value) {
+      bonus = data.bonus_value;
+      detalhes.push(`Bonus fixo: R$ ${bonus.toFixed(2)}`);
     } else {
-      usandoPadraoBarbeiro = true;
-      detalhes.push("Usando taxa padrão do barbeiro (ex: 30%)");
+      detalhes.push("Sem bonus configurado");
     }
 
-    if (data.commission_extra_type === "percentual" && data.commission_extra_value) {
-      adicional = valorProduto * (data.commission_extra_value / 100);
-      detalhes.push(`Adicional: ${data.commission_extra_value}% de R$ ${valorProduto.toFixed(2)} = R$ ${adicional.toFixed(2)}`);
-    } else if (data.commission_extra_type === "fixo" && data.commission_extra_value) {
-      adicional = data.commission_extra_value;
-      detalhes.push(`Adicional fixo: R$ ${adicional.toFixed(2)}`);
-    }
-
-    if (usandoPadraoBarbeiro) {
-      if (adicional > 0) {
-        texto = `Total da comissão: R$ ${adicional.toFixed(2)} + (taxa barbeiro)`;
-      } else {
-        texto = `Total da comissão: (taxa barbeiro)`;
-      }
-    } else {
-      texto = `Total da comissão: R$ ${(comissao + adicional).toFixed(2)}`;
-    }
-
+    texto = `Total do bonus: R$ ${bonus.toFixed(2)}`;
     return { detalhes, texto };
   }
 
   function resumoComissaoProduto(produto: Produto) {
     if (produto.has_commission === false) {
-      return 'Comissão: Sem comissão';
+      return 'Bonus: Sem comissão';
     }
     const valor = produto.price || 0;
     let texto = '';
-    let usandoPadraoBarbeiro = false;
-    let comissao = 0;
-    let adicional = 0;
-    let partes: string[] = [];
+    let bonus = 0;
 
-    if (produto.commission_type === 'percentual' && produto.commission_value) {
-      partes.push(`${produto.commission_value}%`);
-      comissao = valor * (produto.commission_value / 100);
-    } else if (produto.commission_type === 'fixo' && produto.commission_value) {
-      partes.push(`R$ ${produto.commission_value.toFixed(2)}`);
-      comissao = produto.commission_value;
+    if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+      texto = `Bonus: ${produto.bonus_value}%`;
+      bonus = valor * (produto.bonus_value / 100);
+    } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+      texto = `Bonus: R$ ${produto.bonus_value.toFixed(2)}`;
+      bonus = produto.bonus_value;
     } else {
-      usandoPadraoBarbeiro = true;
-      partes.push('(taxa barbeiro)');
-    }
-
-    if (produto.commission_extra_type === 'percentual' && produto.commission_extra_value) {
-      partes.push(`+ ${produto.commission_extra_value}% adicional`);
-      adicional = valor * (produto.commission_extra_value / 100);
-    } else if (produto.commission_extra_type === 'fixo' && produto.commission_extra_value) {
-      partes.push(`+ R$ ${produto.commission_extra_value.toFixed(2)} adicional`);
-      adicional = produto.commission_extra_value;
-    }
-
-    if (usandoPadraoBarbeiro && partes.length === 1) {
-      texto = `Comissão: (taxa barbeiro)`;
-    } else {
-      texto = `Comissão: ${partes.join(' ')}`;
+      texto = 'Bonus: Sem bonus configurado';
     }
     return texto;
   }
@@ -140,34 +99,26 @@ const Produtos = () => {
     description: watch('description') || '',
     price: watch('price') || 0,
     stock: watch('stock') || 0,
-    commission_type: (typeof watchCommissionType === 'string' && watchCommissionType === '') ? undefined : watchCommissionType as 'percentual' | 'fixo' | undefined,
-    commission_value: watchCommissionValue ?? undefined,
-    commission_extra_type: (typeof watchCommissionExtraType === 'string' && watchCommissionExtraType === '') ? undefined : watchCommissionExtraType as 'percentual' | 'fixo' | undefined,
-    commission_extra_value: watchCommissionExtraValue ?? undefined,
+    bonus_type: watchBonusType || undefined,
+    bonus_value: watchBonusValue ?? undefined,
     has_commission: !isSemComissao,
   });
 
   const onSubmit = async (data: ProdutoFormData) => {
     let payload = { ...data };
     if (payload.has_commission === false) {
-      payload.commission_type = null;
-      payload.commission_value = null;
-      payload.commission_extra_type = null;
-      payload.commission_extra_value = null;
+      payload.bonus_type = null;
+      payload.bonus_value = null;
     } else {
-      if (!payload.commission_type || payload.commission_type === "") {
-        payload.commission_type = null;
-        payload.commission_value = null;
-      }
-      if (!payload.commission_extra_type || payload.commission_extra_type === "") {
-        payload.commission_extra_type = null;
-        payload.commission_extra_value = null;
+      if (!payload.bonus_type) {
+        payload.bonus_type = null;
+        payload.bonus_value = null;
       }
     }
     if (selectedProduto) {
       await updateProduto.mutateAsync({ ...payload, id: selectedProduto.id });
     } else {
-      await createProduto.mutateAsync(payload);
+      await createProduto.mutateAsync({ ...payload, active: true });
     }
     setOpen(false);
     setSelectedProduto(null);
@@ -181,10 +132,8 @@ const Produtos = () => {
     setValue("description", produto.description);
     setValue("price", produto.price);
     setValue("stock", produto.stock);
-    setValue("commission_type", produto.commission_type || "");
-    setValue("commission_value", produto.commission_value ?? undefined);
-    setValue("commission_extra_type", produto.commission_extra_type || "");
-    setValue("commission_extra_value", produto.commission_extra_value ?? undefined);
+    setValue("bonus_type", produto.bonus_type || null);
+    setValue("bonus_value", produto.bonus_value ?? undefined);
     setValue("has_commission", produto.has_commission ?? false);
     setIsSemComissao(produto.has_commission === false);
     setOpen(true);
@@ -314,83 +263,43 @@ const Produtos = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="commission_type">Tipo de Comissão</Label>
+                  <Label htmlFor="bonus_type">Tipo de Bônus</Label>
                   <select
-                    id="commission_type"
+                    id="bonus_type"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    {...register("commission_type")}
+                    {...register("bonus_type")}
                     defaultValue=""
                     disabled={isSemComissao}
                   >
-                    <option value="">Usar padrão do barbeiro</option>
+                    <option value="">Selecione</option>
                     <option value="percentual">Percentual (%)</option>
                     <option value="fixo">Valor Fixo (R$)</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="commission_value">Valor da Comissão</Label>
+                  <Label htmlFor="bonus_value">Valor do Bônus</Label>
                   <Input
-                    id="commission_value"
-                    type="number"
-                    step="0.01"
-                    placeholder="Ex: 30 para 30% ou 10 para R$10,00"
-                    {...register("commission_value", {
-                      valueAsNumber: true,
-                      validate: (value) => {
-                        if (
-                          !isSemComissao &&
-                          (watchCommissionType === "percentual" || watchCommissionType === "fixo") &&
-                          (!value || isNaN(value) || value <= 0)
-                        ) {
-                          return "Preencha um valor maior que zero para a comissão";
-                        }
-                        return true;
-                      }
-                    })}
-                    disabled={isSemComissao || !watchCommissionType || watchCommissionType === ''}
-                  />
-                  {errors.commission_value && (
-                    <span className="text-red-500 text-xs">{errors.commission_value.message}</span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="commission_extra_type">Tipo de Adicional</Label>
-                  <select
-                    id="commission_extra_type"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    {...register("commission_extra_type")}
-                    defaultValue=""
-                    disabled={isSemComissao}
-                  >
-                    <option value="">Sem adicional</option>
-                    <option value="percentual">Percentual (%)</option>
-                    <option value="fixo">Valor Fixo (R$)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="commission_extra_value">Valor do Adicional</Label>
-                  <Input
-                    id="commission_extra_value"
+                    id="bonus_value"
                     type="number"
                     step="0.01"
                     placeholder="Ex: 10 para 10% ou 5 para R$5,00"
-                    {...register("commission_extra_value", {
+                    {...register("bonus_value", {
                       valueAsNumber: true,
                       validate: (value) => {
                         if (
                           !isSemComissao &&
-                          (watchCommissionExtraType === "percentual" || watchCommissionExtraType === "fixo") &&
+                          (watchBonusType === "percentual" || watchBonusType === "fixo") &&
                           (!value || isNaN(value) || value <= 0)
                         ) {
-                          return "Preencha um valor maior que zero para o adicional";
+                          return "Preencha um valor maior que zero para o bônus";
                         }
                         return true;
                       }
                     })}
-                    disabled={isSemComissao || !watchCommissionExtraType || watchCommissionExtraType === ''}
+                    disabled={isSemComissao || !watchBonusType}
                   />
-                  {errors.commission_extra_value && (
-                    <span className="text-red-500 text-xs">{errors.commission_extra_value.message}</span>
+                  {errors.bonus_value && (
+                    <span className="text-red-500 text-xs">{errors.bonus_value.message}</span>
                   )}
                 </div>
                 <div className="flex justify-end gap-2">

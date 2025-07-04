@@ -22,6 +22,9 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Gift, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { useBarbers } from "@/hooks/useBarbers";
+import type { Servico } from "@/types/servico";
+import type { Produto } from "@/types/produto";
 
 type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
 
@@ -60,6 +63,11 @@ export function FinalizarAtendimentoForm({
     usados: number;
     tentandoUsar: number;
   } | null>(null);
+
+  const [resumoComissao, setResumoComissao] = useState<{descricao: string, valor: number}[]>([]);
+  const [totalComissao, setTotalComissao] = useState(0);
+
+  const { barbers } = useBarbers();
 
   // Verificar se a assinatura é válida para o dia da semana do agendamento
   const isAssinaturaValidaParaData = () => {
@@ -104,7 +112,7 @@ export function FinalizarAtendimentoForm({
 
     // Calcular total de serviços com benefícios de assinatura
     servicosSelecionados.forEach(servicoId => {
-      const servico = servicos?.find(s => s.id === servicoId);
+      const servico = servicos?.find(s => s.id === servicoId) as Servico | undefined;
       if (!servico) return;
 
       const precoOriginal = servico.price;
@@ -135,7 +143,7 @@ export function FinalizarAtendimentoForm({
 
     // Calcular total de produtos com benefícios de assinatura
     produtosSelecionados.forEach(produto => {
-      const produtoInfo = produtos?.find(p => p.id === produto.id);
+      const produtoInfo = produtos?.find(p => p.id === produto.id) as Produto | undefined;
       if (!produtoInfo) return;
 
       const precoOriginal = produtoInfo.price * produto.quantity;
@@ -265,6 +273,106 @@ export function FinalizarAtendimentoForm({
     return data.length;
   }
 
+  // Função auxiliar para calcular comissão de um item (igual backend)
+  function calcularComissaoItem(
+    item,
+    valorFinal, // Valor após benefício
+    taxaPadraoBarbeiro
+  ) {
+    // Se não tem comissão, retorna 0
+    if (item.has_commission === false) {
+      return 0;
+    }
+
+    // Para produtos (lógica simplificada)
+    if ('bonus_type' in item) {
+      // Produtos só podem ter bonus (comissão adicional)
+      if (item.bonus_type === 'percentual' && item.bonus_value) {
+        return valorFinal * (item.bonus_value / 100);
+      } else if (item.bonus_type === 'fixo' && item.bonus_value) {
+        return item.bonus_value;
+      }
+      return 0; // Sem bonus
+    }
+
+    // Para serviços (lógica original)
+    const servico = item;
+    let comissaoPrincipal = 0;
+    let comissaoAdicional = 0;
+
+    // Calcular comissão principal
+    if (servico.commission_type === 'percentual' && servico.commission_value) {
+      comissaoPrincipal = valorFinal * (servico.commission_value / 100);
+    } else if (servico.commission_type === 'fixo' && servico.commission_value) {
+      comissaoPrincipal = servico.commission_value;
+    } else {
+      // Usar taxa padrão do barbeiro
+      comissaoPrincipal = valorFinal * (taxaPadraoBarbeiro / 100);
+    }
+
+    // Calcular comissão adicional
+    if (servico.commission_extra_type === 'percentual' && servico.commission_extra_value) {
+      comissaoAdicional = valorFinal * (servico.commission_extra_value / 100);
+    } else if (servico.commission_extra_type === 'fixo' && servico.commission_extra_value) {
+      comissaoAdicional = servico.commission_extra_value;
+    }
+
+    return comissaoPrincipal + comissaoAdicional;
+  }
+
+  // Calcular comissão sempre que serviços/produtos mudarem
+  useEffect(() => {
+    if (!servicos || !produtos || !barbers) return;
+    const servicosSelecionados = form.getValues("servicos");
+    const produtosSelecionados = form.getValues("produtos");
+    let resumo: {descricao: string, valor: number}[] = [];
+    let total = 0;
+    // Buscar taxa padrão do barbeiro do agendamento
+    const barbeiro = barbers.find(b => b.id === agendamento.barber_id);
+    const taxaPadrao = barbeiro?.commission_rate || 0;
+    // Serviços
+    servicosSelecionados.forEach(servicoId => {
+      const servico = servicos.find(s => s.id === servicoId) as Servico | undefined;
+      if (!servico) return;
+      let precoFinal = servico.price;
+      const beneficio = getBeneficioServico(servicoId);
+      if (beneficio) {
+        if (beneficio.benefit_types.name === 'servico_gratuito') precoFinal = 0;
+        else if (beneficio.benefit_types.name === 'servico_desconto' && beneficio.discount_percentage) {
+          precoFinal = precoFinal - (precoFinal * beneficio.discount_percentage / 100);
+        }
+      }
+      const valorComissao = calcularComissaoItem(servico, precoFinal, taxaPadrao);
+      total += valorComissao;
+      let tipo = 'Padrão';
+      if (servico.has_commission === false) tipo = 'Sem comissão';
+      else if (servico.commission_type) tipo = servico.commission_type === 'percentual' ? `${servico.commission_value}%` : `R$ ${servico.commission_value}`;
+      if (servico.commission_extra_type) tipo += servico.commission_extra_type === 'percentual' ? ` + ${servico.commission_extra_value}%` : ` + R$ ${servico.commission_extra_value}`;
+      resumo.push({descricao: `Serviço: ${servico.name} (${tipo})`, valor: valorComissao});
+    });
+    // Produtos
+    produtosSelecionados.forEach(produtoSel => {
+      const produto = produtos.find(p => p.id === produtoSel.id) as Produto | undefined;
+      if (!produto) return;
+      let precoFinal = produto.price * produtoSel.quantity;
+      const beneficio = getBeneficioProduto(produto.id);
+      if (beneficio) {
+        if (beneficio.benefit_types.name === 'produto_gratuito') precoFinal = 0;
+        else if (beneficio.benefit_types.name === 'produto_desconto' && beneficio.discount_percentage) {
+          precoFinal = precoFinal - (precoFinal * beneficio.discount_percentage / 100);
+        }
+      }
+      const valorComissao = calcularComissaoItem(produto, precoFinal, taxaPadrao);
+      total += valorComissao;
+          let tipo = 'Sem bonus';
+    if (produto.has_commission === false) tipo = 'Sem comissão';
+    else if (produto.bonus_type) tipo = produto.bonus_type === 'percentual' ? `Bonus: ${produto.bonus_value}%` : `Bonus: R$ ${produto.bonus_value}`;
+    resumo.push({descricao: `Produto: ${produto.name} (${tipo})`, valor: valorComissao});
+    });
+    setResumoComissao(resumo);
+    setTotalComissao(total);
+  }, [form.watch('servicos'), form.watch('produtos'), servicos, produtos, assinaturaCliente, assinaturaValida, barbers]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (servicos === undefined || produtos === undefined) {
@@ -276,7 +384,7 @@ export function FinalizarAtendimentoForm({
 
       // Atualiza o agendamento com os serviços e produtos selecionados
       const servicosSelecionados = values.servicos.map(servicoId => {
-        const servico = servicos.find(s => s.id === servicoId);
+        const servico = servicos.find(s => s.id === servicoId) as Servico | undefined;
         if (!servico) {
           throw new Error(`Serviço não encontrado: ${servicoId}`);
         }
@@ -293,7 +401,7 @@ export function FinalizarAtendimentoForm({
         };
       });
       const produtosSelecionados = values.produtos.map(produto => {
-        const produtoInfo = produtos.find(p => p.id === produto.id);
+        const produtoInfo = produtos.find(p => p.id === produto.id) as Produto | undefined;
         if (!produtoInfo) {
           throw new Error(`Produto não encontrado: ${produto.id}`);
         }
@@ -338,7 +446,7 @@ export function FinalizarAtendimentoForm({
             b => b.service_id === servicoId
           );
           if (beneficio) {
-            const servico = servicos.find(s => s.id === servicoId);
+            const servico = servicos.find(s => s.id === servicoId) as Servico | undefined;
             const original_price = servico.price;
             const final_price = calcularPrecoComBeneficio(servico.price, beneficio);
             const discount_applied = original_price - final_price;
@@ -359,7 +467,7 @@ export function FinalizarAtendimentoForm({
             b => b.product_id === produto.id
           );
           if (beneficio) {
-            const produtoInfo = produtos.find(p => p.id === produto.id);
+            const produtoInfo = produtos.find(p => p.id === produto.id) as Produto | undefined;
             const original_price = produtoInfo.price;
             const final_price = calcularPrecoComBeneficio(produtoInfo.price, beneficio);
             const discount_applied = original_price - final_price;
@@ -731,6 +839,23 @@ export function FinalizarAtendimentoForm({
                 <p className="text-green-700">
                   Tem certeza que deseja finalizar o atendimento do cliente <span className="font-bold">{agendamento.client_name}</span>?
                 </p>
+                {/* Resumo da comissão do barbeiro */}
+                <div className="text-left bg-green-100 p-3 rounded-lg mb-2">
+                  <p className="font-medium text-green-800 mb-1">Resumo da Comissão do Barbeiro:</p>
+                  <ul className="text-green-900 text-sm mb-2">
+                    {resumoComissao.map((item, idx) => (
+                      <li key={idx} className="flex justify-between border-b border-green-200 py-1">
+                        <span>{item.descricao}</span>
+                        <span>R$ {item.valor.toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="font-bold text-green-800 flex justify-between">
+                    <span>Total da Comissão:</span>
+                    <span>R$ {totalComissao.toFixed(2)}</span>
+                  </div>
+                </div>
+                {/* Fim resumo comissão */}
                 {assinaturaCliente && descontoAssinatura > 0 && assinaturaValida && (
                   <div className="text-sm text-green-600 bg-green-100 p-3 rounded-lg">
                     <p className="font-medium">Benefícios da Assinatura Aplicados:</p>
@@ -745,7 +870,7 @@ export function FinalizarAtendimentoForm({
                   </div>
                 )}
                 <p className="text-2xl font-bold text-green-700">
-                  Total: R$ {total.toFixed(2)}
+                  Total a Pagar: R$ {total.toFixed(2)}
                 </p>
                 <div className="text-sm text-green-600 bg-green-100 p-4 rounded-lg space-y-2">
                   <p>Confirme a finalização apenas se o cliente já pagou o valor total do atendimento.</p>                  

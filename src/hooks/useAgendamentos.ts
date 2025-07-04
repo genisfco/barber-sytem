@@ -25,6 +25,79 @@ interface CreateAgendamentoData {
   products?: Omit<ProdutoAgendamento, 'id' | 'appointment_id' | 'created_at' | 'updated_at'>[];
 }
 
+// Tipos para serviços e produtos com campos de comissão
+interface ServicoComComissao {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+  active: boolean;
+  commission_type?: 'percentual' | 'fixo' | null;
+  commission_value?: number | null;
+  commission_extra_type?: 'percentual' | 'fixo' | null;
+  commission_extra_value?: number | null;
+  has_commission?: boolean;
+}
+
+interface ProdutoComComissao {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  active: boolean;
+  bonus_type?: 'percentual' | 'fixo' | null;
+  bonus_value?: number | null;
+  has_commission?: boolean;
+}
+
+// Função auxiliar para calcular comissão de um item (serviço ou produto)
+function calcularComissaoItem(
+  item: ServicoComComissao | ProdutoComComissao,
+  valorFinal: number, // Valor após aplicação de benefícios de assinatura
+  taxaPadraoBarbeiro: number
+): number {
+  // Se não tem comissão, retorna 0
+  if (item.has_commission === false) {
+    return 0;
+  }
+
+  // Para produtos (lógica simplificada)
+  if ('bonus_type' in item) {
+    // Produtos só podem ter bonus (comissão adicional)
+    if (item.bonus_type === 'percentual' && item.bonus_value) {
+      return valorFinal * (item.bonus_value / 100);
+    } else if (item.bonus_type === 'fixo' && item.bonus_value) {
+      return item.bonus_value;
+    }
+    return 0; // Sem bonus
+  }
+
+  // Para serviços (lógica original)
+  const servico = item as ServicoComComissao;
+  let comissaoPrincipal = 0;
+  let comissaoAdicional = 0;
+
+  // Calcular comissão principal
+  if (servico.commission_type === 'percentual' && servico.commission_value) {
+    comissaoPrincipal = valorFinal * (servico.commission_value / 100);
+  } else if (servico.commission_type === 'fixo' && servico.commission_value) {
+    comissaoPrincipal = servico.commission_value;
+  } else {
+    // Usar taxa padrão do barbeiro
+    comissaoPrincipal = valorFinal * (taxaPadraoBarbeiro / 100);
+  }
+
+  // Calcular comissão adicional
+  if (servico.commission_extra_type === 'percentual' && servico.commission_extra_value) {
+    comissaoAdicional = valorFinal * (servico.commission_extra_value / 100);
+  } else if (servico.commission_extra_type === 'fixo' && servico.commission_extra_value) {
+    comissaoAdicional = servico.commission_extra_value;
+  }
+
+  return comissaoPrincipal + comissaoAdicional;
+}
+
 export function useAgendamentos(date?: Date, barbeiro_id?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -445,7 +518,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           throw updateError;
         }
 
-        // 7. Buscamos as informações do barbeiro
+        // 7. Buscamos as informações do barbeiro e calculamos comissões
         const { data: barber, error: barberError } = await supabase
           .from('barbers')
           .select('commission_rate')
@@ -458,10 +531,64 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         }
 
         const commissionRate = barber?.commission_rate ?? 0; // Usar 0 se null ou undefined
-        const commissionAmount = totalServiceAmount * (commissionRate / 100);
+
+        // Buscar informações completas dos serviços e produtos para cálculo de comissão
+        const servicosIds = appointment.servicos.map(s => s.service_id);
+        const produtosIds = appointment.produtos.map(p => p.product_id);
+
+        // Buscar serviços com informações de comissão
+        const { data: servicosComComissao, error: servicosError } = await supabase
+          .from('services')
+          .select('*')
+          .in('id', servicosIds);
+
+        if (servicosError) {
+          logError(servicosError, '❌ Erro ao buscar informações de comissão dos serviços:');
+          throw servicosError;
+        }
+
+        // Buscar produtos com informações de comissão
+        const { data: produtosComComissao, error: produtosError } = await supabase
+          .from('products')
+          .select('*')
+          .in('id', produtosIds);
+
+        if (produtosError) {
+          logError(produtosError, '❌ Erro ao buscar informações de comissão dos produtos:');
+          throw produtosError;
+        }
+
+        // Calcular comissões para cada serviço
+        let totalComissao = 0;
+        
+        for (const servicoAgendamento of appointment.servicos) {
+          const servicoInfo = servicosComComissao?.find(s => s.id === servicoAgendamento.service_id);
+          if (servicoInfo) {
+            const comissaoServico = calcularComissaoItem(
+              servicoInfo,
+              servicoAgendamento.service_price, // Valor final após benefícios
+              commissionRate
+            );
+            totalComissao += comissaoServico;
+          }
+        }
+
+        // Calcular comissões para cada produto
+        for (const produtoAgendamento of appointment.produtos) {
+          const produtoInfo = produtosComComissao?.find(p => p.id === produtoAgendamento.product_id);
+          if (produtoInfo) {
+            const valorTotalProduto = produtoAgendamento.product_price * produtoAgendamento.quantity;
+            const comissaoProduto = calcularComissaoItem(
+              produtoInfo,
+              valorTotalProduto, // Valor final após benefícios
+              commissionRate
+            );
+            totalComissao += comissaoProduto;
+          }
+        }
 
         // 8. Verificamos se já existe uma comissão para este agendamento
-        if (commissionAmount > 0) {
+        if (totalComissao > 0) {
           const { data: existingCommission, error: searchError } = await supabase
             .from('barber_commissions')
             .select()
@@ -478,8 +605,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
             const { error: updateError } = await supabase
               .from('barber_commissions')
               .update({
-                total_price: totalServiceAmount,
-                total_commission: commissionAmount,
+                total_price: finalPrice, // Valor total real (serviços + produtos após benefícios)
+                total_commission: totalComissao,
                 updated_at: new Date().toISOString()
               })
               .eq('id', existingCommission.id);
@@ -495,8 +622,8 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               .insert({
                 barber_id: appointment.barber_id,
                 appointment_id: appointment.id,
-                total_price: totalServiceAmount,
-                total_commission: commissionAmount,
+                total_price: finalPrice, // Valor total real (serviços + produtos após benefícios)
+                total_commission: totalComissao,
                 status: 'pendente',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

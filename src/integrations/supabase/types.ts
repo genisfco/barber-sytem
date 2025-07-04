@@ -91,6 +91,8 @@ export interface Database {
           total_products_price: number
           final_price: number
           status: string
+          payment_method: string | null
+          payment_date: string | null
           created_at: string
           updated_at: string
         }
@@ -110,6 +112,8 @@ export interface Database {
           total_products_price: number
           final_price: number
           status?: string
+          payment_method?: string | null
+          payment_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -129,6 +133,8 @@ export interface Database {
           total_products_price?: number
           final_price?: number
           status?: string
+          payment_method?: string | null
+          payment_date?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -243,6 +249,7 @@ export interface Database {
           phone: string
           notes: string
           active: boolean
+          barber_shop_id: string
           created_at: string
           updated_at: string
         }
@@ -253,6 +260,7 @@ export interface Database {
           phone: string
           notes?: string
           active?: boolean
+          barber_shop_id: string
           created_at?: string
           updated_at?: string
         }
@@ -263,6 +271,7 @@ export interface Database {
           phone?: string
           notes?: string
           active?: boolean
+          barber_shop_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -274,6 +283,12 @@ export interface Database {
           price: number
           duration: number
           active: boolean
+          commission_type: string | null
+          commission_value: number | null
+          commission_extra_type: string | null
+          commission_extra_value: number | null
+          has_commission: boolean
+          barber_shop_id: string
           created_at: string
           updated_at: string
         }
@@ -283,6 +298,12 @@ export interface Database {
           price: number
           duration: number
           active?: boolean
+          commission_type?: string | null
+          commission_value?: number | null
+          commission_extra_type?: string | null
+          commission_extra_value?: number | null
+          has_commission?: boolean
+          barber_shop_id: string
           created_at?: string
           updated_at?: string
         }
@@ -292,6 +313,12 @@ export interface Database {
           price?: number
           duration?: number
           active?: boolean
+          commission_type?: string | null
+          commission_value?: number | null
+          commission_extra_type?: string | null
+          commission_extra_value?: number | null
+          has_commission?: boolean
+          barber_shop_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -304,6 +331,10 @@ export interface Database {
           price: number
           stock: number
           active: boolean
+          bonus_type: string | null
+          bonus_value: number | null
+          has_commission: boolean
+          barber_shop_id: string
           created_at: string
           updated_at: string
         }
@@ -314,6 +345,10 @@ export interface Database {
           price: number
           stock?: number
           active?: boolean
+          bonus_type?: string | null
+          bonus_value?: number | null
+          has_commission?: boolean
+          barber_shop_id: string
           created_at?: string
           updated_at?: string
         }
@@ -324,6 +359,10 @@ export interface Database {
           price?: number
           stock?: number
           active?: boolean
+          bonus_type?: string | null
+          bonus_value?: number | null
+          has_commission?: boolean
+          barber_shop_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -334,6 +373,8 @@ export interface Database {
           barber_id: string
           date: string
           reason: string
+          start_time: string | null
+          end_time: string | null
           created_at: string
           updated_at: string
         }
@@ -342,6 +383,8 @@ export interface Database {
           barber_id: string
           date: string
           reason?: string
+          start_time?: string | null
+          end_time?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -350,6 +393,8 @@ export interface Database {
           barber_id?: string
           date?: string
           reason?: string
+          start_time?: string | null
+          end_time?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -362,6 +407,7 @@ export interface Database {
           total_price: number
           total_commission: number
           status: string
+          barber_shop_id: string
           created_at: string
           updated_at: string
         }
@@ -372,6 +418,7 @@ export interface Database {
           total_price: number
           total_commission: number
           status?: string
+          barber_shop_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -382,6 +429,7 @@ export interface Database {
           total_price?: number
           total_commission?: number
           status?: string
+          barber_shop_id?: string
           created_at?: string
           updated_at?: string
         }
@@ -394,7 +442,11 @@ export interface Database {
           description: string
           value: number
           payment_method: string
+          category: string
+          payment_date: string
+          barber_shop_id: string
           status: string
+          notes: string | null
           created_at: string
           updated_at: string
         }
@@ -405,7 +457,11 @@ export interface Database {
           description: string
           value: number
           payment_method?: string
+          category?: string
+          payment_date?: string
+          barber_shop_id?: string
           status?: string
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -416,7 +472,11 @@ export interface Database {
           description?: string
           value?: number
           payment_method?: string
+          category?: string
+          payment_date?: string
+          barber_shop_id?: string
           status?: string
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -429,6 +489,9 @@ export interface Database {
           price: number;
           duration_months: number;
           active: boolean;
+          barber_shop_id: string;
+          available_days: number[];
+          max_benefits_per_month: number;
           created_at: string;
           updated_at: string;
         };
@@ -439,6 +502,9 @@ export interface Database {
           price: number;
           duration_months?: number;
           active?: boolean;
+          barber_shop_id: string;
+          available_days?: number[];
+          max_benefits_per_month?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -449,6 +515,9 @@ export interface Database {
           price?: number;
           duration_months?: number;
           active?: boolean;
+          barber_shop_id?: string;
+          available_days?: number[];
+          max_benefits_per_month?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -461,6 +530,8 @@ export interface Database {
           start_date: string;
           end_date: string | null;
           status: string;
+          barber_shop_id: string;
+          payment_date: string;
           created_at: string;
           updated_at: string;
         };
@@ -471,6 +542,8 @@ export interface Database {
           start_date: string;
           end_date?: string | null;
           status?: string;
+          barber_shop_id: string;
+          payment_date?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -481,6 +554,130 @@ export interface Database {
           start_date?: string;
           end_date?: string | null;
           status?: string;
+          barber_shop_id?: string;
+          payment_date?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      subscription_payments: {
+        Row: {
+          id: string;
+          client_subscription_id: string;
+          amount: number;
+          payment_method: string;
+          payment_date: string;
+          status: string;
+          transaction_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_subscription_id: string;
+          amount: number;
+          payment_method: string;
+          payment_date: string;
+          status?: string;
+          transaction_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_subscription_id?: string;
+          amount?: number;
+          payment_method?: string;
+          payment_date?: string;
+          status?: string;
+          transaction_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      subscription_benefits_usage: {
+        Row: {
+          id: string;
+          client_subscription_id: string;
+          appointment_id: string;
+          subscription_plan_benefit_id: string;
+          original_price: number;
+          final_price: number;
+          discount_applied: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_subscription_id: string;
+          appointment_id: string;
+          subscription_plan_benefit_id: string;
+          original_price: number;
+          final_price: number;
+          discount_applied: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_subscription_id?: string;
+          appointment_id?: string;
+          subscription_plan_benefit_id?: string;
+          original_price?: number;
+          final_price?: number;
+          discount_applied?: number;
+          created_at?: string;
+        };
+      };
+      subscription_plan_benefits: {
+        Row: {
+          id: string;
+          subscription_plan_id: string;
+          service_id: string | null;
+          product_id: string | null;
+          benefit_type_id: string;
+          discount_percentage: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          subscription_plan_id: string;
+          service_id?: string | null;
+          product_id?: string | null;
+          benefit_type_id: string;
+          discount_percentage?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          subscription_plan_id?: string;
+          service_id?: string | null;
+          product_id?: string | null;
+          benefit_type_id?: string;
+          discount_percentage?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      benefit_types: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
           created_at?: string;
           updated_at?: string;
         };
