@@ -233,14 +233,14 @@ export function PixQRCodeModal({
 
           {/* Botões */}
           <div className="flex gap-2">
-            <Button
+            {/* <Button
               variant="outline"
               onClick={downloadQRCode}
               className="flex-1"
             >
               <Download className="mr-2 h-4 w-4" />
               Baixar
-            </Button>
+            </Button> */}
             
             {onRefresh && (
               <Button
@@ -255,12 +255,12 @@ export function PixQRCodeModal({
           </div>
 
           {/* Instruções */}
-          <div className="text-xs text-muted-foreground space-y-1">
+          {/* <div className="text-xs text-muted-foreground space-y-1">
             <div>• Abra o app do seu banco</div>
             <div>• Escolha a opção PIX</div>
             <div>• Escaneie o QR Code ou cole o código</div>
             <div>• Confirme o pagamento</div>
-          </div>
+          </div> */}
         </div>
       </DialogContent>
     </Dialog>

@@ -63,10 +63,10 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
       handleCalculate();
       setCreatedPayment(null);
       setShowQRCode(false);
-      // Verifica se já existe pagamento para o mês/ano/barbearia
       (async () => {
         try {
           const existing = await getExistingPayment({ month, year });
+          //console.log('Pagamento existente encontrado:', existing);
           if (existing) {
             setCreatedPayment(existing);
           } else {
@@ -79,6 +79,10 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
     }
     // eslint-disable-next-line
   }, [month, year, open]);
+
+  useEffect(() => {
+    //console.log('createdPayment mudou:', createdPayment);
+  }, [createdPayment]);
 
   const handleCalculate = async () => {
     try {
