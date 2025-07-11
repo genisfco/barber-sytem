@@ -55,7 +55,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [pixData, setPixData] = useState<any>(null);
 
-  const { calculatePayment, createPayment, freeTrialStatus } = usePlatformPayments();
+  const { calculatePayment, createPayment, updatePayment, freeTrialStatus } = usePlatformPayments();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -115,6 +115,15 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
           last_name: createdPayment.payer_last_name || "Sistema"
         }
       });
+      // Atualiza o campo pix_qr_code na tabela platform_payments
+      if (createdPayment.id && pix?.qr_code) {
+        await updatePayment.mutateAsync({
+          id: createdPayment.id,
+          pix_qr_code: pix.qr_code,
+          pix_qr_code_expires_at: pix.expires_at || null,
+          external_payment_id: pix.id || null
+        });
+      }
       setPixData(pix);
       setPixModalOpen(true);
     } catch (error) {
