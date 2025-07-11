@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Calendar, Scissors, Pencil, Trash2 } from "lucide-react";
+import { Plus, FileText, Calendar, Scissors, Pencil, Trash2, CreditCard } from "lucide-react";
 import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
+import { PlatformPaymentForm } from "@/components/forms/PlatformPaymentForm";
+import { PlatformPaymentsList } from "@/components/PlatformPaymentsList";
 import { Link } from "react-router-dom";
 import { useTransacoes } from "@/hooks/useTransacoes";
 import {
@@ -25,6 +27,7 @@ type Categoria = "servicos" | "produtos" | "assinaturas" | "comissoes" | "despes
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
   const [openReceita, setOpenReceita] = useState(false);
+  const [openPagamentoPlataforma, setOpenPagamentoPlataforma] = useState(false);
   const [openComissoes, setOpenComissoes] = useState(false);
   const [transacaoParaEditar, setTransacaoParaEditar] = useState<any>(null);
   const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<any>(null);
@@ -70,6 +73,10 @@ const Financeiro = () => {
           <Button onClick={() => setOpenReceita(true)}>
             <Plus className="mr-2" />
             Nova Receita
+          </Button>
+          <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setOpenPagamentoPlataforma(true)}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Pagamento Plataforma
           </Button>
         </div>
       </div>
@@ -229,10 +236,20 @@ const Financeiro = () => {
         transacao={transacaoParaEditar}
         onSuccess={() => setTransacaoParaEditar(null)}
       />
+      <PlatformPaymentForm
+        open={openPagamentoPlataforma}
+        onOpenChange={setOpenPagamentoPlataforma}
+        onSuccess={() => {
+          // Recarregar dados se necessário
+        }}
+      />
+
       <ComissoesDialog 
         open={openComissoes}
         onOpenChange={setOpenComissoes}
       />
+
+      <PlatformPaymentsList />
 
       <AlertDialog open={!!transacaoParaExcluir} onOpenChange={() => setTransacaoParaExcluir(null)}>
         <AlertDialogContent className="bg-red-50 border-red-200">

@@ -80,7 +80,7 @@ function DetalhesBarbeiro({ barbeiro, trigger }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-secondary rounded-lg">
             <div className="text-center">
               <div className="text-2xl font-bold">{barbeiro.agendamentos_atendidos}</div>
-              <div className="text-sm text-muted-foreground">Agendamentos</div>
+              <div className="text-sm text-muted-foreground">Atendimentos</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">{barbeiro.total_servicos}</div>
@@ -254,7 +254,7 @@ function AbaBarbeiros() {
       <div className="space-y-4">
         <div className="flex gap-4 flex-wrap justify-center items-center text-center">
           <div className="flex flex-col items-center p-2">
-            <span className="text-xs text-muted-foreground">Total de Agendamentos</span>
+            <span className="text-xs text-muted-foreground">Total de Atendimentos</span>
             <span className="text-lg font-bold">
               {data.reduce((sum, b) => sum + b.agendamentos_atendidos, 0)}
             </span>
@@ -283,7 +283,7 @@ function AbaBarbeiros() {
           <TableHeader>
             <TableRow>
               <TableHead>Barbeiro</TableHead>
-              <TableHead className="text-center">Agendamentos</TableHead>
+              <TableHead className="text-center">Atendimentos</TableHead>
               <TableHead className="text-center">Serviços</TableHead>
               <TableHead className="text-center">Produtos</TableHead>
               <TableHead className="text-center">Valor Serviços</TableHead>
