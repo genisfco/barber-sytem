@@ -143,6 +143,7 @@ export function PixQRCodeModal({
         const res = await fetch(`/api/pagamento/status?id=${paymentId}`);
         if (res.ok) {
           const data = await res.json();
+          console.log('Status do pagamento:', data.payment_status); // <-- log para debug
           if (data.payment_status === 'paid') {
             toast({
               title: 'Pagamento recebido!',
