@@ -63,6 +63,19 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
       handleCalculate();
       setCreatedPayment(null);
       setShowQRCode(false);
+      // Verifica se já existe pagamento para o mês/ano/barbearia
+      (async () => {
+        try {
+          const existing = await getExistingPayment({ month, year });
+          if (existing) {
+            setCreatedPayment(existing);
+          } else {
+            setCreatedPayment(null);
+          }
+        } catch (e) {
+          setCreatedPayment(null);
+        }
+      })();
     }
     // eslint-disable-next-line
   }, [month, year, open]);
@@ -84,28 +97,6 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const handleCreatePayment = async () => {
     if (!calculationResult) return;
     try {
-      // Verifica se já existe pagamento para o mês/ano/barbearia
-      const existing = await getExistingPayment({ month, year });
-      if (existing) {
-        if (existing.payment_status === 'paid') {
-          toast({
-            title: "Pagamento já realizado",
-            description: "O pagamento deste mês já foi efetuado.",
-            variant: "destructive"
-          });
-          setCreatedPayment(existing);
-          return;
-        }
-        if (existing.payment_status === 'pending') {
-          toast({
-            title: "Pagamento pendente",
-            description: "Já existe um pagamento pendente para este mês. Você pode visualizar o QR Code para pagar.",
-            variant: "default"
-          });
-          setCreatedPayment(existing);
-          return;
-        }
-      }
       // Se não existe, cria normalmente
       const payment = await createPayment.mutateAsync({
         month,
@@ -330,7 +321,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            {createdPayment && paymentMethod === "pix" && !showQRCode && (
+            {createdPayment && paymentMethod === "pix" && !showQRCode && createdPayment.payment_status === 'pending' && (
               <Button
                 variant="outline"
                 onClick={handleShowQRCode}
@@ -345,7 +336,8 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
               disabled={
                 !calculationResult ||
                 createPayment.isPending ||
-                !!createdPayment ||
+                createdPayment?.payment_status === 'pending' ||
+                createdPayment?.payment_status === 'paid' ||
                 calculationResult?.is_free_trial ||
                 calculationResult?.isFreeTrial ||
                 freeTrialStatus?.isFreeTrial
@@ -353,14 +345,18 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
               className={
                 (calculationResult?.is_free_trial || calculationResult?.isFreeTrial || freeTrialStatus?.isFreeTrial)
                   ? "bg-green-600 hover:bg-green-700 cursor-not-allowed opacity-70"
-                  : ""
+                  : createdPayment?.payment_status === 'paid'
+                    ? "bg-green-600 hover:bg-green-700 cursor-not-allowed opacity-70"
+                    : ""
               }
             >
               {createPayment.isPending
                 ? "Criando..."
                 : (calculationResult?.is_free_trial || calculationResult?.isFreeTrial || freeTrialStatus?.isFreeTrial)
                   ? "Período Gratuito Ativo"
-                  : "Criar Pagamento"}
+                  : createdPayment?.payment_status === 'paid'
+                    ? "Pagamento OK!"
+                    : "Criar Pagamento"}
             </Button>
           </div>
           {/* Modal do QR Code PIX real */}
