@@ -1,11 +1,10 @@
-import mercadopago from "mercadopago";
+import { MercadoPagoConfig, Payment } from "mercadopago";
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+const payment = new Payment(client);
 
-mercadopago.configure({
-  access_token: process.env.MERCADOPAGO_ACCESS_TOKEN
-});
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,12 +18,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'ID do pagamento não encontrado' });
     }
 
-    const payment = await mercadopago.payment.findById(paymentId);
-    if (!payment || !payment.body) {
+    // Buscar detalhes do pagamento no Mercado Pago
+    const result = await payment.get({ id: paymentId });
+
+    if (!result || !result.id) {
       return res.status(404).json({ error: 'Pagamento não encontrado no Mercado Pago' });
     }
 
-    if (payment.body.status === 'approved') {
+    // Verifica se o pagamento foi aprovado
+    if (result.status === 'approved') {
       const { error } = await supabase
         .from('platform_payments')
         .update({
@@ -43,6 +45,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('Erro no webhook do Mercado Pago:', err);
-    return res.status(500).json({ error: 'Erro interno no webhook' });
+    return res.status(500).json({ error: 'Erro interno no webhook', details: err.message });
   }
 }
