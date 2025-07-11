@@ -336,6 +336,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             amount={pixData?.amount || createdPayment?.total_amount || 0}
             description={pixData?.description || createdPayment?.description || "Pagamento Plataforma"}
             expiresAt={pixData?.expires_at}
+            paymentId={createdPayment?.id}
           />
         </div>
       </DialogContent>

@@ -15,6 +15,7 @@ interface PixQRCodeModalProps {
   description: string;
   expiresAt?: string;
   onRefresh?: () => void;
+  paymentId?: string; // Adiciona o id do pagamento para polling
 }
 
 export function PixQRCodeModal({ 
@@ -24,7 +25,8 @@ export function PixQRCodeModal({
   amount, 
   description, 
   expiresAt,
-  onRefresh 
+  onRefresh,
+  paymentId
 }: PixQRCodeModalProps) {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { toast } = useToast();
@@ -131,6 +133,30 @@ export function PixQRCodeModal({
 
     return () => clearInterval(interval);
   }, [expiresAt]);
+
+  // Polling para status do pagamento
+  useEffect(() => {
+    if (!open || !paymentId) return;
+    let interval: NodeJS.Timeout;
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/pagamento/status?id=${paymentId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.payment_status === 'paid') {
+            toast({
+              title: 'Pagamento recebido!',
+              description: 'O pagamento foi confirmado com sucesso.',
+              variant: 'success',
+            });
+            onOpenChange(false);
+          }
+        }
+      } catch (e) {}
+    };
+    interval = setInterval(checkStatus, 5000);
+    return () => clearInterval(interval);
+  }, [open, paymentId, toast, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
