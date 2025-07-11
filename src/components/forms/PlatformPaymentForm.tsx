@@ -118,8 +118,21 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
         title: "Pagamento criado",
         description: "Pagamento da plataforma criado com sucesso.",
       });
-    } catch (error) {
+    } catch (error: any) {
       setCreatedPayment(null);
+      if (error?.message?.includes('duplicate key value') || error?.message?.includes('unique constraint')) {
+        toast({
+          title: "Pagamento já existe",
+          description: "Já existe um pagamento criado para este mês. Verifique se está pendente ou já foi pago.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao criar pagamento da plataforma",
+          variant: "destructive"
+        });
+      }
       console.error("Erro ao criar pagamento:", error);
     }
   };
