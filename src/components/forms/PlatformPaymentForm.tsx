@@ -55,7 +55,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [pixData, setPixData] = useState<any>(null);
 
-  const { calculatePayment, createPayment, updatePayment, freeTrialStatus } = usePlatformPayments();
+  const { calculatePayment, createPayment, updatePayment, freeTrialStatus, getExistingPayment } = usePlatformPayments();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -84,6 +84,29 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const handleCreatePayment = async () => {
     if (!calculationResult) return;
     try {
+      // Verifica se já existe pagamento para o mês/ano/barbearia
+      const existing = await getExistingPayment({ month, year });
+      if (existing) {
+        if (existing.payment_status === 'paid') {
+          toast({
+            title: "Pagamento já realizado",
+            description: "O pagamento deste mês já foi efetuado.",
+            variant: "destructive"
+          });
+          setCreatedPayment(existing);
+          return;
+        }
+        if (existing.payment_status === 'pending') {
+          toast({
+            title: "Pagamento pendente",
+            description: "Já existe um pagamento pendente para este mês. Você pode visualizar o QR Code para pagar.",
+            variant: "default"
+          });
+          setCreatedPayment(existing);
+          return;
+        }
+      }
+      // Se não existe, cria normalmente
       const payment = await createPayment.mutateAsync({
         month,
         year,
@@ -95,7 +118,6 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
         title: "Pagamento criado",
         description: "Pagamento da plataforma criado com sucesso.",
       });
-      // Não fecha o modal automaticamente
     } catch (error) {
       setCreatedPayment(null);
       console.error("Erro ao criar pagamento:", error);

@@ -300,6 +300,26 @@ export function usePlatformPayments() {
     enabled: !!selectedBarberShop?.id,
   });
 
+  // Buscar pagamento existente para mês/ano/barbearia
+  async function getExistingPayment({ month, year }: { month: number, year: number }) {
+    if (!selectedBarberShop?.id) {
+      throw new Error('Barbearia não selecionada');
+    }
+    const { data, error } = await supabase
+      .from('platform_payments')
+      .select('*')
+      .eq('barber_shop_id', selectedBarberShop.id)
+      .eq('month', month)
+      .eq('year', year)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      logError(error, "Erro ao buscar pagamento existente:");
+      throw error;
+    }
+    return data; // pode ser undefined/null se não existir
+  }
+
   return {
     platformPayments,
     isLoading,
@@ -310,5 +330,6 @@ export function usePlatformPayments() {
     // generatePixQRCode removido
     freeTrialStatus: getFreeTrialStatus.data,
     isFreeTrialLoading: getFreeTrialStatus.isLoading,
+    getExistingPayment, // exporta a função
   };
 } 
