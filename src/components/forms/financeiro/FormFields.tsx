@@ -41,9 +41,10 @@ const metodosPagamento = [
 type FormFieldsProps = {
   form: UseFormReturn<FormValues>;
   tipo: "receita" | "despesa";
+  isEditing?: boolean;
 };
 
-export function FormFields({ form, tipo }: FormFieldsProps) {
+export function FormFields({ form, tipo, isEditing = false }: FormFieldsProps) {
   const formatDescription = (value: string) => {
     return value
       .toLowerCase()
@@ -70,6 +71,8 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
                 placeholder="Digite a descrição" 
                 {...field} 
                 onChange={handleDescriptionChange}
+                disabled={isEditing}
+                className={isEditing ? "bg-muted cursor-not-allowed" : ""}
               />
             </FormControl>
             <FormMessage />
@@ -90,6 +93,8 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
                 min="0"
                 placeholder="0,00"
                 {...field}
+                disabled={isEditing}
+                className={isEditing ? "bg-muted cursor-not-allowed" : ""}
               />
             </FormControl>
             <FormMessage />
@@ -103,9 +108,9 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Categoria</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger className={isEditing ? "bg-muted cursor-not-allowed" : ""}>
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
               </FormControl>
@@ -160,8 +165,10 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
                     variant={"outline"}
                     className={cn(
                       "w-full pl-3 text-left font-normal",
-                      !field.value && "text-muted-foreground"
+                      !field.value && "text-muted-foreground",
+                      isEditing && "bg-muted cursor-not-allowed"
                     )}
+                    disabled={isEditing}
                   >
                     {field.value ? (
                       format(field.value, "PPP", { locale: ptBR })
@@ -179,6 +186,7 @@ export function FormFields({ form, tipo }: FormFieldsProps) {
                   onSelect={field.onChange}
                   locale={ptBR}
                   initialFocus
+                  disabled={isEditing}
                 />
               </PopoverContent>
             </Popover>

@@ -31,10 +31,42 @@ export function useProdutosAdmin() {
     enabled: !!selectedBarberShop?.id
   });
 
+  // Função para verificar se um nome de produto já existe
+  const checkProductNameExists = async (name: string, excludeId?: string): Promise<boolean> => {
+    if (!selectedBarberShop?.id) {
+      throw new Error("Barbearia não selecionada");
+    }
+
+    let query = supabase
+      .from('products')
+      .select('id')
+      .eq('barber_shop_id', selectedBarberShop.id)
+      .eq('name', name.trim());
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logError(error, "Erro ao verificar nome do produto:");
+      throw error;
+    }
+
+    return data && data.length > 0;
+  };
+
   const createProduto = useMutation({
     mutationFn: async (produto: Omit<Produto, 'id' | 'created_at' | 'updated_at'>) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
+      }
+
+      // Verificar se o nome já existe antes de criar
+      const nameExists = await checkProductNameExists(produto.name);
+      if (nameExists) {
+        throw new Error("Já existe um produto com este nome na barbearia.");
       }
 
       const { data, error } = await supabase
@@ -71,6 +103,14 @@ export function useProdutosAdmin() {
     mutationFn: async (produto: Partial<Produto> & { id: string }) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
+      }
+
+      // Se o nome está sendo alterado, verificar se já existe
+      if (produto.name) {
+        const nameExists = await checkProductNameExists(produto.name, produto.id);
+        if (nameExists) {
+          throw new Error("Já existe um produto com este nome na barbearia.");
+        }
       }
 
       const { data, error } = await supabase
@@ -140,5 +180,6 @@ export function useProdutosAdmin() {
     createProduto,
     updateProduto,
     toggleProdutoStatus,
+    checkProductNameExists,
   };
 } 

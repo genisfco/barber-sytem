@@ -45,8 +45,13 @@ const PAYMENT_METHODS = [
 ];
 
 export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformPaymentFormProps) {
-  const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
-  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1; // Janeiro = 1
+  const currentYear = currentDate.getFullYear();
+  
+  // Inicializa com o mês anterior ao atual
+  const [month, setMonth] = useState<number>(currentMonth === 1 ? 12 : currentMonth - 1);
+  const [year, setYear] = useState<number>(currentMonth === 1 ? currentYear - 1 : currentYear);
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
   const [notes, setNotes] = useState<string>("");
   const [calculationResult, setCalculationResult] = useState<any>(null);
@@ -57,6 +62,47 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
 
   const { calculatePayment, createPayment, updatePayment, freeTrialStatus, getExistingPayment } = usePlatformPayments();
   const { toast } = useToast();
+
+  // Função para gerar opções de meses retroativos
+  const getRetroactiveMonths = () => {
+    const months = [];
+    let currentM = currentMonth;
+    let currentY = currentYear;
+    
+    // Adiciona o mês atual e os 11 meses anteriores
+    for (let i = 0; i < 12; i++) {
+      months.push({
+        value: currentM,
+        label: `${MONTHS[currentM - 1].label} ${currentY}`,
+        year: currentY
+      });
+      
+      // Volta um mês
+      currentM--;
+      if (currentM === 0) {
+        currentM = 12;
+        currentY--;
+      }
+    }
+    
+    return months.reverse(); // Inverte para mostrar do mais antigo para o mais recente
+  };
+
+  // Função para gerar opções de anos retroativos
+  const getRetroactiveYears = () => {
+    const years = [];
+    for (let y = currentYear; y >= 2020; y--) {
+      years.push(y);
+    }
+    return years;
+  };
+
+  // Função para verificar se uma combinação mês/ano é válida (não futura)
+  const isValidRetroactiveDate = (selectedMonth: number, selectedYear: number) => {
+    if (selectedYear > currentYear) return false;
+    if (selectedYear === currentYear && selectedMonth > currentMonth) return false;
+    return true;
+  };
 
   useEffect(() => {
     if (open && month && year) {
@@ -138,7 +184,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
       // Use os dados reais do pagamento criado
       const pix = await gerarPixQrCode({
         amount: createdPayment.total_amount || calculationResult?.total_amount || 0,
-        description: createdPayment.description || "Pagamento Plataforma",
+        description: createdPayment.description || "Pagamento BarberPro",
         payer: {
           email: createdPayment.payer_email || "cliente@email.com",
           first_name: createdPayment.payer_first_name || "Cliente",
@@ -183,7 +229,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Pagamento da Plataforma
+            Pagamento BarberPro
           </DialogTitle>
         </DialogHeader>
 
@@ -216,8 +262,8 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MONTHS.map((monthOption) => (
-                    <SelectItem key={monthOption.value} value={monthOption.value.toString()}>
+                  {getRetroactiveMonths().map((monthOption) => (
+                    <SelectItem key={`${monthOption.value}-${monthOption.year}`} value={monthOption.value.toString()}>
                       {monthOption.label}
                     </SelectItem>
                   ))}
@@ -226,14 +272,18 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             </div>
             <div>
               <Label htmlFor="year">Ano</Label>
-              <Input
-                id="year"
-                type="number"
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                min={2020}
-                max={2030}
-              />
+              <Select value={year.toString()} onValueChange={(value) => setYear(Number(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {getRetroactiveYears().map((yearOption) => (
+                    <SelectItem key={yearOption} value={yearOption.toString()}>
+                      {yearOption}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -259,19 +309,19 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-2xl font-bold text-purple-600">
                           {calculationResult.appointments_count}
                         </div>
                         <div className="text-sm text-muted-foreground">Agendamentos Atendidos</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-green-600">
+                        <div className="text-2xl font-bold text-blue-600">
                           {formatMoney(calculationResult.platform_fee)}
                         </div>
                         <div className="text-sm text-muted-foreground">Taxa por Agendamento</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-purple-600">
+                        <div className="text-2xl font-bold text-green-500">
                           {formatMoney(calculationResult.total_amount)}
                         </div>
                         <div className="text-sm text-muted-foreground">Total a Pagar</div>
@@ -369,7 +419,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             onOpenChange={setPixModalOpen}
             qrCode={pixData?.qr_code || ""}
             amount={pixData?.amount || createdPayment?.total_amount || 0}
-            description={pixData?.description || createdPayment?.description || "Pagamento Plataforma"}
+            description={pixData?.description || createdPayment?.description || "Pagamento BarberPro"}
             expiresAt={pixData?.expires_at}
             paymentId={createdPayment?.id}
           />

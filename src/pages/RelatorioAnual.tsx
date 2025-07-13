@@ -22,7 +22,8 @@ type DadosCategoria = {
 };
 
 const RelatorioAnual = () => {
-  const [ano, setAno] = useState<string>("");
+  const anoAtualString = new Date().getFullYear().toString();
+  const [ano, setAno] = useState<string>(anoAtualString);
   const { getRelatorioAnual } = useRelatorios();
   const { data: relatorio, isLoading } = getRelatorioAnual(ano);
   const [openDetalhesReceitas, setOpenDetalhesReceitas] = useState(false);

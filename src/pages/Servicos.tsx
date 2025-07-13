@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, X, Loader2, Pencil, Power, Info } from "lucide-react";
@@ -23,14 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm, useWatch } from "react-hook-form";
 import { useServicosAdmin } from "@/hooks/useServicosAdmin";
-import type { Servico } from "@/types/servico";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Database } from "@/integrations/supabase/types";
 
-type ServicoFormData = Omit<Servico, "id" | "created_at" | "updated_at" | "active" | "barber_shop_id"> & {
-  commission_type?: 'percentual' | 'fixo' | '' | null;
-  commission_extra_type?: 'percentual' | 'fixo' | '' | null;
-};
+type Servico = Database['public']['Tables']['services']['Row'];
+type ServicoFormData = Omit<Servico, "id" | "created_at" | "updated_at" | "active" | "barber_shop_id">;
 
 const Servicos = () => {
   const [open, setOpen] = useState(false);
@@ -38,12 +36,15 @@ const Servicos = () => {
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [isSemComissao, setIsSemComissao] = useState(true); // padrão: sem comissão
+  const [nameValidationError, setNameValidationError] = useState<string | null>(null);
+  const [isValidatingName, setIsValidatingName] = useState(false);
+  
   const { register, handleSubmit, reset, setValue, control, watch, formState: { errors } } = useForm<ServicoFormData>({
     defaultValues: {
       has_commission: false, // padrão: sem comissão
     }
   });
-  const { servicos, isLoading, createServico, updateServico, toggleServicoStatus } = useServicosAdmin();
+  const { servicos, isLoading, createServico, updateServico, toggleServicoStatus, checkServiceNameExists } = useServicosAdmin();
   const [showResumoDialog, setShowResumoDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<ServicoFormData | null>(null);
 
@@ -54,8 +55,42 @@ const Servicos = () => {
   const watchCommissionExtraValue = useWatch({ control, name: "commission_extra_value" });
   const watchDuration = useWatch({ control, name: "duration" });
   const watchHasCommission = watch('has_commission', false);
+  const watchName = useWatch({ control, name: "name" });
+
+  // Validação em tempo real do nome do serviço
+  useEffect(() => {
+    const validateName = async () => {
+      if (!watchName || watchName.trim().length < 2) {
+        setNameValidationError(null);
+        return;
+      }
+
+      setIsValidatingName(true);
+      try {
+        const nameExists = await checkServiceNameExists(watchName.trim(), selectedServico?.id);
+        if (nameExists) {
+          setNameValidationError("Já existe um serviço com este nome na barbearia.");
+        } else {
+          setNameValidationError(null);
+        }
+      } catch (error) {
+        console.error("Erro ao validar nome:", error);
+        setNameValidationError("Erro ao validar nome do serviço.");
+      } finally {
+        setIsValidatingName(false);
+      }
+    };
+
+    const timeoutId = setTimeout(validateName, 500); // Debounce de 500ms
+    return () => clearTimeout(timeoutId);
+  }, [watchName, selectedServico?.id, checkServiceNameExists]);
 
   const onSubmit = async (data: ServicoFormData) => {
+    // Verificar se há erro de validação do nome
+    if (nameValidationError) {
+      return;
+    }
+
     let payload = { ...data };
     if (payload.has_commission === false) {
       payload.commission_type = null;
@@ -83,6 +118,7 @@ const Servicos = () => {
     setOpen(false);
     setSelectedServico(null);
     reset();
+    setNameValidationError(null);
   };
 
   const handleEdit = (servico: Servico) => {
@@ -96,6 +132,7 @@ const Servicos = () => {
     setValue("commission_extra_value", servico.commission_extra_value ?? undefined);
     setValue("has_commission", servico.has_commission ?? false);
     setIsSemComissao(servico.has_commission === false);
+    setNameValidationError(null);
     setOpen(true);
   };
 
@@ -246,6 +283,7 @@ const Servicos = () => {
           if (!newOpen) {
             setSelectedServico(null);
             reset();
+            setNameValidationError(null);
           }
           setOpen(newOpen);
         }}>
@@ -267,12 +305,27 @@ const Servicos = () => {
             })} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome do serviço</Label>
-                <Input
-                  id="name"
-                  placeholder="Digite o nome do serviço"
-                  {...register("name")}
-                  onChange={handleNameChange}
-                />
+                <div className="relative">
+                  <Input
+                    id="name"
+                    placeholder="Digite o nome do serviço"
+                    {...register("name", { 
+                      required: "Nome é obrigatório",
+                      minLength: { value: 2, message: "Nome deve ter pelo menos 2 caracteres" }
+                    })}
+                    onChange={handleNameChange}
+                    className={nameValidationError ? "border-red-500" : ""}
+                  />
+                  {isValidatingName && (
+                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                {nameValidationError && (
+                  <span className="text-red-500 text-xs">{nameValidationError}</span>
+                )}
+                {errors.name && !nameValidationError && (
+                  <span className="text-red-500 text-xs">{errors.name.message}</span>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="price">Preço</Label>
@@ -423,6 +476,7 @@ const Servicos = () => {
                     setOpen(false);
                     setSelectedServico(null);
                     reset();
+                    setNameValidationError(null);
                   }}
                 >
                   <X className="mr-2 h-4 w-4" />
@@ -430,7 +484,7 @@ const Servicos = () => {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={createServico.isPending || updateServico.isPending}
+                  disabled={createServico.isPending || updateServico.isPending || !!nameValidationError || isValidatingName}
                 >
                   {(createServico.isPending || updateServico.isPending) ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

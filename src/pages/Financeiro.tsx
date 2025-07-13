@@ -76,7 +76,7 @@ const Financeiro = () => {
           </Button>
           <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setOpenPagamentoPlataforma(true)}>
             <CreditCard className="mr-2 h-4 w-4" />
-            Pagamento Plataforma
+            Pagamento BarberPro
           </Button>
         </div>
       </div>
@@ -134,8 +134,7 @@ const Financeiro = () => {
         <div>
           <Button 
             variant="outline" 
-            onClick={() => setOpenComissoes(true)}
-            className="bg-barber-gold text-white hover:bg-barber-gold/90 hover:text-white"
+            onClick={() => setOpenComissoes(true)}            
           >
             <Scissors className="mr-2" />
             Comissões
@@ -204,14 +203,14 @@ const Financeiro = () => {
                           <Pencil className="h-4 w-4" />
                         </Button>
 
-                        <Button
+                        {/* <Button
                           variant="ghost"
                           size="icon"   
                           className="h-9 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"                       
                           onClick={() => setTransacaoParaExcluir(transacao)}
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </Button> */}
                       </div>
                     </TableCell>
                   </TableRow>

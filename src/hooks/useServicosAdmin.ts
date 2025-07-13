@@ -35,10 +35,42 @@ export function useServicosAdmin() {
     enabled: !!selectedBarberShop
   });
 
+  // Função para verificar se um nome de serviço já existe
+  const checkServiceNameExists = async (name: string, excludeId?: string): Promise<boolean> => {
+    if (!selectedBarberShop?.id) {
+      throw new Error("Barbearia não selecionada");
+    }
+
+    let query = supabase
+      .from('services')
+      .select('id')
+      .eq('barber_shop_id', selectedBarberShop.id)
+      .eq('name', name.trim());
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logError(error, "Erro ao verificar nome do serviço:");
+      throw error;
+    }
+
+    return data && data.length > 0;
+  };
+
   const createServico = useMutation({
     mutationFn: async (servico: Omit<Servico, 'id' | 'created_at' | 'updated_at' | 'barber_shop_id' | 'active'>) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
+      }
+
+      // Verificar se o nome já existe antes de criar
+      const nameExists = await checkServiceNameExists(servico.name);
+      if (nameExists) {
+        throw new Error("Já existe um serviço com este nome na barbearia.");
       }
 
       const { data, error } = await supabase
@@ -75,6 +107,14 @@ export function useServicosAdmin() {
     mutationFn: async (servico: Partial<Servico> & { id: string }) => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
+      }
+
+      // Se o nome está sendo alterado, verificar se já existe
+      if (servico.name) {
+        const nameExists = await checkServiceNameExists(servico.name, servico.id);
+        if (nameExists) {
+          throw new Error("Já existe um serviço com este nome na barbearia.");
+        }
       }
 
       const { data, error } = await supabase
@@ -150,5 +190,6 @@ export function useServicosAdmin() {
     createServico,
     updateServico,
     toggleServicoStatus,
+    checkServiceNameExists,
   };
 } 

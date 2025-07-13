@@ -7,6 +7,7 @@ export const formSchema = z.object({
   descricao: z.string().min(1, "A descrição é obrigatória"),
   metodo_pagamento: z.string().optional(),
   category: z.enum(["servicos", "produtos", "comissoes", "despesas_fixas", "outros"]).default("outros"),
+  observacao: z.string().optional(),
 });
 
 export type FormValues = {
@@ -15,6 +16,7 @@ export type FormValues = {
   descricao: string;
   metodo_pagamento?: string;
   category: "assinaturas" | "servicos" | "produtos" | "comissoes" | "despesas_fixas" | "outros";
+  observacao?: string;
 };
 
 export interface FinanceiroFormProps {

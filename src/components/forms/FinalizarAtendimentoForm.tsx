@@ -591,7 +591,7 @@ export function FinalizarAtendimentoForm({
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
                 <h3 className="font-medium mt-10 text-muted-foreground ">Serviços Realizados</h3>
-                <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2"> {/* Alterado para grid de 2 colunas */}
                   {servicos && servicos.length > 0 ? (
                     servicos.map((servico) => {
                       const beneficio = getBeneficioServico(servico.id);
@@ -655,7 +655,7 @@ export function FinalizarAtendimentoForm({
 
               <div className="space-y-4">
                 <h3 className="font-medium mt-10 text-muted-foreground">Produtos</h3>
-                <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2"> {/* Alterado para grid de 2 colunas */}
                   {produtos && produtos.length > 0 ? (
                     produtos.map((produto) => {
                       const beneficio = getBeneficioProduto(produto.id);

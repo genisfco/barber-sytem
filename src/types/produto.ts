@@ -5,9 +5,10 @@ export interface Produto {
   price: number;
   stock: number;
   active: boolean;
-  created_at?: string;
-  updated_at?: string;
-  bonus_type?: 'percentual' | 'fixo' | null;
-  bonus_value?: number | null;
-  has_commission?: boolean;
+  bonus_type: string | null;
+  bonus_value: number | null;
+  has_commission: boolean;
+  barber_shop_id: string;
+  created_at: string;
+  updated_at: string;
 } 

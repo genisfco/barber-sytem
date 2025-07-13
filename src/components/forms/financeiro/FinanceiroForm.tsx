@@ -49,6 +49,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         descricao: transacao.description,
         metodo_pagamento: transacao.payment_method,
         category: transacao.category,
+        observacao: transacao.notes || "",
       });
     } else {
       form.reset({
@@ -83,6 +84,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         payment_method: values.metodo_pagamento,
         category: values.category,
         payment_date,
+        notes: values.observacao || null,
       };
 
       if (transacao) {
@@ -123,7 +125,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
           </DialogTitle>
           <DialogDescription>
             {transacao
-              ? "Atualize os campos abaixo para editar a transação."
+              ? "Atualize os campos abaixo para editar a transação. Apenas o método de pagamento e observação podem ser alterados por questões de segurança."
               : `Preencha os campos abaixo para cadastrar uma nova ${
                   tipo === "receita" ? "receita" : "despesa"
                 }.`}
@@ -131,7 +133,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormFields form={form} tipo={tipo} />
+            <FormFields form={form} tipo={tipo} isEditing={!!transacao} />
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"

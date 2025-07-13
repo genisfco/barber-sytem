@@ -16,8 +16,12 @@ import { ptBR } from "date-fns/locale";
 import { DetalhesDialog } from "@/components/financeiro/DetalhesDialog";
 
 const RelatorioMensal = () => {
-  const [mes, setMes] = useState<string>("");
-  const [ano, setAno] = useState<string>("");
+  const dataAtual = new Date();
+  const mesAtual = (dataAtual.getMonth() + 1).toString();
+  const anoAtualString = dataAtual.getFullYear().toString();
+  
+  const [mes, setMes] = useState<string>(mesAtual);
+  const [ano, setAno] = useState<string>(anoAtualString);
   const { getRelatorioMensal } = useRelatorios();
   const { data: relatorio, isLoading } = getRelatorioMensal(mes, ano);
   const [openDetalhesReceitas, setOpenDetalhesReceitas] = useState(false);

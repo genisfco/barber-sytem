@@ -289,7 +289,8 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div
-                                className={`py-2 px-1 rounded-md text-center font-medium transition-colors ${slotClass}`}
+                                className={`py-1 px-0.5 rounded-md text-center font-medium transition-colors text-sm ${slotClass}`}
+                                style={{ minWidth: 48, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 onClick={() => !hora_agenda_indisponivel && handleHorarioClick(barbeiro.id, horario)}
                               >
                                 {horario}

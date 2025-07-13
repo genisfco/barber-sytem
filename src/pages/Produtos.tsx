@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, X, Loader2, Pencil, Power, ShoppingCart, Info } from "lucide-react";
@@ -23,14 +23,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm, useWatch } from "react-hook-form";
 import { useProdutosAdmin } from "@/hooks/useProdutosAdmin";
-import type { Produto } from "@/types/produto";
 import { VenderProdutosForm } from "@/components/forms/VenderProdutosForm";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Database } from "@/integrations/supabase/types";
 
-type ProdutoFormData = Omit<Produto, "id" | "created_at" | "updated_at" | "active"> & {
-  bonus_type?: 'percentual' | 'fixo' | null;
-};
+type Produto = Database['public']['Tables']['products']['Row'];
+type ProdutoFormData = Omit<Produto, "id" | "created_at" | "updated_at" | "active" | "barber_shop_id">;
 
 const Produtos = () => {
   const [open, setOpen] = useState(false);
@@ -39,17 +38,49 @@ const Produtos = () => {
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [isSemComissao, setIsSemComissao] = useState(true);
+  const [nameValidationError, setNameValidationError] = useState<string | null>(null);
+  const [isValidatingName, setIsValidatingName] = useState(false);
+  
   const { register, handleSubmit, reset, setValue, control, watch, formState: { errors } } = useForm<ProdutoFormData>({
     defaultValues: {
       has_commission: false,
     }
   });
-  const { produtos, isLoading, createProduto, updateProduto, toggleProdutoStatus } = useProdutosAdmin();
+  const { produtos, isLoading, createProduto, updateProduto, toggleProdutoStatus, checkProductNameExists } = useProdutosAdmin();
   const watchBonusType = useWatch({ control, name: "bonus_type" });
   const watchBonusValue = useWatch({ control, name: "bonus_value" });
   const watchHasCommission = watch('has_commission', false);
+  const watchName = useWatch({ control, name: "name" });
   const [showResumoDialog, setShowResumoDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<ProdutoFormData | null>(null);
+
+  // Validação em tempo real do nome do produto
+  useEffect(() => {
+    const validateName = async () => {
+      if (!watchName || watchName.trim().length < 2) {
+        setNameValidationError(null);
+        return;
+      }
+
+      setIsValidatingName(true);
+      try {
+        const nameExists = await checkProductNameExists(watchName.trim(), selectedProduto?.id);
+        if (nameExists) {
+          setNameValidationError("Já existe um produto com este nome na barbearia.");
+        } else {
+          setNameValidationError(null);
+        }
+      } catch (error) {
+        console.error("Erro ao validar nome:", error);
+        setNameValidationError("Erro ao validar nome do produto.");
+      } finally {
+        setIsValidatingName(false);
+      }
+    };
+
+    const timeoutId = setTimeout(validateName, 500); // Debounce de 500ms
+    return () => clearTimeout(timeoutId);
+  }, [watchName, selectedProduto?.id, checkProductNameExists]);
 
   function calcularPreviewComissao(data: ProdutoFormData) {
     if (data.has_commission === false) {
@@ -105,6 +136,11 @@ const Produtos = () => {
   });
 
   const onSubmit = async (data: ProdutoFormData) => {
+    // Verificar se há erro de validação do nome
+    if (nameValidationError) {
+      return;
+    }
+
     let payload = { ...data };
     if (payload.has_commission === false) {
       payload.bonus_type = null;
@@ -118,12 +154,14 @@ const Produtos = () => {
     if (selectedProduto) {
       await updateProduto.mutateAsync({ ...payload, id: selectedProduto.id });
     } else {
-      await createProduto.mutateAsync({ ...payload, active: true });
+      const { active, ...createPayload } = payload;
+      await createProduto.mutateAsync(createPayload);
     }
     setOpen(false);
     setSelectedProduto(null);
     reset();
     setIsSemComissao(true);
+    setNameValidationError(null);
   };
 
   const handleEdit = (produto: Produto) => {
@@ -136,6 +174,7 @@ const Produtos = () => {
     setValue("bonus_value", produto.bonus_value ?? undefined);
     setValue("has_commission", produto.has_commission ?? false);
     setIsSemComissao(produto.has_commission === false);
+    setNameValidationError(null);
     setOpen(true);
   };
 
@@ -190,6 +229,7 @@ const Produtos = () => {
             if (!newOpen) {
               setSelectedProduto(null);
               reset();
+              setNameValidationError(null);
             }
             setOpen(newOpen);
           }}>
@@ -211,12 +251,27 @@ const Produtos = () => {
               })} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do produto</Label>
-                  <Input
-                    id="name"
-                    placeholder="Digite o nome do produto"
-                    {...register("name")}
-                    onChange={handleNameChange}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="name"
+                      placeholder="Digite o nome do produto"
+                      {...register("name", { 
+                        required: "Nome é obrigatório",
+                        minLength: { value: 2, message: "Nome deve ter pelo menos 2 caracteres" }
+                      })}
+                      onChange={handleNameChange}
+                      className={nameValidationError ? "border-red-500" : ""}
+                    />
+                    {isValidatingName && (
+                      <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  {nameValidationError && (
+                    <span className="text-red-500 text-xs">{nameValidationError}</span>
+                  )}
+                  {errors.name && !nameValidationError && (
+                    <span className="text-red-500 text-xs">{errors.name.message}</span>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>
@@ -310,6 +365,7 @@ const Produtos = () => {
                       setOpen(false);
                       setSelectedProduto(null);
                       reset();
+                      setNameValidationError(null);
                     }}
                   >
                     <X className="mr-2 h-4 w-4" />
@@ -317,7 +373,7 @@ const Produtos = () => {
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={createProduto.isPending || updateProduto.isPending}
+                    disabled={createProduto.isPending || updateProduto.isPending || !!nameValidationError || isValidatingName}
                   >
                     {(createProduto.isPending || updateProduto.isPending) ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -468,22 +524,10 @@ const Produtos = () => {
             <div className="bg-muted p-2 rounded">
               <strong>Como será calculada a comissão:</strong>
               <ul className="list-disc ml-5">
-                {pendingFormData && calcularPreviewComissao({
-                  ...pendingFormData,
-                  commission_type: (typeof pendingFormData.commission_type === 'string' && pendingFormData.commission_type === '') ? undefined : pendingFormData.commission_type as 'percentual' | 'fixo' | undefined,
-                  commission_extra_type: (typeof pendingFormData.commission_extra_type === 'string' && pendingFormData.commission_extra_type === '') ? undefined : pendingFormData.commission_extra_type as 'percentual' | 'fixo' | undefined,
-                }).detalhes.map((d, i) => <li key={i}>{d}</li>)}
+                {pendingFormData && calcularPreviewComissao(pendingFormData).detalhes.map((d, i) => <li key={i}>{d}</li>)}
               </ul>
-              {pendingFormData && calcularPreviewComissao({
-                ...pendingFormData,
-                commission_type: (typeof pendingFormData.commission_type === 'string' && pendingFormData.commission_type === '') ? undefined : pendingFormData.commission_type as 'percentual' | 'fixo' | undefined,
-                commission_extra_type: (typeof pendingFormData.commission_extra_type === 'string' && pendingFormData.commission_extra_type === '') ? undefined : pendingFormData.commission_extra_type as 'percentual' | 'fixo' | undefined,
-              }).texto && (
-                <div className="mt-1 font-medium">{calcularPreviewComissao({
-                  ...pendingFormData,
-                  commission_type: (typeof pendingFormData.commission_type === 'string' && pendingFormData.commission_type === '') ? undefined : pendingFormData.commission_type as 'percentual' | 'fixo' | undefined,
-                  commission_extra_type: (typeof pendingFormData.commission_extra_type === 'string' && pendingFormData.commission_extra_type === '') ? undefined : pendingFormData.commission_extra_type as 'percentual' | 'fixo' | undefined,
-                }).texto}</div>
+              {pendingFormData && calcularPreviewComissao(pendingFormData).texto && (
+                <div className="mt-1 font-medium">{calcularPreviewComissao(pendingFormData).texto}</div>
               )}
             </div>
             <div className="text-xs text-muted-foreground mt-2">
@@ -494,11 +538,7 @@ const Produtos = () => {
             <Button variant="outline" onClick={() => setShowResumoDialog(false)}>Cancelar</Button>
             <Button onClick={async () => {
               if (pendingFormData) {
-                await onSubmit({
-                  ...pendingFormData,
-                  commission_type: (typeof pendingFormData.commission_type === 'string' && pendingFormData.commission_type === '') ? undefined : pendingFormData.commission_type as 'percentual' | 'fixo' | undefined,
-                  commission_extra_type: (typeof pendingFormData.commission_extra_type === 'string' && pendingFormData.commission_extra_type === '') ? undefined : pendingFormData.commission_extra_type as 'percentual' | 'fixo' | undefined,
-                });
+                await onSubmit(pendingFormData);
                 setShowResumoDialog(false);
               }
             }}>
