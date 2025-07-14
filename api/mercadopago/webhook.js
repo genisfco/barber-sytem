@@ -62,7 +62,7 @@ export default async function handler(req, res) {
           type: 'despesa',
           value: Number(paymentData.total_amount),
           description: `Pagamento Sistema BarberPro - Período: ${mesAno}`,
-          category: 'Sistema',
+          category: 'despesas_fixas',
           payment_method: paymentData.payment_method || 'PIX',
           payment_date: new Date().toISOString().slice(0, 10),
           barber_shop_id: paymentData.barber_shop_id,
