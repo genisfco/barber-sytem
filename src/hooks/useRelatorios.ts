@@ -15,7 +15,7 @@ export type RelatorioData = {
     value: number;
     description: string;
     payment_method?: string;
-    category: "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "outros";
+    category: "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "sistemas" | "outros";
     status: "pendente" | "pago" | "cancelado";
     payment_date: string;
     created_at: string;

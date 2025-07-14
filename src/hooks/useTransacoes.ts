@@ -12,7 +12,7 @@ export type Transacao = {
   value: number;
   description: string;
   payment_method?: string;
-  category: "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "outros";
+  category: "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "sistemas" | "outros";
   notes?: string;
   payment_date: string;
   created_at: string;

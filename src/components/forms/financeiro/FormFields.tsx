@@ -119,6 +119,7 @@ export function FormFields({ form, tipo, isEditing = false }: FormFieldsProps) {
                 <SelectItem value="produtos">Produtos</SelectItem>
                 <SelectItem value="comissoes">Comissões</SelectItem>
                 <SelectItem value="despesas_fixas">Despesas Fixas</SelectItem>
+                <SelectItem value="sistemas">Sistemas</SelectItem>
                 <SelectItem value="outros">Outros</SelectItem>
               </SelectContent>
             </Select>

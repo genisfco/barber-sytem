@@ -22,7 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { logError } from "@/utils/logger";
 
-type Categoria = "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "outros";
+type Categoria = "servicos" | "produtos" | "assinaturas" | "comissoes" | "despesas_fixas" | "sistemas" | "outros";
 
 const Financeiro = () => {
   const [openDespesa, setOpenDespesa] = useState(false);
@@ -180,6 +180,7 @@ const Financeiro = () => {
                       {transacao.category === 'assinaturas' && 'Assinaturas'}
                       {transacao.category === 'comissoes' && 'Comissões'}
                       {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
+                      {transacao.category === 'sistemas' && 'Sistemas'}
                       {transacao.category === 'outros' && 'Outros'}
                     </TableCell>
                     <TableCell>{transacao.payment_method || "-"}</TableCell>
