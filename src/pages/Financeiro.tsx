@@ -6,7 +6,7 @@ import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
 import { PlatformPaymentForm } from "@/components/forms/PlatformPaymentForm";
 import { PlatformPaymentsList } from "@/components/PlatformPaymentsList";
 import { Link } from "react-router-dom";
-import { useTransacoes } from "@/hooks/useTransacoes";
+import { useTransacoes, type Transacao } from "@/hooks/useTransacoes";
 import {
   Table,
   TableBody,
@@ -29,9 +29,9 @@ const Financeiro = () => {
   const [openReceita, setOpenReceita] = useState(false);
   const [openPagamentoPlataforma, setOpenPagamentoPlataforma] = useState(false);
   const [openComissoes, setOpenComissoes] = useState(false);
-  const [transacaoParaEditar, setTransacaoParaEditar] = useState<any>(null);
-  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<any>(null);
-  const { transacoes, isLoading, totais, updateTransacao, deleteTransacao } = useTransacoes();
+  const [transacaoParaEditar, setTransacaoParaEditar] = useState<Transacao | null>(null);
+  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<Transacao | null>(null);
+  const { transacoesHoje, isLoading, totais, updateTransacao, deleteTransacao } = useTransacoes();
   const { toast } = useToast();
 
   const formatMoney = (value: number) => {
@@ -41,7 +41,7 @@ const Financeiro = () => {
     }).format(value);
   };
 
-  const handleEditarTransacao = (transacao: any) => {
+  const handleEditarTransacao = (transacao: Transacao) => {
     setTransacaoParaEditar(transacao);
     if (transacao.type === "receita") {
       setOpenReceita(true);
@@ -144,14 +144,14 @@ const Financeiro = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Transações</CardTitle>
+          <CardTitle>Transações de Hoje</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div>Carregando...</div>
-          ) : !transacoes?.length ? (
+          ) : !transacoesHoje?.length ? (
             <div className="text-muted-foreground">
-              Nenhuma transação registrada.
+              Nenhuma transação registrada hoje.
             </div>
           ) : (
             <Table>
@@ -166,7 +166,7 @@ const Financeiro = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transacoes.map((transacao) => (
+                {transacoesHoje.map((transacao) => (
                   <TableRow key={transacao.id}>
                     <TableCell>
                       {format(new Date(transacao.payment_date + 'T00:00:00'), "dd/MM/yyyy", {

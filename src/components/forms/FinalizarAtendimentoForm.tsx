@@ -23,6 +23,7 @@ import { Crown, Gift, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useBarbers } from "@/hooks/useBarbers";
+import { QuantitySelector } from "@/components/ui/quantity-selector";
 import type { Servico } from "@/types/servico";
 import type { Produto } from "@/types/produto";
 
@@ -548,7 +549,7 @@ export function FinalizarAtendimentoForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[100vh] overflow-y-auto bg-secondary">
+      <DialogContent className="max-w-3xl max-h-[102vh] overflow-y-auto bg-secondary">
         <DialogHeader>
           <DialogTitle>Finalização e Checklist de Atendimento</DialogTitle>
         </DialogHeader>
@@ -591,7 +592,7 @@ export function FinalizarAtendimentoForm({
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
                 <h3 className="font-medium mt-10 text-muted-foreground ">Serviços Realizados</h3>
-                <div className="grid grid-cols-3 gap-2"> {/* Alterado para grid de 2 colunas */}
+                <div className="grid grid-cols-2 gap-3"> {/* Alterado para grid de 2 colunas */}
                   {servicos && servicos.length > 0 ? (
                     servicos.map((servico) => {
                       const beneficio = getBeneficioServico(servico.id);
@@ -655,7 +656,7 @@ export function FinalizarAtendimentoForm({
 
               <div className="space-y-4">
                 <h3 className="font-medium mt-10 text-muted-foreground">Produtos</h3>
-                <div className="grid grid-cols-3 gap-2"> {/* Alterado para grid de 2 colunas */}
+                <div className="grid gap-3"> {/* Grid de uma coluna para melhor layout em mobile */}
                   {produtos && produtos.length > 0 ? (
                     produtos.map((produto) => {
                       const beneficio = getBeneficioProduto(produto.id);
@@ -670,84 +671,83 @@ export function FinalizarAtendimentoForm({
                           control={form.control}
                           name="produtos"
                           render={({ field }) => (
-                            <FormItem className="flex items-center space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.some(p => p.id === produto.id)}
-                                  onCheckedChange={(checked) => {
-                                    const current = field.value || [];
-                                    if (checked) {
-                                      // Se for produto gratuito, sempre adiciona com quantidade 1
-                                      const quantidade = isGratuito ? 1 : 1;
-                                      field.onChange([...current, { id: produto.id, quantity: quantidade }]);
-                                    } else {
-                                      field.onChange(current.filter(p => p.id !== produto.id));
-                                    }
-                                    calcularTotal();
-                                  }}
-                                  disabled={produto.stock === 0}
-                                />
-                              </FormControl>
-                              <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
-                                <div className="flex items-center gap-2">
-                                  <span>{produto.name}</span>
-                                  {temBeneficio && (
-                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                      <Gift className="w-3 h-3 mr-1" />
-                                      {isGratuito ? 'Grátis (1 unidade)' : `${beneficio?.discount_percentage}% OFF`}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  {temBeneficio ? (
-                                    <>
-                                      <span className="line-through text-muted-foreground">R$ {produto.price.toFixed(2)}</span>
-                                      <span className="text-green-600 font-medium">R$ {precoUnitarioFinal.toFixed(2)}</span>
-                                    </>
-                                  ) : (
-                                    <span>R$ {produto.price.toFixed(2)}</span>
-                                  )}
-                                  <span className="text-muted-foreground">
-                                    (Estoque: {produto.stock})
-                                  </span>
-                                </div>
-                              </FormLabel>
-                              {field.value?.some(p => p.id === produto.id) && (
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  max={isGratuito ? 1 : produto.stock}
-                                  value={field.value.find(p => p.id === produto.id)?.quantity || 1}
-                                  onChange={(e) => {
-                                    const quantidade = parseInt(e.target.value);
-                                    
-                                    // Se for produto gratuito, força quantidade 1
-                                    if (isGratuito) {
+                                                    <FormItem className="flex items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.some(p => p.id === produto.id)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value || [];
+                                if (checked) {
+                                  // Se for produto gratuito, sempre adiciona com quantidade 1
+                                  const quantidade = isGratuito ? 1 : 1;
+                                  field.onChange([...current, { id: produto.id, quantity: quantidade }]);
+                                } else {
+                                  field.onChange(current.filter(p => p.id !== produto.id));
+                                }
+                                calcularTotal();
+                              }}
+                              disabled={produto.stock === 0}
+                            />
+                          </FormControl>
+                          <div className="flex-1 min-w-0">
+                            <FormLabel className={`font-normal ${produto.stock === 0 ? 'text-muted-foreground' : ''}`}>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{produto.name}</span>
+                                {temBeneficio && (
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                    <Gift className="w-3 h-3 mr-1" />
+                                    {isGratuito ? 'Grátis (1 unidade)' : `${beneficio?.discount_percentage}% OFF`}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm flex-wrap">
+                                {temBeneficio ? (
+                                  <>
+                                    <span className="line-through text-muted-foreground">R$ {produto.price.toFixed(2)}</span>
+                                    <span className="text-green-600 font-medium">R$ {precoUnitarioFinal.toFixed(2)}</span>
+                                  </>
+                                ) : (
+                                  <span>R$ {produto.price.toFixed(2)}</span>
+                                )}
+                                <span className="text-muted-foreground">
+                                  (Estoque: {produto.stock})
+                                </span>
+                              </div>
+                            </FormLabel>
+                          </div>
+                                                            {field.value?.some(p => p.id === produto.id) && (
+                                <div className="flex-shrink-0">
+                                  <QuantitySelector
+                                    value={field.value.find(p => p.id === produto.id)?.quantity || 1}
+                                    onChange={(quantidade) => {
+                                      // Se for produto gratuito, força quantidade 1
+                                      if (isGratuito) {
+                                        const current = field.value || [];
+                                        field.onChange(current.map(p => 
+                                          p.id === produto.id 
+                                            ? { ...p, quantity: 1 } 
+                                            : p
+                                        ));
+                                        calcularTotal();
+                                        return;
+                                      }
+                                      
+                                      // Para produtos com desconto ou sem benefício, valida normalmente
+                                      if (quantidade > produto.stock) return;
+                                      
                                       const current = field.value || [];
                                       field.onChange(current.map(p => 
-                                        p.id === produto.id 
-                                          ? { ...p, quantity: 1 } 
-                                          : p
+                                          p.id === produto.id 
+                                            ? { ...p, quantity: quantidade } 
+                                            : p
                                       ));
                                       calcularTotal();
-                                      return;
-                                    }
-                                    
-                                    // Para produtos com desconto ou sem benefício, valida normalmente
-                                    if (quantidade > produto.stock) return;
-                                    
-                                    const current = field.value || [];
-                                    field.onChange(current.map(p => 
-                                      p.id === produto.id 
-                                        ? { ...p, quantity: quantidade } 
-                                        : p
-                                    ));
-                                    calcularTotal();
-                                  }}
-                                  className="w-20"
-                                  disabled={isGratuito}
-                                  title={isGratuito ? "Produto gratuito limitado a 1 unidade" : ""}
-                                />
+                                    }}
+                                    min={1}
+                                    max={isGratuito ? 1 : produto.stock}
+                                    disabled={isGratuito}
+                                  />
+                                </div>
                               )}
                             </FormItem>
                           )}

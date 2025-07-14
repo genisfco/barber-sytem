@@ -33,6 +33,7 @@ import { useBeneficiosRestantesCliente, useAssinaturaCliente } from "@/hooks/use
 
 type ClienteFormData = {
   name: string;
+  cpf: string;
   email: string;
   phone: string;
   notes: string | null;
@@ -52,7 +53,8 @@ const Clientes = () => {
   const { register, handleSubmit, reset, setValue, watch } = useForm<ClienteFormData>({
     defaultValues: {
       active: true,
-      notes: null
+      notes: null,
+      cpf: ""
     }
   });
   const { clientes, isLoading, createCliente, updateCliente, toggleClienteStatus } = useClientes();
@@ -119,6 +121,7 @@ const Clientes = () => {
   const handleEdit = (cliente: Cliente) => {
     setSelectedClient(cliente);
     setValue("name", cliente.name);
+    setValue("cpf", cliente.cpf || "");
     setValue("email", cliente.email);
     setValue("phone", cliente.phone);
     setValue("notes", cliente.notes || "");
@@ -152,24 +155,17 @@ const Clientes = () => {
   };
 
   const filteredClientes = clientes?.filter((cliente) => {
-    const matchesSearch = (
-      cliente.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.phone.includes(searchTerm)
-    );
-
-    // Aplicar filtros de assinantes se necessário
-    if (showOnlySubscribers) {
-      if (filterType === 'ativos') {
-        return matchesSearch && clientesAtivos.includes(cliente.id);
-      } else if (filterType === 'inadimplentes') {
-        return matchesSearch && clientesInadimplentes.includes(cliente.id);
-      } else {
-        return matchesSearch && clientesAssinantes.includes(cliente.id);
-      }
+    if (!searchTerm) return true;
+    const isNumber = /^\d+$/.test(searchTerm.replace(/\D/g, ''));
+    if (isNumber) {
+      // Busca por CPF (ignorando máscara)
+      const clienteCPF = (cliente.cpf || '').replace(/\D/g, '');
+      const searchCPF = searchTerm.replace(/\D/g, '');
+      return clienteCPF.includes(searchCPF);
+    } else {
+      // Busca por nome
+      return cliente.name.toLowerCase().includes(searchTerm.toLowerCase());
     }
-
-    return matchesSearch;
   });
 
   const formatName = (value: string) => {
@@ -206,6 +202,19 @@ const Clientes = () => {
     return value.toLowerCase();
   };
 
+  const formatCPF = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    // Limita a 11 dígitos
+    const limitedNumbers = numbers.slice(0, 11);
+    // Aplica a máscara: 000.000.000-00
+    return limitedNumbers.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (match, p1, p2, p3, p4) => {
+      let result = `${p1}.${p2}.${p3}`;
+      if (p4) result += `-${p4}`;
+      return result;
+    });
+  };
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatName(e.target.value);
     setValue('name', formattedValue);
@@ -219,6 +228,11 @@ const Clientes = () => {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatEmail(e.target.value);
     setValue('email', formattedValue);
+  };
+
+  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCPF(e.target.value);
+    setValue('cpf', formattedValue);
   };
 
   const handleShowSubscribers = (type: 'all' | 'ativos' | 'inadimplentes') => {
@@ -263,6 +277,18 @@ const Clientes = () => {
                     placeholder="Digite o nome completo do cliente"
                     {...register("name")}
                     onChange={handleNameChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF</Label>
+                  <Input
+                    id="cpf"
+                    placeholder="Digite o CPF do cliente"
+                    {...register("cpf")}
+                    onChange={handleCPFChange}
+                    maxLength={14} // 000.000.000-00 = 14 caracteres
+                    inputMode="numeric"
+                    autoComplete="off"
                   />
                 </div>
                 <div className="space-y-2">
@@ -371,7 +397,7 @@ const Clientes = () => {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar cliente..."
+              placeholder="Digite Nome ou CPF para encontrar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"

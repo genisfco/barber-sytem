@@ -27,6 +27,19 @@ export default async function handler(req, res) {
 
     // Verifica se o pagamento foi aprovado
     if (result.status === 'approved') {
+      // Primeiro, buscar os dados do pagamento para obter as informações necessárias
+      const { data: paymentData, error: fetchError } = await supabase
+        .from('platform_payments')
+        .select('*')
+        .eq('external_payment_id', paymentId)
+        .single();
+
+      if (fetchError) {
+        console.error('Erro ao buscar dados do pagamento:', fetchError);
+        return res.status(500).json({ error: 'Erro ao buscar dados do pagamento' });
+      }
+
+      // Atualizar o status do pagamento
       const { error } = await supabase
         .from('platform_payments')
         .update({
@@ -39,6 +52,28 @@ export default async function handler(req, res) {
       if (error) {
         console.error('Erro ao atualizar pagamento no Supabase:', error);
         return res.status(500).json({ error: 'Erro ao atualizar pagamento no banco de dados' });
+      }
+
+      // Lançar a transação de despesa na tabela transactions
+      const mesAno = `${paymentData.month}/${paymentData.year}`;
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          type: 'despesa',
+          value: Number(paymentData.total_amount),
+          description: `Pagamento Sistema BarberPro - Período: ${mesAno}`,
+          category: 'Sistema',
+          payment_method: paymentData.payment_method || 'PIX',
+          payment_date: new Date().toISOString().slice(0, 10),
+          barber_shop_id: paymentData.barber_shop_id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (transactionError) {
+        console.error('Erro ao lançar transação de despesa:', transactionError);
+        // Não retornamos erro aqui para não afetar a confirmação do pagamento
+        // A transação pode ser lançada manualmente se necessário
       }
     }
 

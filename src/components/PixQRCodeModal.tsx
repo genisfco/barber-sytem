@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { QrCode, Copy, Download, RefreshCw } from "lucide-react";
+import { QrCode, Copy, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PixQRCodeModalProps {

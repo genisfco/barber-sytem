@@ -49,9 +49,37 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const currentMonth = currentDate.getMonth() + 1; // Janeiro = 1
   const currentYear = currentDate.getFullYear();
   
-  // Inicializa com o mês anterior ao atual
-  const [month, setMonth] = useState<number>(currentMonth === 1 ? 12 : currentMonth - 1);
-  const [year, setYear] = useState<number>(currentMonth === 1 ? currentYear - 1 : currentYear);
+  // Função para obter os 3 meses retroativos à data atual
+  const getLast3Months = () => {
+    const months = [];
+    let m = currentMonth;
+    let y = currentYear;
+    for (let i = 1; i <= 3; i++) {
+      m--;
+      if (m === 0) {
+        m = 12;
+        y--;
+      }
+      months.push({
+        value: m,
+        label: `${MONTHS[m - 1].label} ${y}`,
+        year: y
+      });
+    }
+    return months;
+  };
+
+  // Função para obter os anos disponíveis baseados nos 3 meses retroativos
+  const getYearsForLast3Months = () => {
+    const months = getLast3Months();
+    const yearsSet = new Set(months.map(m => m.year));
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  };
+
+  // Estado inicial: mês e ano mais recente dos 3 meses retroativos
+  const last3Months = getLast3Months();
+  const [month, setMonth] = useState<number>(last3Months[0].value);
+  const [year, setYear] = useState<number>(last3Months[0].year);
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
   const [notes, setNotes] = useState<string>("");
   const [calculationResult, setCalculationResult] = useState<any>(null);
@@ -63,46 +91,29 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const { calculatePayment, createPayment, updatePayment, freeTrialStatus, getExistingPayment } = usePlatformPayments();
   const { toast } = useToast();
 
-  // Função para gerar opções de meses retroativos
-  const getRetroactiveMonths = () => {
-    const months = [];
-    let currentM = currentMonth;
-    let currentY = currentYear;
-    
-    // Adiciona o mês atual e os 11 meses anteriores
-    for (let i = 0; i < 12; i++) {
-      months.push({
-        value: currentM,
-        label: `${MONTHS[currentM - 1].label} ${currentY}`,
-        year: currentY
-      });
-      
-      // Volta um mês
-      currentM--;
-      if (currentM === 0) {
-        currentM = 12;
-        currentY--;
-      }
+  // Handler para mudança de mês
+  const handleMonthChange = (newMonth: number) => {
+    const selected = last3Months.find(m => m.value === newMonth);
+    if (selected) {
+      setMonth(selected.value);
+      setYear(selected.year);
     }
-    
-    return months.reverse(); // Inverte para mostrar do mais antigo para o mais recente
   };
 
-  // Função para gerar opções de anos retroativos
-  const getRetroactiveYears = () => {
-    const years = [];
-    for (let y = currentYear; y >= 2020; y--) {
-      years.push(y);
+  // Handler para mudança de ano
+  // (não faz nada, pois o ano é sempre vinculado ao mês)
+  const handleYearChange = (newYear: number) => {
+    setYear(newYear);
+    // Ajusta o mês para o mais recente daquele ano, se necessário
+    const monthsOfYear = last3Months.filter(m => m.year === newYear);
+    if (monthsOfYear.length > 0 && !monthsOfYear.find(m => m.value === month)) {
+      setMonth(monthsOfYear[0].value);
     }
-    return years;
   };
 
-  // Função para verificar se uma combinação mês/ano é válida (não futura)
-  const isValidRetroactiveDate = (selectedMonth: number, selectedYear: number) => {
-    if (selectedYear > currentYear) return false;
-    if (selectedYear === currentYear && selectedMonth > currentMonth) return false;
-    return true;
-  };
+  // No Select de ano, só permite até o ano atual
+  // No Select de mês, só permite até o mês atual se o ano for o atual ou maior,
+  // mas como o ano é sempre vinculado ao mês, a lógica já está correta.
 
   useEffect(() => {
     if (open && month && year) {
@@ -257,12 +268,12 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="month">Mês</Label>
-              <Select value={month.toString()} onValueChange={(value) => setMonth(Number(value))}>
+              <Select value={month.toString()} onValueChange={(value) => handleMonthChange(Number(value))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getRetroactiveMonths().map((monthOption) => (
+                  {last3Months.map((monthOption) => (
                     <SelectItem key={`${monthOption.value}-${monthOption.year}`} value={monthOption.value.toString()}>
                       {monthOption.label}
                     </SelectItem>
@@ -272,12 +283,12 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             </div>
             <div>
               <Label htmlFor="year">Ano</Label>
-              <Select value={year.toString()} onValueChange={(value) => setYear(Number(value))}>
+              <Select value={year.toString()} onValueChange={(value) => handleYearChange(Number(value))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getRetroactiveYears().map((yearOption) => (
+                  {getYearsForLast3Months().map((yearOption) => (
                     <SelectItem key={yearOption} value={yearOption.toString()}>
                       {yearOption}
                     </SelectItem>
