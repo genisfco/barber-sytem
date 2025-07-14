@@ -107,6 +107,7 @@ const RelatorioMensal = () => {
       case 'produtos': return 'Produtos';
       case 'comissoes': return 'Comissões';
       case 'despesas_fixas': return 'Despesas Fixas';
+      case 'sistemas': return 'Sistemas';
       case 'outros': return 'Outros';
       default: return categoria;
     }
@@ -237,6 +238,8 @@ const RelatorioMensal = () => {
                       {transacao.category === 'comissoes' && 'Comissões'}
                       {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}
                       {transacao.category === 'outros' && 'Outros'}
+                      {transacao.category === 'sistemas' && 'Sistemas'}
+                      {transacao.category === 'assinaturas' && 'Assinaturas'}
                     </div>
                   </div>
                   <div

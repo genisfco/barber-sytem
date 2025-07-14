@@ -95,6 +95,7 @@ const RelatorioAnual = () => {
       case 'produtos': return 'Produtos';
       case 'comissoes': return 'Comissões';
       case 'despesas_fixas': return 'Despesas Fixas';
+      case 'sistemas': return 'Sistemas';
       case 'outros': return 'Outros';
       default: return categoria;
     }
