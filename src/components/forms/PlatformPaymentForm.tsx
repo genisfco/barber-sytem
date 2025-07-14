@@ -427,7 +427,12 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
           {/* Modal do QR Code PIX real */}
           <PixQRCodeModal
             open={pixModalOpen}
-            onOpenChange={setPixModalOpen}
+            onOpenChange={(open) => {
+              setPixModalOpen(open);
+              if (!open) {
+                onOpenChange(false); // Fecha o PlatformPaymentForm também!
+              }
+            }}
             qrCode={pixData?.qr_code || ""}
             amount={pixData?.amount || createdPayment?.total_amount || 0}
             description={pixData?.description || createdPayment?.description || "Pagamento BarberPro"}
