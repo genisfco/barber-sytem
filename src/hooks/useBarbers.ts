@@ -143,7 +143,7 @@ export function useBarbers() {
   });
 
   return {
-    barbers,
+    barbers: barbers ?? [],
     isLoading,
     createBarber,
     updateBarber,
