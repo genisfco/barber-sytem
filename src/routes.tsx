@@ -43,7 +43,7 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
     if (isAuthLoading) {
       const timeout = setTimeout(() => {
         setLoadingTimeout(true);
-      }, 3000); // 3 segundos
+      }, 12000); // 12 segundos
 
       return () => clearTimeout(timeout);
     } else {
@@ -73,7 +73,8 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold mb-2">Carregando...</h2>
-          <p className="text-gray-500">Aguarde um momento</p>
+          <p className="text-gray-500">Aguarde um momento.</p>
+          <p className="text-gray-500">Estamos buscando os seus dados.</p>
         </div>
       </div>
     );
