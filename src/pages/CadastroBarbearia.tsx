@@ -353,8 +353,8 @@ export default function CadastroBarbearia() {
       setLoading(false);
       setSuccess(true);
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 10000); // 10 segundos
+        navigate('/');
+      }, 5000); // 5 segundos
       return;
     } catch (err: any) {
       setError(err.message || 'Erro ao criar barbearia');
