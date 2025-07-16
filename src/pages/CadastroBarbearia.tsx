@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import { useBarberShopContext } from '@/contexts/BarberShopContext';
 
 interface FormData {
   barberShopName: string;
@@ -100,6 +101,7 @@ export default function CadastroBarbearia() {
   const [user, setUser] = useState<any>(null);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
+  const { setSelectedBarberShop } = useBarberShopContext();
 
   // Observa mudanças nos campos de endereço para atualizar as coordenadas
   const watchAddress = watch(['logradouro', 'numero', 'bairro', 'cidade', 'estado']);
@@ -348,6 +350,16 @@ export default function CadastroBarbearia() {
         setError(createError.message || 'Erro ao criar barbearia');
         setLoading(false);
         return;
+      }
+
+      // Buscar a barbearia recém-criada e atualizar o contexto
+      const { data: barberShop, error: fetchError } = await supabase
+        .from('barber_shops')
+        .select('*')
+        .eq('admin_id', user.id)
+        .single();
+      if (!fetchError && barberShop) {
+        setSelectedBarberShop(barberShop);
       }
 
       setLoading(false);
