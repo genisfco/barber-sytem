@@ -43,13 +43,17 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
 
   useEffect(() => {
     if (transacao) {
+      let dataLocal = new Date();
+      if (transacao.payment_date) {
+        const [ano, mes, dia] = transacao.payment_date.split('-');
+        dataLocal = new Date(Number(ano), Number(mes) - 1, Number(dia));
+      }
       form.reset({
-        data: new Date(transacao.payment_date),
+        data: dataLocal,
         valor: transacao.value.toString(),
         descricao: transacao.description,
         metodo_pagamento: transacao.payment_method,
         category: transacao.category,
-        observacao: transacao.notes || "",
       });
     } else {
       form.reset({
@@ -83,8 +87,7 @@ export function FinanceiroForm({ open, onOpenChange, tipo, transacao, onSuccess 
         description: values.descricao,
         payment_method: values.metodo_pagamento,
         category: values.category,
-        payment_date,
-        notes: values.observacao || null,
+        payment_date,        
       };
 
       if (transacao) {

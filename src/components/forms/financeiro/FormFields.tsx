@@ -118,6 +118,7 @@ export function FormFields({ form, tipo, isEditing = false }: FormFieldsProps) {
                 <SelectItem value="servicos">Serviços</SelectItem>
                 <SelectItem value="produtos">Produtos</SelectItem>
                 <SelectItem value="comissoes">Comissões</SelectItem>
+                <SelectItem value="equipamentos">Equipamentos</SelectItem>
                 <SelectItem value="despesas_fixas">Despesas Fixas</SelectItem>
                 <SelectItem value="sistemas">Sistemas</SelectItem>
                 <SelectItem value="outros">Outros</SelectItem>
@@ -196,22 +197,7 @@ export function FormFields({ form, tipo, isEditing = false }: FormFieldsProps) {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="observacao"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Observação</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="Digite uma observação (opcional)"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      
     </>
   );
 }

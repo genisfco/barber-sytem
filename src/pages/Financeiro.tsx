@@ -177,6 +177,7 @@ const Financeiro = () => {
                     <TableCell>
                       {transacao.category === 'servicos' && 'Serviços'}
                       {transacao.category === 'produtos' && 'Produtos'}
+                      {transacao.category === 'equipamentos' && 'Equipamentos'}
                       {transacao.category === 'assinaturas' && 'Assinaturas'}
                       {transacao.category === 'comissoes' && 'Comissões'}
                       {transacao.category === 'despesas_fixas' && 'Despesas Fixas'}

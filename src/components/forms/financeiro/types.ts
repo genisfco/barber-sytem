@@ -6,7 +6,7 @@ export const formSchema = z.object({
   valor: z.string().min(1, "O valor é obrigatório"),
   descricao: z.string().min(1, "A descrição é obrigatória"),
   metodo_pagamento: z.string().optional(),
-  category: z.enum(["servicos", "produtos", "comissoes", "despesas_fixas", "sistemas", "outros"]).default("outros"),
+  category: z.enum(["servicos", "produtos", "equipamentos", "comissoes", "despesas_fixas", "sistemas", "outros"]).default("outros"),
   observacao: z.string().optional(),
 });
 
@@ -15,7 +15,7 @@ export type FormValues = {
   valor: string;
   descricao: string;
   metodo_pagamento?: string;
-  category: "assinaturas" | "servicos" | "produtos" | "comissoes" | "despesas_fixas" | "sistemas" | "outros";
+  category: "assinaturas" | "servicos" | "produtos" | "equipamentos" | "comissoes" | "despesas_fixas" | "sistemas" | "outros";
   observacao?: string;
 };
 

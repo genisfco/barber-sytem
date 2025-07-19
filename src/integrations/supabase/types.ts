@@ -460,8 +460,7 @@ export interface Database {
           category: string
           payment_date: string
           barber_shop_id: string
-          status: string
-          notes: string | null
+          status: string          
           created_at: string
           updated_at: string
         }
@@ -475,8 +474,7 @@ export interface Database {
           category?: string
           payment_date?: string
           barber_shop_id?: string
-          status?: string
-          notes?: string | null
+          status?: string          
           created_at?: string
           updated_at?: string
         }
@@ -491,7 +489,6 @@ export interface Database {
           payment_date?: string
           barber_shop_id?: string
           status?: string
-          notes?: string | null
           created_at?: string
           updated_at?: string
         }
