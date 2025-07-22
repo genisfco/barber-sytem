@@ -9,6 +9,8 @@ import { useIsMobile } from "./hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { useEffect, useState } from "react";
+import { useFinancialBlock } from "./hooks/useFinancialBlock";
+import { FinancialBlockModal } from "./components/FinancialBlockModal";
 
 // Páginas
 import Auth from "./pages/Auth";
@@ -37,6 +39,12 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  // Hook de bloqueio financeiro
+  const { blocked, pendingMonths } = useFinancialBlock();
+  
+  // Não exibir modal de bloqueio na página financeiro
+  const shouldShowBlockModal = blocked && location.pathname !== '/financeiro';
 
   // Timeout de segurança para evitar travamento infinito
   useEffect(() => {
@@ -116,6 +124,9 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   // Permite acesso à rota solicitada.
   return (
     <div className="flex min-h-screen w-full">
+      {/* Modal de bloqueio financeiro */}
+      <FinancialBlockModal open={shouldShowBlockModal} pendingMonths={pendingMonths} />
+      
       <Sidebar />
       <div className="flex-1 flex flex-col">
         {/* Header com botão de toggle para mobile */}
