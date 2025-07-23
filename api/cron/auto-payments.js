@@ -1,19 +1,22 @@
 import { runAutomaticPaymentCreationAdmin } from '../services/autoPaymentServiceAdmin.js';
 
 export default async function handler(req, res) {
-  // Verificar se é POST (segurança básica)
-  if (req.method !== 'POST') {
+  // Verificar se é POST ou GET (Vercel Cron usa GET)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verificar se tem a chave de autorização (segurança adicional)
-  const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Verificar se tem a chave de autorização (só para POST manual)
+  if (req.method === 'POST') {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   try {
     console.log('🚀 Iniciando criação automática de pagamentos...');
+    console.log(`🔧 Método: ${req.method}`);
     console.log('🔧 Verificando variáveis de ambiente...');
     
     // Verificar se as variáveis estão disponíveis
@@ -35,6 +38,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       message: `Processamento concluído: ${createdCount} pagamentos criados`,
+      method: req.method,
       summary: {
         total: results.length,
         success: successCount,
@@ -50,6 +54,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       error: error.message,
+      method: req.method,
       stack: error.stack,
       timestamp: new Date().toISOString()
     });
