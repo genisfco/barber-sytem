@@ -39,64 +39,42 @@ async function checkExistingPayment(barberShopId, month, year) {
  * @returns {Promise<boolean>} - True se está em período gratuito
  */
 async function checkFreeTrialForMonth(barberShopId, month, year, barberShop) {
-  console.log(`🔍 Verificando período gratuito para barbearia ${barberShopId} - mês: ${month}/${year}`);
-  
   // Calcular o primeiro e último dia do mês
   const firstDayOfMonth = new Date(year, month - 1, 1);
   const lastDayOfMonth = new Date(year, month, 0); // Último dia do mês
   
-  console.log(`📅 Período do mês: ${firstDayOfMonth.toISOString().split('T')[0]} até ${lastDayOfMonth.toISOString().split('T')[0]}`);
-  
   // Verificar período gratuito padrão
   if (barberShop.free_trial_active && barberShop.free_trial_start_date && barberShop.free_trial_end_date) {
-    console.log(`🎯 Período gratuito padrão encontrado: ${barberShop.free_trial_start_date} até ${barberShop.free_trial_end_date} (ativo: ${barberShop.free_trial_active})`);
-    
     const startDate = new Date(barberShop.free_trial_start_date);
     const endDate = new Date(barberShop.free_trial_end_date);
-    
-    console.log(`🔄 Comparando datas - Start: ${startDate.toISOString().split('T')[0]}, End: ${endDate.toISOString().split('T')[0]}`);
     
     // Verificar se há intersecção entre o período gratuito e o mês
     // Intersecção existe se: startDate <= lastDayOfMonth AND endDate >= firstDayOfMonth
     if (startDate <= lastDayOfMonth && endDate >= firstDayOfMonth) {
-      console.log(`✅ PERÍODO GRATUITO PADRÃO ATIVO - Não deve criar pagamento`);
       return true;
-    } else {
-      console.log(`❌ Período gratuito padrão não intersecta com o mês`);
     }
-  } else {
-    console.log(`ℹ️ Sem período gratuito padrão ativo`);
   }
 
   // Verificar períodos gratuitos específicos
   const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
   const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
   
-  console.log(`🔍 Buscando períodos gratuitos específicos...`);
-  
   const { data: freeTrialPeriods, error } = await supabaseAdmin
     .from('free_trial_periods')
-    .select('start_date, end_date, reason, active')
+    .select('start_date, end_date')
     .eq('barber_shop_id', barberShopId)
     .eq('active', true)
     .lte('start_date', lastDayStr)    // Período inicia antes ou no último dia do mês
     .gte('end_date', firstDayStr);    // Período termina depois ou no primeiro dia do mês
 
   if (error) {
-    console.error(`❌ Erro ao buscar períodos gratuitos específicos:`, error);
-  } else {
-    console.log(`📋 Períodos gratuitos específicos encontrados: ${freeTrialPeriods?.length || 0}`);
-    
-    if (freeTrialPeriods && freeTrialPeriods.length > 0) {
-      freeTrialPeriods.forEach((period, index) => {
-        console.log(`   ${index + 1}. ${period.start_date} até ${period.end_date} - ${period.reason} (ativo: ${period.active})`);
-      });
-      console.log(`✅ PERÍODO GRATUITO ESPECÍFICO ATIVO - Não deve criar pagamento`);
-      return true;
-    }
+    console.error(`Erro ao buscar períodos gratuitos específicos para ${barberShopId}:`, error);
   }
 
-  console.log(`❌ Nenhum período gratuito ativo para o mês ${month}/${year}`);
+  if (freeTrialPeriods && freeTrialPeriods.length > 0) {
+    return true;
+  }
+
   return false;
 }
 
@@ -135,7 +113,6 @@ async function processBarberShop(barberShopId) {
 
     // Verificar se está em período gratuito
     const isFreeTrial = await checkFreeTrialForMonth(barberShopId, month, year, barberShop);
-    console.log(`🏛️ Resultado final período gratuito para ${barberShopId}: ${isFreeTrial ? 'SIM' : 'NÃO'}`);
 
     // Contar agendamentos atendidos do mês anterior
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
@@ -166,7 +143,6 @@ async function processBarberShop(barberShopId) {
 
     // Se está em período gratuito, não cria pagamento
     if (paymentData.is_free_trial) {
-      console.log(`🎁 PERÍODO GRATUITO DETECTADO - Não criando pagamento para ${barberShopId}`);
       return {
         success: true,
         message: `Barbearia em período gratuito - não gera pagamento automático`,
@@ -188,8 +164,6 @@ async function processBarberShop(barberShopId) {
     }
 
     // Criar o pagamento automaticamente
-    console.log(`💰 CRIANDO PAGAMENTO para ${barberShopId}: ${paymentData.appointments_count} atendimentos x R$${paymentData.platform_fee} = R$${paymentData.total_amount}`);
-    
     const { data, error } = await supabaseAdmin
       .from('platform_payments')
       .insert({
