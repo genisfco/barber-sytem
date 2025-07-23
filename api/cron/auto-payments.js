@@ -1,4 +1,4 @@
-import { runAutomaticPaymentCreationAdmin } from '../../src/services/autoPaymentServiceAdmin';
+const { runAutomaticPaymentCreationAdmin } = require('../services/autoPaymentServiceAdmin');
 
 export default async function handler(req, res) {
   // Verificar se é POST (segurança básica)
@@ -14,6 +14,15 @@ export default async function handler(req, res) {
 
   try {
     console.log('🚀 Iniciando criação automática de pagamentos...');
+    console.log('🔧 Verificando variáveis de ambiente...');
+    
+    // Verificar se as variáveis estão disponíveis
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada');
+    }
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL não configurada');
+    }
     
     const results = await runAutomaticPaymentCreationAdmin();
     
@@ -41,6 +50,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       error: error.message,
+      stack: error.stack,
       timestamp: new Date().toISOString()
     });
   }
