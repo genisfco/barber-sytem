@@ -31,41 +31,33 @@ async function checkExistingPayment(barberShopId, month, year) {
 }
 
 /**
- * Verifica se uma barbearia está em período gratuito durante um mês específico
+ * Verifica se uma data específica está em período gratuito
  * @param {string} barberShopId - ID da barbearia
- * @param {number} month - Mês (1-12)
- * @param {number} year - Ano
+ * @param {string} date - Data no formato YYYY-MM-DD
  * @param {Object} barberShop - Dados da barbearia
- * @returns {Promise<boolean>} - True se está em período gratuito
+ * @returns {Promise<boolean>} - True se a data está em período gratuito
  */
-async function checkFreeTrialForMonth(barberShopId, month, year, barberShop) {
-  // Calcular o primeiro e último dia do mês
-  const firstDayOfMonth = new Date(year, month - 1, 1);
-  const lastDayOfMonth = new Date(year, month, 0); // Último dia do mês
+async function checkFreeTrialForDate(barberShopId, date, barberShop) {
+  const checkDate = new Date(date);
   
   // Verificar período gratuito padrão
   if (barberShop.free_trial_active && barberShop.free_trial_start_date && barberShop.free_trial_end_date) {
     const startDate = new Date(barberShop.free_trial_start_date);
     const endDate = new Date(barberShop.free_trial_end_date);
     
-    // Verificar se há intersecção entre o período gratuito e o mês
-    // Intersecção existe se: startDate <= lastDayOfMonth AND endDate >= firstDayOfMonth
-    if (startDate <= lastDayOfMonth && endDate >= firstDayOfMonth) {
+    if (checkDate >= startDate && checkDate <= endDate) {
       return true;
     }
   }
 
   // Verificar períodos gratuitos específicos
-  const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
-  const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
-  
   const { data: freeTrialPeriods, error } = await supabaseAdmin
     .from('free_trial_periods')
     .select('start_date, end_date')
     .eq('barber_shop_id', barberShopId)
     .eq('active', true)
-    .lte('start_date', lastDayStr)    // Período inicia antes ou no último dia do mês
-    .gte('end_date', firstDayStr);    // Período termina depois ou no primeiro dia do mês
+    .lte('start_date', date)    // Período inicia antes ou na data
+    .gte('end_date', date);     // Período termina depois ou na data
 
   if (error) {
     console.error(`Erro ao buscar períodos gratuitos específicos para ${barberShopId}:`, error);
@@ -76,6 +68,61 @@ async function checkFreeTrialForMonth(barberShopId, month, year, barberShop) {
   }
 
   return false;
+}
+
+/**
+ * Calcula quantos agendamentos devem ser cobrados, excluindo aqueles em período gratuito
+ * @param {string} barberShopId - ID da barbearia
+ * @param {number} month - Mês (1-12)
+ * @param {number} year - Ano
+ * @param {Object} barberShop - Dados da barbearia
+ * @returns {Promise<{billableAppointments: number, freeAppointments: number, totalAppointments: number}>}
+ */
+async function calculateBillableAppointments(barberShopId, month, year, barberShop) {
+  // Buscar todos os agendamentos atendidos do mês
+  const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+  const endDate = new Date(year, month, 0); // Último dia do mês
+  const endDateStr = `${year}-${month.toString().padStart(2, '0')}-${endDate.getDate().toString().padStart(2, '0')}`;
+
+  const { data: appointments, error: appointmentsError } = await supabaseAdmin
+    .from('appointments')
+    .select('id, date')
+    .eq('barber_shop_id', barberShopId)
+    .eq('status', 'atendido')
+    .gte('date', startDate)
+    .lte('date', endDateStr);
+
+  if (appointmentsError) {
+    throw appointmentsError;
+  }
+
+  if (!appointments || appointments.length === 0) {
+    return {
+      billableAppointments: 0,
+      freeAppointments: 0,
+      totalAppointments: 0
+    };
+  }
+
+  let billableCount = 0;
+  let freeCount = 0;
+
+  // Verificar cada agendamento individualmente
+  for (const appointment of appointments) {
+    const isInFreeTrial = await checkFreeTrialForDate(barberShopId, appointment.date, barberShop);
+    
+    if (isInFreeTrial) {
+      freeCount++;
+    } else {
+      billableCount++;
+    }
+  }
+
+  return {
+    billableAppointments: billableCount,
+    freeAppointments: freeCount,
+    totalAppointments: appointments.length
+  };
 }
 
 /**
@@ -111,55 +158,37 @@ async function processBarberShop(barberShopId) {
       throw barberShopError;
     }
 
-    // Verificar se está em período gratuito
-    const isFreeTrial = await checkFreeTrialForMonth(barberShopId, month, year, barberShop);
-
-    // Contar agendamentos atendidos do mês anterior
-    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-    const endDate = new Date(year, month, 0); // Último dia do mês
-    const endDateStr = `${year}-${month.toString().padStart(2, '0')}-${endDate.getDate().toString().padStart(2, '0')}`;
-
-    const { data: appointments, error: appointmentsError } = await supabaseAdmin
-      .from('appointments')
-      .select('id')
-      .eq('barber_shop_id', barberShopId)
-      .eq('status', 'atendido')
-      .gte('date', startDate)
-      .lte('date', endDateStr);
-
-    if (appointmentsError) {
-      throw appointmentsError;
-    }
-
-    const appointmentsCount = appointments?.length || 0;
+    // Calcular quantos agendamentos devem ser cobrados
+    const { billableAppointments, freeAppointments, totalAppointments } = await calculateBillableAppointments(barberShopId, month, year, barberShop);
 
     // Calcular dados do pagamento
     const paymentData = {
-      appointments_count: appointmentsCount,
+      appointments_count: billableAppointments,
       platform_fee: barberShop.platform_fee,
-      total_amount: isFreeTrial ? 0 : appointmentsCount * barberShop.platform_fee,
-      is_free_trial: isFreeTrial
+      total_amount: billableAppointments * barberShop.platform_fee,
+      is_free_trial: false // Sempre false para este novo cálculo
     };
 
-    // Se está em período gratuito, não cria pagamento
-    if (paymentData.is_free_trial) {
-      return {
-        success: true,
-        message: `Barbearia em período gratuito - não gera pagamento automático`,
-        barberShopId,
-        month,
-        year
-      };
-    }
-
-    // Se não teve atendimentos, não cria pagamento
+    // Se não teve atendimentos cobráveis, não cria pagamento
     if (paymentData.appointments_count === 0) {
+      let message;
+      if (totalAppointments === 0) {
+        message = `Nenhum atendimento no mês ${month}/${year} - não gera pagamento`;
+      } else {
+        message = `${totalAppointments} atendimentos no mês ${month}/${year}, mas todos em período gratuito - não gera pagamento`;
+      }
+      
       return {
         success: true,
-        message: `Nenhum atendimento no mês ${month}/${year} - não gera pagamento`,
+        message,
         barberShopId,
         month,
-        year
+        year,
+        details: {
+          totalAppointments,
+          billableAppointments: paymentData.appointments_count,
+          freeAppointments
+        }
       };
     }
 
@@ -184,13 +213,26 @@ async function processBarberShop(barberShopId) {
       throw error;
     }
 
+    let message = `Pagamento criado automaticamente para ${month}/${year}`;
+    if (freeAppointments > 0) {
+      message += ` - ${paymentData.appointments_count} atendimentos cobrados + ${freeAppointments} gratuitos = ${totalAppointments} total`;
+    } else {
+      message += ` - ${paymentData.appointments_count} atendimentos`;
+    }
+    
     return {
       success: true,
-      message: `Pagamento criado automaticamente para ${month}/${year} (${paymentData.appointments_count} atendimentos)`,
+      message,
       barberShopId,
       month,
       year,
-      paymentId: data.id
+      paymentId: data.id,
+      details: {
+        totalAppointments,
+        billableAppointments: paymentData.appointments_count,
+        freeAppointments,
+        totalAmount: paymentData.total_amount
+      }
     };
 
   } catch (error) {
