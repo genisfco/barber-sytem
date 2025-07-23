@@ -31,7 +31,6 @@ import ConfiguracoesBarbearia from "./pages/ConfiguracoesBarbearia.tsx";
 import { RequestResetPassword } from "./pages/auth/RequestResetPassword";
 import { VerifyCodeAndReset } from "./pages/auth/VerifyCodeAndReset";
 import Desempenho from "./pages/Desempenho";
-import TestAutoPayment from "./pages/TestAutoPayment";
 
 const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading: isAuthLoading } = useAuth();
@@ -45,7 +44,7 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   const { blocked, pendingMonths } = useFinancialBlock();
   
   // Não exibir modal de bloqueio na página financeiro
-  const shouldShowBlockModal = blocked && location.pathname !== '/financeiro' && location.pathname !== '/test-auto-payment';
+  const shouldShowBlockModal = blocked && location.pathname !== '/financeiro';
 
   // Timeout de segurança para evitar travamento infinito
   useEffect(() => {
@@ -276,14 +275,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/test-auto-payment"
-        element={
-          <ProtectedRoute>
-            <TestAutoPayment />
-          </ProtectedRoute>
-        }
-      />
+            
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

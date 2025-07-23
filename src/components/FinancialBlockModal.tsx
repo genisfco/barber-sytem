@@ -51,9 +51,9 @@ export function FinancialBlockModal({ open, pendingMonths }: FinancialBlockModal
                 </li>
               ))}
             </ul>
-            <div className="mt-7 text-sm text-muted-white">
-              Caso já tenha efetuado o pagamento, aguarde a confirmação ou entre em contato com o suporte.
-            </div>
+            {/* <div className="mt-7 text-sm text-muted-white">
+              Caso já tenha efetuado o pagamento, entre em contato com o suporte no telefone (11) 99864-1094.
+            </div> */}
           </AlertDescription>
         </Alert>
         <div className="flex justify-end mt-4">

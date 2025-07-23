@@ -154,7 +154,7 @@ async function processBarberShop(barberShopId) {
         platform_fee: paymentData.platform_fee,
         total_amount: paymentData.total_amount,
         payment_method: 'pix',
-        notes: 'Pagamento criado automaticamente pelo sistema',
+        notes: 'Pagamento criado automaticamente',
         payment_status: 'pending'
       })
       .select()
@@ -191,8 +191,8 @@ export async function runAutomaticPaymentCreationAdmin() {
     const today = new Date();
     const currentDay = today.getDate();
 
-    // Só executa a partir do dia 5 (ou dia 23 para teste)
-    if (currentDay < 5 && currentDay !== 23) {
+    // Só executa a partir do dia 5
+    if (currentDay < 5) {
       return [{
         success: false,
         message: `Ainda não é dia de executar - aguardar até dia 5 (hoje: dia ${currentDay})`
