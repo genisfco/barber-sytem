@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // Cliente para operações administrativas (bypassa RLS)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -186,7 +186,7 @@ async function processBarberShop(barberShopId) {
 /**
  * Executa a criação automática de pagamentos para todas as barbearias
  */
-async function runAutomaticPaymentCreationAdmin() {
+export async function runAutomaticPaymentCreationAdmin() {
   try {
     const today = new Date();
     const currentDay = today.getDate();
@@ -232,8 +232,4 @@ async function runAutomaticPaymentCreationAdmin() {
       message: `Erro geral: ${error.message}`
     }];
   }
-}
-
-module.exports = {
-  runAutomaticPaymentCreationAdmin
-}; 
+} 

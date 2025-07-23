@@ -1,4 +1,4 @@
-const { runAutomaticPaymentCreationAdmin } = require('../services/autoPaymentServiceAdmin');
+import { runAutomaticPaymentCreationAdmin } from '../services/autoPaymentServiceAdmin.js';
 
 export default async function handler(req, res) {
   // Verificar se é POST (segurança básica)
