@@ -40,8 +40,8 @@ async function checkExistingPayment(barberShopId, month, year) {
 async function checkFreeTrialForDate(barberShopId, date, barberShop) {
   const checkDate = new Date(date);
   
-  // Verificar período gratuito padrão
-  if (barberShop.free_trial_active && barberShop.free_trial_start_date && barberShop.free_trial_end_date) {
+  // Verificar período gratuito padrão - APENAS por datas (ignorando campo active)
+  if (barberShop.free_trial_start_date && barberShop.free_trial_end_date) {
     const startDate = new Date(barberShop.free_trial_start_date);
     const endDate = new Date(barberShop.free_trial_end_date);
     
@@ -50,12 +50,11 @@ async function checkFreeTrialForDate(barberShopId, date, barberShop) {
     }
   }
 
-  // Verificar períodos gratuitos específicos
+  // Verificar períodos gratuitos específicos - APENAS por datas (ignorando campo active)
   const { data: freeTrialPeriods, error } = await supabaseAdmin
     .from('free_trial_periods')
     .select('start_date, end_date')
     .eq('barber_shop_id', barberShopId)
-    .eq('active', true)
     .lte('start_date', date)    // Período inicia antes ou na data
     .gte('end_date', date);     // Período termina depois ou na data
 
@@ -150,7 +149,7 @@ async function processBarberShop(barberShopId) {
     // Buscar informações da barbearia
     const { data: barberShop, error: barberShopError } = await supabaseAdmin
       .from('barber_shops')
-      .select('platform_fee, free_trial_active, free_trial_start_date, free_trial_end_date')
+      .select('platform_fee, free_trial_start_date, free_trial_end_date')
       .eq('id', barberShopId)
       .single();
 
