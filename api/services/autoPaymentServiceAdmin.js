@@ -12,50 +12,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 /**
- * Verifica se uma barbearia está em período gratuito durante um mês específico
- * @param {string} barberShopId - ID da barbearia
- * @param {number} month - Mês (1-12)
- * @param {number} year - Ano
- * @param {Object} barberShop - Dados da barbearia
- * @returns {Promise<boolean>} - True se está em período gratuito
- */
-async function checkFreeTrialForMonth(barberShopId, month, year, barberShop) {
-  // Calcular o primeiro e último dia do mês
-  const firstDayOfMonth = new Date(year, month - 1, 1);
-  const lastDayOfMonth = new Date(year, month, 0); // Último dia do mês
-  
-  // Verificar período gratuito padrão
-  if (barberShop.free_trial_active && barberShop.free_trial_start_date && barberShop.free_trial_end_date) {
-    const startDate = new Date(barberShop.free_trial_start_date);
-    const endDate = new Date(barberShop.free_trial_end_date);
-    
-    // Verificar se há intersecção entre o período gratuito e o mês
-    // Intersecção existe se: startDate <= lastDayOfMonth AND endDate >= firstDayOfMonth
-    if (startDate <= lastDayOfMonth && endDate >= firstDayOfMonth) {
-      return true;
-    }
-  }
-
-  // Verificar períodos gratuitos específicos
-  const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
-  const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
-  
-  const { data: freeTrialPeriods } = await supabaseAdmin
-    .from('free_trial_periods')
-    .select('start_date, end_date')
-    .eq('barber_shop_id', barberShopId)
-    .eq('active', true)
-    .lte('start_date', lastDayStr)    // Período inicia antes ou no último dia do mês
-    .gte('end_date', firstDayStr);    // Período termina depois ou no primeiro dia do mês
-
-  if (freeTrialPeriods && freeTrialPeriods.length > 0) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Verifica se já existe um pagamento para o mês/ano
  */
 async function checkExistingPayment(barberShopId, month, year) {
