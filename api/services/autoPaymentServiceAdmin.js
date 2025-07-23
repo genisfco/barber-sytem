@@ -191,8 +191,8 @@ export async function runAutomaticPaymentCreationAdmin() {
     const today = new Date();
     const currentDay = today.getDate();
 
-    // Só executa a partir do dia 5
-    if (currentDay < 5) {
+    // Só executa a partir do dia 5 (ou dia 23 para teste)
+    if (currentDay < 5 && currentDay !== 23) {
       return [{
         success: false,
         message: `Ainda não é dia de executar - aguardar até dia 5 (hoje: dia ${currentDay})`
