@@ -33,7 +33,7 @@ export function FinancialBlockModal({ open, pendingMonths }: FinancialBlockModal
         <Alert className="bg-red-600 border-red-200">
           <AlertDescription>
             <div className="font-semibold mb-7">
-              Ops! Seu acesso está temporariamente bloqueado.
+              Ops! Acesso temporariamente bloqueado.
             </div>
             <div className="mb-3">
               Para liberar o sistema, regularize os pagamentos em atraso:
