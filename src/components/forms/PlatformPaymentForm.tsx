@@ -81,7 +81,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const [month, setMonth] = useState<number>(last3Months[0].value);
   const [year, setYear] = useState<number>(last3Months[0].year);
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
-  const [notes, setNotes] = useState<string>("");
+
   const [calculationResult, setCalculationResult] = useState<any>(null);
   const [createdPayment, setCreatedPayment] = useState<any>(null);
   const [showQRCode, setShowQRCode] = useState(false);
@@ -163,7 +163,6 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
         month,
         year,
         payment_method: paymentMethod,
-        notes,
       });
       setCreatedPayment(payment);
       toast({
@@ -318,26 +317,44 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Breakdown detalhado dos atendimentos */}
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <div className="text-2xl font-bold text-purple-600">
-                          {calculationResult.appointments_count}
+                          {calculationResult.details?.totalAppointments || calculationResult.appointments_count}
                         </div>
-                        <div className="text-sm text-muted-foreground">Agendamentos Atendidos</div>
+                        <div className="text-sm text-muted-foreground">Total de Atendimentos</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-2xl font-bold text-orange-500">
+                          {calculationResult.details?.freeAppointments || 0}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Atendimentos Gratuitos</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {calculationResult.details?.billableAppointments || calculationResult.appointments_count}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Atendimentos Cobrados</div>
+                      </div>
+                    </div>
+                    
+                    {/* Informações de pagamento */}
+                    <div className="grid grid-cols-2 gap-4 text-center pt-4 border-t">
+                      <div>
+                        <div className="text-xl font-bold text-blue-600">
                           {formatMoney(calculationResult.platform_fee)}
                         </div>
-                        <div className="text-sm text-muted-foreground">Taxa por Agendamento</div>
+                        <div className="text-sm text-muted-foreground">Taxa por Atendimento</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-green-500">
+                        <div className="text-xl font-bold text-green-500">
                           {formatMoney(calculationResult.total_amount)}
                         </div>
                         <div className="text-sm text-muted-foreground">Total a Pagar</div>
                       </div>
                     </div>
+                    
                     <div className="text-sm text-muted-foreground text-center">
                       Período: {MONTHS.find(m => m.value === month)?.label} de {year}
                     </div>
@@ -366,18 +383,6 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Observações */}
-          <div>
-            <Label htmlFor="notes">Observações (opcional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Adicione observações sobre o pagamento..."
-              rows={3}
-            />
           </div>
 
           {/* QR Code PIX - removido o Card antigo */}
@@ -443,4 +448,4 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
       </DialogContent>
     </Dialog>
   );
-} 
+}
