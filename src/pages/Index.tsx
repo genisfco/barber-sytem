@@ -5,10 +5,8 @@ import { useAgendamentos } from "@/hooks/useAgendamentos";
 import { useTransacoes } from "@/hooks/useTransacoes";
 import { useBarbers } from "@/hooks/useBarbers";
 import { useServicos } from "@/hooks/useServicos";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AgendamentoForm } from "@/components/forms/AgendamentoForm";
 import { FinalizarAtendimentoForm } from "@/components/forms/FinalizarAtendimentoForm";
 import { toast } from "react-toastify";
@@ -26,17 +24,8 @@ const Index = () => {
   const { servicos } = useServicos();
   const [openEditForm, setOpenEditForm] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>();
-  const [dataHoraAtual, setDataHoraAtual] = useState(new Date());
   const [openFinalizarForm, setOpenFinalizarForm] = useState(false);
   const [agendamentoParaFinalizar, setAgendamentoParaFinalizar] = useState<any>();
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setDataHoraAtual(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   const agendamentosDoDia = agendamentos
     ?.sort((a, b) => a.time.localeCompare(b.time)) || [];
@@ -253,10 +242,7 @@ const Index = () => {
     };
   };
 
-  const getDiaSemana = (date: Date) => {
-    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    return dias[date.getDay()];
-  };
+
 
   // Função para ordenar agendamentos conforme a nova sequência
   const ordenarAgendamentos = (agendamentos: any[]) => {
@@ -329,16 +315,23 @@ const Index = () => {
       color: "text-primary",
     },
     {
+      title: "Tempo Médio de Atendimento",
+      value: (() => {
+        const agendamentosAtendidos = agendamentosDoDia?.filter(a => a.status === "atendido") || [];
+        if (agendamentosAtendidos.length === 0) return "0 min";
+        
+        const tempoTotal = agendamentosAtendidos.reduce((sum, a) => sum + (a.total_duration || 0), 0);
+        const tempoMedio = Math.round(tempoTotal / agendamentosAtendidos.length);
+        return `${tempoMedio} min`;
+      })(),
+      icon: Clock,
+      color: "text-primary",
+    },
+    {
       title: "Faturamento Diário",
       value: formatMoney(totais.saldo),
       icon: DollarSign,
       color: "text-primary",
-    },
-    {
-      value: format(dataHoraAtual, "HH:mm:ss"),
-      icon: Clock,
-      color: "text-primary",
-      subtitle: `${getDiaSemana(dataHoraAtual)}, ${format(dataHoraAtual, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
     },
   ];
 
@@ -355,9 +348,7 @@ const Index = () => {
                   "text-2xl font-semibold mt-1",
                   !stat.title && "text-right text-3xl"
                 )}>{stat.value}</h3>
-                {stat.subtitle && (
-                  <p className="text-sm text-muted-foreground mt-1">{stat.subtitle}</p>
-                )}
+
               </div>
               <div className={cn("p-3 rounded-full bg-primary/10", stat.color)}>
                 <stat.icon className="h-6 w-6" />
@@ -505,7 +496,7 @@ const Index = () => {
               return (
                 <div
                   key={barbeiro.id}
-                  className="grid grid-cols-[56px_1fr_1fr] gap-4 sm:gap-6 items-center p-2 sm:p-4 bg-background/50 rounded-lg w-full overflow-x-auto"
+                  className="grid grid-cols-[56px_1fr_1fr_1fr] gap-4 sm:gap-6 items-center p-2 sm:p-4 bg-background/50 rounded-lg w-full overflow-x-auto"
                 >
                   {/* Coluna 1: Ícone */}
                   <div className="flex items-center justify-center">
@@ -517,7 +508,23 @@ const Index = () => {
                   <div>
                     <p className="font-medium text-base sm:text-lg">{barbeiro.name}</p>
                   </div>
-                  {/* Coluna 3: Status atual e próximo status */}
+                  {/* Coluna 3: Tempo médio de atendimento */}
+                  <div className="flex flex-col items-end">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Tempo Médio</p>
+                    <p className="text-xs sm:text-sm font-medium">
+                      {(() => {
+                        const agendamentosBarbeiro = agendamentosDoDia?.filter(a => 
+                          a.barber_id === barbeiro.id && a.status === "atendido"
+                        ) || [];
+                        if (agendamentosBarbeiro.length === 0) return "0 min";
+                        
+                        const tempoTotal = agendamentosBarbeiro.reduce((sum, a) => sum + (a.total_duration || 0), 0);
+                        const tempoMedio = Math.round(tempoTotal / agendamentosBarbeiro.length);
+                        return `${tempoMedio} min`;
+                      })()}
+                    </p>
+                  </div>
+                  {/* Coluna 4: Status atual e próximo status */}
                   <div className="flex gap-4 sm:gap-6 w-full sm:w-auto">
                     {/* Status atual */}
                     <div className="flex flex-col items-end">
@@ -544,6 +551,7 @@ const Index = () => {
               );
             })}
           </div>
+          
         </Card>
       </div>
 
