@@ -5,7 +5,9 @@ import { Database } from "@/integrations/supabase/types";
 import { logError } from "@/utils/logger";
 import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
-type Cliente = Database['public']['Tables']['clients']['Row'];
+type Cliente = Database['public']['Tables']['clients']['Row'] & {
+  cpf?: string | null;
+};
 
 export function useClientes() {
   const { toast } = useToast();
