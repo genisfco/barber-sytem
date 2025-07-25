@@ -310,9 +310,9 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
         // 3. Se o agendamento está sendo cancelado, precisamos encontrar e cancelar todos os slots relacionados
         if (agendamento.status === 'cancelado') {
-          // Encontra o serviço para obter sua duração
-          const servico = servicos?.find(s => s.id === currentAppointment.service_id);
-          const slotsNecessarios = servico ? Math.ceil(servico.duration / 30) : 1;
+          // Usar a duração total já armazenada no agendamento
+          const duracaoTotal = currentAppointment.total_duration || 0;
+          const slotsNecessarios = Math.ceil(duracaoTotal / 30);
 
           // Se precisar de mais de um slot, atualiza todos os slots relacionados
           if (slotsNecessarios > 1) {
@@ -321,9 +321,11 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
             // Adiciona os próximos horários se forem necessários
             for (let i = 1; i < slotsNecessarios; i++) {
-              const proximoHorario = new Date();
-              proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
-              const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
+              const proximoMinuto = minuto + (i * 30);
+              const proximaHora = hora + Math.floor(proximoMinuto / 60);
+              const minutoFinal = proximoMinuto % 60;
+              
+              const proximoHorarioFormatado = `${proximaHora.toString().padStart(2, '0')}:${minutoFinal.toString().padStart(2, '0')}`;
               horariosParaAtualizar.push(proximoHorarioFormatado);
             }
 
@@ -494,6 +496,15 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         }
 
         // 5. Calculamos os totais
+        // Calcular duração real do atendimento em minutos
+        const [ano, mes, dia] = appointment.date.split('-').map(Number);
+        const [hora, minuto] = appointment.time.split(':').map(Number);
+        // Meses em JS começam do zero!
+        const dataAgendamento = new Date(ano, mes - 1, dia, hora, minuto, 0, 0);
+        const dataFinalizacao = new Date();
+        const diffMs = dataFinalizacao.getTime() - dataAgendamento.getTime();
+        const diffMinutos = Math.max(1, Math.round(diffMs / 60000)); // Garante pelo menos 1 minuto
+
         const totalServiceAmount = appointment.servicos.reduce((sum, service) => sum + service.service_price, 0);
         const totalProductsAmount = appointment.produtos.reduce((sum, produto) => 
           sum + (produto.product_price * produto.quantity), 0);
@@ -504,6 +515,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           .from('appointments')
           .update({ 
             status: 'atendido',
+            total_duration: diffMinutos,
             total_price: totalServiceAmount,
             total_products_price: totalProductsAmount,
             final_price: finalPrice,

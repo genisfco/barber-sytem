@@ -255,7 +255,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                           if (
                             agendamentoItem.barber_id === barbeiro.id &&
                             agendamentoItem.date === dataFormatada &&
-                            agendamentoItem.status !== 'cancelado'
+                            (agendamentoItem.status === 'pendente' || agendamentoItem.status === 'confirmado')
                           ) {
                             const slotMinutesStart = convertToMinutes(horario);
                             const slotMinutesEnd = slotMinutesStart + 30;
