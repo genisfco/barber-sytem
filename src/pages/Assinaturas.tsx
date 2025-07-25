@@ -2079,7 +2079,7 @@ const Assinaturas = () => {
                           <tr className="border-b border-muted">
                             <th className="py-1 pr-2 font-semibold">Data</th>
                             <th className="py-1 pr-2 font-semibold">Valor</th>
-                            <th className="py-1 pr-2 font-semibold">Pgto Total</th>
+                            <th className="py-1 pr-2 font-semibold">Status</th>
                             <th className="py-1 pr-2 font-semibold">Método</th>
                             <th className="py-1 pr-2 font-semibold">Ações</th>
                           </tr>
