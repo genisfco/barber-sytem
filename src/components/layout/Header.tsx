@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export function Header() {
+  
   const [dataHoraAtual, setDataHoraAtual] = useState(new Date());
 
   useEffect(() => {
@@ -27,8 +28,8 @@ export function Header() {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock className="h-6 w-6 text-white" />
-          <div className="text-white text-right">
-            <div className="font-medium">{format(dataHoraAtual, "HH:mm:ss")}</div>
+          <div className="text-white text-left">
+            <div className="font-medium">{format(dataHoraAtual, "HH:mm")}</div>
             <div className="text-xs">
               {getDiaSemana(dataHoraAtual)}, {format(dataHoraAtual, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </div>
