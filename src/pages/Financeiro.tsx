@@ -82,10 +82,26 @@ const Financeiro = () => {
   };
 
   const handleFiltroChange = (campo: keyof FiltrosTransacoes, valor: string) => {
-    setFiltros(prev => ({
-      ...prev,
-      [campo]: valor
-    }));
+    setFiltros(prev => {
+      const novosFiltros = {
+        ...prev,
+        [campo]: valor
+      };
+
+      // Se a categoria for alterada, verificar se deve desabilitar filtros de barbeiro e cliente
+      if (campo === "category") {
+        const categoriasComFiltros = ["todos", "servicos", "produtos"];
+        const categoriaPermiteFiltros = categoriasComFiltros.includes(valor);
+        
+        if (!categoriaPermiteFiltros) {
+          // Desabilitar filtros de barbeiro e cliente para categorias que não permitem
+          novosFiltros.barber_id = "todos";
+          novosFiltros.client_id = "todos";
+        }
+      }
+
+      return novosFiltros;
+    });
   };
 
   const limparFiltros = () => {
@@ -190,7 +206,7 @@ const Financeiro = () => {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle className="mb-5">Transações de Hoje</CardTitle>
+            <CardTitle className="mb-4">Transações de Hoje</CardTitle>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Filtros:</span>
@@ -202,19 +218,20 @@ const Financeiro = () => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Barbeiro</label>
               <Select
-                value={filtros.barber_id}
-                onValueChange={(value) => handleFiltroChange("barber_id", value)}
+                value={filtros.barber_id }
+                onValueChange={(value) => handleFiltroChange("barber_id", value)}              
+                disabled={!["todos", "servicos", "produtos"].includes(filtros.category || "")}
               >
-                <SelectTrigger>
+                <SelectTrigger className={!["todos", "servicos", "produtos"].includes(filtros.category || "") ? "opacity-50 cursor-not-allowed" : ""}>
                   <SelectValue placeholder="Selecione um barbeiro" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Barbeiros</SelectItem>
-                  {barbers.map((barber) => (
+                  {barbers?.map((barber) => (
                     <SelectItem key={barber.id} value={barber.id}>
                       {barber.name}
                     </SelectItem>
-                  ))}
+                  )) || []}
                 </SelectContent>
               </Select>
             </div>
@@ -224,17 +241,18 @@ const Financeiro = () => {
               <Select
                 value={filtros.client_id}
                 onValueChange={(value) => handleFiltroChange("client_id", value)}
+                disabled={!["todos", "servicos", "produtos"].includes(filtros.category || "")}
               >
-                <SelectTrigger>
+                <SelectTrigger className={!["todos", "servicos", "produtos"].includes(filtros.category || "") ? "opacity-50 cursor-not-allowed" : ""}>
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Clientes</SelectItem>
-                  {clientes.map((cliente) => (
+                  {clientes?.map((cliente) => (
                     <SelectItem key={cliente.id} value={cliente.id}>
                       {cliente.name}
                     </SelectItem>
-                  ))}
+                  )) || []}
                 </SelectContent>
               </Select>
             </div>
@@ -273,11 +291,11 @@ const Financeiro = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Métodos</SelectItem>
-                  {metodosPagamento.map((metodo) => (
+                  {metodosPagamento?.map((metodo) => (
                     <SelectItem key={metodo} value={metodo}>
                       {metodo}
                     </SelectItem>
-                  ))}
+                  )) || []}
                 </SelectContent>
               </Select>
             </div>

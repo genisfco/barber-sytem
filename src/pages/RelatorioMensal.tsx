@@ -8,12 +8,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, List } from "lucide-react";
+import { ChevronLeft, List, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useRelatorios } from "@/hooks/useRelatorios";
+import { useBarbers } from "@/hooks/useBarbers";
+import { useClientes } from "@/hooks/useClientes";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DetalhesDialog } from "@/components/financeiro/DetalhesDialog";
+
+type FiltrosTransacoes = {
+  barber_id?: string;
+  client_id?: string;
+  category?: string;
+  payment_method?: string;
+};
 
 const RelatorioMensal = () => {
   const dataAtual = new Date();
@@ -22,8 +31,19 @@ const RelatorioMensal = () => {
   
   const [mes, setMes] = useState<string>(mesAtual);
   const [ano, setAno] = useState<string>(anoAtualString);
+  
+  // Estados para filtros
+  const [filtros, setFiltros] = useState<FiltrosTransacoes>({
+    barber_id: "todos",
+    client_id: "todos",
+    category: "todos",
+    payment_method: "todos"
+  });
+
   const { getRelatorioMensal } = useRelatorios();
-  const { data: relatorio, isLoading } = getRelatorioMensal(mes, ano);
+  const { data: relatorio, isLoading } = getRelatorioMensal(mes, ano, filtros);
+  const { barbers } = useBarbers();
+  const { clientes } = useClientes();
   const [openDetalhesReceitas, setOpenDetalhesReceitas] = useState(false);
   const [openDetalhesDespesas, setOpenDetalhesDespesas] = useState(false);
 
@@ -55,7 +75,51 @@ const RelatorioMensal = () => {
     });
   };
 
-  const agruparPorMetodoPagamento = (transacoes: any[], tipo: 'receita' | 'despesa') => {
+  const handleFiltroChange = (campo: keyof FiltrosTransacoes, valor: string) => {
+    setFiltros(prev => {
+      const novosFiltros = {
+        ...prev,
+        [campo]: valor
+      };
+
+      // Se a categoria for alterada, verificar se deve desabilitar filtros de barbeiro e cliente
+      if (campo === "category") {
+        const categoriasComFiltros = ["todos", "servicos", "produtos"];
+        const categoriaPermiteFiltros = categoriasComFiltros.includes(valor);
+        
+        if (!categoriaPermiteFiltros) {
+          // Desabilitar filtros de barbeiro e cliente para categorias que não permitem
+          novosFiltros.barber_id = "todos";
+          novosFiltros.client_id = "todos";
+        }
+      }
+
+      return novosFiltros;
+    });
+  };
+
+  const limparFiltros = () => {
+    setFiltros({
+      barber_id: "todos",
+      client_id: "todos",
+      category: "todos",
+      payment_method: "todos"
+    });
+  };
+
+  // Usar transações já filtradas pelo hook
+  const transacoesFiltradas = relatorio?.transacoes || [];
+
+  // Obter métodos de pagamento únicos das transações
+  const metodosPagamento = Array.from(
+    new Set(
+      relatorio?.transacoes
+        ?.map(t => t.payment_method)
+        .filter(Boolean) || []
+    )
+  ).sort();
+
+  const agruparPorMetodoPagamento = (transacoes: { type: string; payment_method?: string; value: number }[], tipo: 'receita' | 'despesa') => {
     return transacoes
       .filter(t => t.type === tipo)
       .reduce((acc, curr) => {
@@ -65,7 +129,7 @@ const RelatorioMensal = () => {
       }, {} as Record<string, number>);
   };
 
-  const agruparPorCategoria = (transacoes: any[], tipo: 'receita' | 'despesa') => {
+  const agruparPorCategoria = (transacoes: { type: string; category?: string; payment_method?: string; value: number }[], tipo: 'receita' | 'despesa') => {
     return transacoes
       .filter(t => t.type === tipo)
       .reduce((acc, curr) => {
@@ -211,20 +275,126 @@ const RelatorioMensal = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Transações do Mês</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="mb-4">Transações do Mês</CardTitle>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Filtros:</span>
+            </div>
+          </div>
+          
+          {/* Filtros */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Barbeiro</label>
+              <Select
+                value={filtros.barber_id}
+                onValueChange={(value) => handleFiltroChange("barber_id", value)}
+                disabled={!["todos", "servicos", "produtos"].includes(filtros.category || "")}
+              >
+                <SelectTrigger className={!["todos", "servicos", "produtos"].includes(filtros.category || "") ? "opacity-50 cursor-not-allowed" : ""}>
+                  <SelectValue placeholder="Selecione um barbeiro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Barbeiros</SelectItem>
+                  {barbers?.map((barber) => (
+                    <SelectItem key={barber.id} value={barber.id}>
+                      {barber.name}
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Cliente</label>
+              <Select
+                value={filtros.client_id}
+                onValueChange={(value) => handleFiltroChange("client_id", value)}
+                disabled={!["todos", "servicos", "produtos"].includes(filtros.category || "")}
+              >
+                <SelectTrigger className={!["todos", "servicos", "produtos"].includes(filtros.category || "") ? "opacity-50 cursor-not-allowed" : ""}>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Clientes</SelectItem>
+                  {clientes?.map((cliente) => (
+                    <SelectItem key={cliente.id} value={cliente.id}>
+                      {cliente.name}
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categoria</label>
+              <Select
+                value={filtros.category}
+                onValueChange={(value) => handleFiltroChange("category", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as Categorias</SelectItem>
+                  <SelectItem value="servicos">Serviços</SelectItem>
+                  <SelectItem value="produtos">Produtos</SelectItem>
+                  <SelectItem value="equipamentos">Equipamentos</SelectItem>
+                  <SelectItem value="assinaturas">Assinaturas</SelectItem>
+                  <SelectItem value="comissoes">Comissões</SelectItem>
+                  <SelectItem value="despesas_fixas">Despesas Fixas</SelectItem>
+                  <SelectItem value="sistemas">Sistemas</SelectItem>
+                  <SelectItem value="outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Método de Pagamento</label>
+              <Select
+                value={filtros.payment_method}
+                onValueChange={(value) => handleFiltroChange("payment_method", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Métodos</SelectItem>
+                  {metodosPagamento?.map((metodo) => (
+                    <SelectItem key={metodo} value={metodo}>
+                      {metodo}
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Botão para limpar filtros */}
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={limparFiltros}
+              className="text-muted-foreground"
+            >
+              Limpar Filtros
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {!mes || !ano ? (
             <div className="text-muted-foreground">
               Selecione um mês e ano para visualizar as transações.
             </div>
-          ) : relatorio?.transacoes.length === 0 ? (
+          ) : transacoesFiltradas.length === 0 ? (
             <div className="text-muted-foreground">
               Nenhuma transação encontrada para o período selecionado.
             </div>
           ) : (
             <div className="space-y-4">
-              {relatorio?.transacoes.map((transacao) => (
+              {transacoesFiltradas.map((transacao) => (
                 <div
                   key={transacao.id}
                   className="flex items-center justify-between border-b pb-2"
