@@ -192,7 +192,7 @@ export function useComissoes(
           .insert({
             type: 'despesa',
             value: Number(totalComissao),
-            description: `Comissão: ${barberName} - Período: ${format(new Date(dataInicioFormatada!), 'dd/MM/yyyy')} a ${format(new Date(dataFimFormatada!), 'dd/MM/yyyy')}`,
+            description: `${barberName} - ${format(new Date(dataInicioFormatada!), 'dd/MM/yyyy')} a ${format(new Date(dataFimFormatada!), 'dd/MM/yyyy')}`,
             category: 'comissoes',
             payment_method: params.paymentMethod,
             payment_date: new Date().toISOString().slice(0, 10),

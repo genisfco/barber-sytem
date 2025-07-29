@@ -630,7 +630,7 @@ const Assinaturas = () => {
       const { data: transacaoCriada, error: errorTransacao } = await supabase.from("transactions").insert({
         type: "receita",
         value: Number(data.amount),
-        description: `Pagamento de assinatura de ${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
+        description: `${cliente?.name || "Cliente"} - ${plano?.name || "Plano"}`,
         payment_method: data.payment_method,
         category: "assinaturas",
         payment_date: data.payment_date,

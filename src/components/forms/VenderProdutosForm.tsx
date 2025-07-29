@@ -117,7 +117,7 @@ export function VenderProdutosForm({
       await createTransacao.mutateAsync({
         type: "receita",
         value: total,
-        description: `Venda para ${cliente}. Produtos: ${produtosVendidos}`,
+        description: `${cliente}. ${produtosVendidos}`,
         payment_method: values.payment_method,
         category: "produtos",
         payment_date: new Date().toISOString().slice(0, 10)

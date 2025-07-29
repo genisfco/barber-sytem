@@ -16,9 +16,23 @@ export type Transacao = {
   payment_date: string;
   created_at: string;
   updated_at: string;
+  // Campos adicionais para filtros
+  appointment?: {
+    barber_id: string;
+    barber_name: string;
+    client_id: string;
+    client_name: string;
+  };
 };
 
-export function useTransacoes() {
+export type FiltrosTransacoes = {
+  barber_id?: string;
+  client_id?: string;
+  category?: string;
+  payment_method?: string;
+};
+
+export function useTransacoes(filtros?: FiltrosTransacoes) {
   const queryClient = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
   const { selectedBarberShop } = useBarberShopContext();
@@ -47,25 +61,59 @@ export function useTransacoes() {
   });
 
   const { data: transacoesHoje } = useQuery({
-    queryKey: ["transacoes-hoje", selectedBarberShop?.id],
+    queryKey: ["transacoes-hoje", selectedBarberShop?.id, filtros],
     queryFn: async () => {
       if (!selectedBarberShop) {
         throw new Error("Barbearia não selecionada");
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("transactions")
-        .select("*")
+        .select(`
+          *,
+          appointment:appointments (
+            barber_id,
+            barber_name,
+            client_id,
+            client_name
+          )
+        `)
         .eq("barber_shop_id", selectedBarberShop.id)
         .gte("payment_date", `${today}`)
         .lte("payment_date", `${today}`);
+
+      // Aplicar filtros se fornecidos
+      if (filtros?.category && filtros.category !== "todos") {
+        query = query.eq("category", filtros.category);
+      }
+
+      if (filtros?.payment_method && filtros.payment_method !== "todos") {
+        query = query.eq("payment_method", filtros.payment_method);
+      }
+
+      const { data, error } = await query.order("payment_date", { ascending: false });
 
       if (error) {
         toast.error("Erro ao carregar transações do dia");
         throw error;
       }
 
-      return data as Transacao[];
+      let transacoesFiltradas = data as (Transacao & { appointment?: { barber_id: string; barber_name: string; client_id: string; client_name: string } })[];
+
+      // Filtros que precisam ser aplicados no frontend (por causa do join)
+      if (filtros?.barber_id && filtros.barber_id !== "todos") {
+        transacoesFiltradas = transacoesFiltradas.filter(t => 
+          t.appointment?.barber_id === filtros.barber_id
+        );
+      }
+
+      if (filtros?.client_id && filtros.client_id !== "todos") {
+        transacoesFiltradas = transacoesFiltradas.filter(t => 
+          t.appointment?.client_id === filtros.client_id
+        );
+      }
+
+      return transacoesFiltradas;
     },
     enabled: !!selectedBarberShop
   });
@@ -112,6 +160,7 @@ export function useTransacoes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id, filtros] });
     },
     onError: (error: Error) => {
       toast.error(`Erro ao criar transação: ${error.message}`);
@@ -168,6 +217,7 @@ export function useTransacoes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id, filtros] });
       toast.success("Transação atualizada com sucesso");
     },
     onError: (error: Error) => {
@@ -207,6 +257,7 @@ export function useTransacoes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transacoes", selectedBarberShop?.id] });
       queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes-hoje", selectedBarberShop?.id, filtros] });
       toast.success("Transação excluída com sucesso");
     },
     onError: (error: Error) => {

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Calendar, Scissors, Pencil, Trash2, CreditCard } from "lucide-react";
+import { Plus, FileText, Calendar, Scissors, Pencil, Trash2, CreditCard, Filter } from "lucide-react";
 import { FinanceiroForm } from "@/components/forms/financeiro/FinanceiroForm";
 import { PlatformPaymentForm } from "@/components/forms/PlatformPaymentForm";
 import { PlatformPaymentsList } from "@/components/PlatformPaymentsList";
 import { Link } from "react-router-dom";
-import { useTransacoes, type Transacao } from "@/hooks/useTransacoes";
+import { useTransacoes, type Transacao, type FiltrosTransacoes } from "@/hooks/useTransacoes";
+import { useBarbers } from "@/hooks/useBarbers";
+import { useClientes } from "@/hooks/useClientes";
 import {
   Table,
   TableBody,
@@ -15,6 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ComissoesDialog } from "@/components/comissoes/ComissoesDialog";
@@ -31,7 +40,18 @@ const Financeiro = () => {
   const [openComissoes, setOpenComissoes] = useState(false);
   const [transacaoParaEditar, setTransacaoParaEditar] = useState<Transacao | null>(null);
   const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<Transacao | null>(null);
-  const { transacoesHoje, isLoading, totais, updateTransacao, deleteTransacao } = useTransacoes();
+  
+  // Estados para filtros
+  const [filtros, setFiltros] = useState<FiltrosTransacoes>({
+    barber_id: "todos",
+    client_id: "todos",
+    category: "todos",
+    payment_method: "todos"
+  });
+
+  const { transacoesHoje, isLoading, totais, updateTransacao, deleteTransacao } = useTransacoes(filtros);
+  const { barbers } = useBarbers();
+  const { clientes } = useClientes();
   const { toast } = useToast();
 
   const formatMoney = (value: number) => {
@@ -60,6 +80,31 @@ const Financeiro = () => {
       logError(error, "Erro ao excluir transação:");
     }
   };
+
+  const handleFiltroChange = (campo: keyof FiltrosTransacoes, valor: string) => {
+    setFiltros(prev => ({
+      ...prev,
+      [campo]: valor
+    }));
+  };
+
+  const limparFiltros = () => {
+    setFiltros({
+      barber_id: "todos",
+      client_id: "todos",
+      category: "todos",
+      payment_method: "todos"
+    });
+  };
+
+  // Obter métodos de pagamento únicos das transações
+  const metodosPagamento = Array.from(
+    new Set(
+      transacoesHoje
+        ?.map(t => t.payment_method)
+        .filter(Boolean) || []
+    )
+  ).sort();
 
   return (
     <div className="p-6 space-y-6">
@@ -144,7 +189,111 @@ const Financeiro = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Transações de Hoje</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="mb-5">Transações de Hoje</CardTitle>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Filtros:</span>
+            </div>
+          </div>
+          
+          {/* Filtros */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2 mb-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Barbeiro</label>
+              <Select
+                value={filtros.barber_id}
+                onValueChange={(value) => handleFiltroChange("barber_id", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um barbeiro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Barbeiros</SelectItem>
+                  {barbers.map((barber) => (
+                    <SelectItem key={barber.id} value={barber.id}>
+                      {barber.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Cliente</label>
+              <Select
+                value={filtros.client_id}
+                onValueChange={(value) => handleFiltroChange("client_id", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Clientes</SelectItem>
+                  {clientes.map((cliente) => (
+                    <SelectItem key={cliente.id} value={cliente.id}>
+                      {cliente.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categoria</label>
+              <Select
+                value={filtros.category}
+                onValueChange={(value) => handleFiltroChange("category", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as Categorias</SelectItem>
+                  <SelectItem value="servicos">Serviços</SelectItem>
+                  <SelectItem value="produtos">Produtos</SelectItem>
+                  <SelectItem value="equipamentos">Equipamentos</SelectItem>
+                  <SelectItem value="assinaturas">Assinaturas</SelectItem>
+                  <SelectItem value="comissoes">Comissões</SelectItem>
+                  <SelectItem value="despesas_fixas">Despesas Fixas</SelectItem>
+                  <SelectItem value="sistemas">Sistemas</SelectItem>
+                  <SelectItem value="outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Método de Pagamento</label>
+              <Select
+                value={filtros.payment_method}
+                onValueChange={(value) => handleFiltroChange("payment_method", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Métodos</SelectItem>
+                  {metodosPagamento.map((metodo) => (
+                    <SelectItem key={metodo} value={metodo}>
+                      {metodo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Botão para limpar filtros */}
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={limparFiltros}
+              className="text-muted-foreground"
+            >
+              Limpar Filtros
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
