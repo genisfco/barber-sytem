@@ -160,8 +160,11 @@ export function FinalizarAtendimentoForm({
           const tipoBeneficio = beneficioProduto.benefit_types.name;
           
           if (tipoBeneficio === 'produto_gratuito') {
-            precoFinal = 0; // Produto gratuito
-            descontoTotal += precoOriginal;
+            // Para produtos gratuitos: primeira unidade gratuita, demais pelo preço normal
+            const unidadesGratuitas = 1;
+            const unidadesPagas = Math.max(0, produto.quantity - unidadesGratuitas);
+            precoFinal = produtoInfo.price * unidadesPagas;
+            descontoTotal += produtoInfo.price * unidadesGratuitas;
           } else if (tipoBeneficio === 'produto_desconto' && beneficioProduto.discount_percentage) {
             const desconto = (precoOriginal * beneficioProduto.discount_percentage) / 100;
             precoFinal = precoOriginal - desconto;
@@ -232,6 +235,25 @@ export function FinalizarAtendimentoForm({
     }
     
     return precoOriginal;
+  };
+
+  // Função para calcular o preço de produtos com benefício considerando quantidade
+  const calcularPrecoProdutoComBeneficio = (precoUnitario: number, quantidade: number, beneficio: any) => {
+    if (!beneficio) return precoUnitario * quantidade;
+
+    const tipoBeneficio = beneficio.benefit_types.name;
+    
+    if (tipoBeneficio === 'produto_gratuito') {
+      // Primeira unidade gratuita, demais pelo preço normal
+      const unidadesGratuitas = 1;
+      const unidadesPagas = Math.max(0, quantidade - unidadesGratuitas);
+      return precoUnitario * unidadesPagas;
+    } else if (tipoBeneficio === 'produto_desconto' && beneficio.discount_percentage) {
+      const precoComDesconto = precoUnitario - (precoUnitario * beneficio.discount_percentage / 100);
+      return precoComDesconto * quantidade;
+    }
+    
+    return precoUnitario * quantidade;
   };
 
   // Função para obter o nome do dia da semana
@@ -321,6 +343,107 @@ export function FinalizarAtendimentoForm({
     return comissaoPrincipal + comissaoAdicional;
   }
 
+  // Função específica para calcular comissão de produtos com regras corretas
+  function calcularComissaoProduto(
+    produto: Produto,
+    quantidade: number,
+    beneficio: any,
+    taxaPadraoBarbeiro: number
+  ) {
+    // Se não tem comissão, retorna 0
+    if (produto.has_commission === false) {
+      return 0;
+    }
+
+    let comissaoTotal = 0;
+
+    // Para produtos gratuitos: comissão apenas nas unidades pagas (após a primeira)
+    if (beneficio && beneficio.benefit_types.name === 'produto_gratuito') {
+      const unidadesPagas = Math.max(0, quantidade - 1);
+      
+      if (unidadesPagas > 0) {
+        if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+          // Comissão percentual sobre o valor das unidades pagas
+          comissaoTotal = (produto.price * unidadesPagas) * (produto.bonus_value / 100);
+        } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+          // Comissão fixa por unidade paga
+          comissaoTotal = produto.bonus_value * unidadesPagas;
+        }
+      }
+    }
+    // Para produtos com desconto: comissão sobre o valor residual de todas as unidades
+    else if (beneficio && beneficio.benefit_types.name === 'produto_desconto' && beneficio.discount_percentage) {
+      const precoComDesconto = produto.price - (produto.price * beneficio.discount_percentage / 100);
+      
+      if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+        // Comissão percentual sobre o valor com desconto de todas as unidades
+        comissaoTotal = (precoComDesconto * quantidade) * (produto.bonus_value / 100);
+      } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+        // Comissão fixa por unidade
+        comissaoTotal = produto.bonus_value * quantidade;
+      }
+    }
+    // Para produtos sem benefício: comissão sobre o valor total
+    else {
+      if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+        // Comissão percentual sobre o valor total
+        comissaoTotal = (produto.price * quantidade) * (produto.bonus_value / 100);
+      } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+        // Comissão fixa por unidade
+        comissaoTotal = produto.bonus_value * quantidade;
+      }
+    }
+
+    return comissaoTotal;
+  }
+
+  // Função específica para calcular comissão de serviços com regras corretas
+  function calcularComissaoServico(
+    servico: Servico,
+    beneficio: any,
+    taxaPadraoBarbeiro: number
+  ): number {
+    // Se não tem comissão, retorna 0
+    if (servico.has_commission === false) {
+      return 0;
+    }
+
+    // Se o serviço é gratuito, não há comissão
+    if (beneficio && beneficio.benefit_types.name === 'servico_gratuito') {
+      return 0;
+    }
+
+    // Calcular preço final com benefício aplicado
+    let precoFinal = servico.price;
+    if (beneficio) {
+      if (beneficio.benefit_types.name === 'servico_desconto' && beneficio.discount_percentage) {
+        precoFinal = precoFinal - (precoFinal * beneficio.discount_percentage / 100);
+      }
+    }
+
+    let comissaoPrincipal = 0;
+    let comissaoAdicional = 0;
+
+    // Calcular comissão principal
+    if (servico.commission_type === 'percentual' && servico.commission_value) {
+      comissaoPrincipal = precoFinal * (servico.commission_value / 100);
+    } else if (servico.commission_type === 'fixo' && servico.commission_value) {
+      comissaoPrincipal = servico.commission_value;
+    } else {
+      // Usar taxa padrão do barbeiro
+      comissaoPrincipal = precoFinal * (taxaPadraoBarbeiro / 100);
+    }
+
+    // Calcular comissão adicional
+    if (servico.commission_extra_type === 'percentual' && servico.commission_extra_value) {
+      comissaoAdicional = precoFinal * (servico.commission_extra_value / 100);
+    } else if (servico.commission_extra_type === 'fixo' && servico.commission_extra_value) {
+      comissaoAdicional = servico.commission_extra_value;
+    }
+
+    return comissaoPrincipal + comissaoAdicional;
+  }
+
   // Calcular comissão sempre que serviços/produtos mudarem
   useEffect(() => {
     if (!servicos || !produtos || !barbers) return;
@@ -335,40 +458,55 @@ export function FinalizarAtendimentoForm({
     servicosSelecionados.forEach(servicoId => {
       const servico = servicos.find(s => s.id === servicoId) as Servico | undefined;
       if (!servico) return;
-      let precoFinal = servico.price;
       const beneficio = getBeneficioServico(servicoId);
-      if (beneficio) {
-        if (beneficio.benefit_types.name === 'servico_gratuito') precoFinal = 0;
-        else if (beneficio.benefit_types.name === 'servico_desconto' && beneficio.discount_percentage) {
-          precoFinal = precoFinal - (precoFinal * beneficio.discount_percentage / 100);
+      const valorComissao = calcularComissaoServico(servico, beneficio, taxaPadrao);
+      total += valorComissao;
+      
+      let tipo = 'Padrão';
+      if (servico.has_commission === false) {
+        tipo = 'Sem comissão';
+      } else if (beneficio && beneficio.benefit_types.name === 'servico_gratuito') {
+        tipo = 'Sem comissão (serviço gratuito)';
+      } else if (servico.commission_type) {
+        tipo = servico.commission_type === 'percentual' ? `${servico.commission_value}%` : `R$ ${servico.commission_value}`;
+        if (beneficio && beneficio.benefit_types.name === 'servico_desconto') {
+          tipo += ' (com desconto)';
+        }
+        // Só adicionar comissão extra se o serviço não for gratuito
+        if (servico.commission_extra_type) {
+          tipo += servico.commission_extra_type === 'percentual' ? ` + ${servico.commission_extra_value}%` : ` + R$ ${servico.commission_extra_value}`;
         }
       }
-      const valorComissao = calcularComissaoItem(servico, precoFinal, taxaPadrao);
-      total += valorComissao;
-      let tipo = 'Padrão';
-      if (servico.has_commission === false) tipo = 'Sem comissão';
-      else if (servico.commission_type) tipo = servico.commission_type === 'percentual' ? `${servico.commission_value}%` : `R$ ${servico.commission_value}`;
-      if (servico.commission_extra_type) tipo += servico.commission_extra_type === 'percentual' ? ` + ${servico.commission_extra_value}%` : ` + R$ ${servico.commission_extra_value}`;
       resumo.push({descricao: `Serviço: ${servico.name} (${tipo})`, valor: valorComissao});
     });
     // Produtos
     produtosSelecionados.forEach(produtoSel => {
       const produto = produtos.find(p => p.id === produtoSel.id) as Produto | undefined;
       if (!produto) return;
-      let precoFinal = produto.price * produtoSel.quantity;
       const beneficio = getBeneficioProduto(produto.id);
-      if (beneficio) {
-        if (beneficio.benefit_types.name === 'produto_gratuito') precoFinal = 0;
-        else if (beneficio.benefit_types.name === 'produto_desconto' && beneficio.discount_percentage) {
-          precoFinal = precoFinal - (precoFinal * beneficio.discount_percentage / 100);
+      const precoFinal = calcularPrecoProdutoComBeneficio(produto.price, produtoSel.quantity, beneficio);
+      const valorComissaoProduto = calcularComissaoProduto(produto, produtoSel.quantity, beneficio, taxaPadrao);
+      total += valorComissaoProduto;
+      let tipo = 'Sem bonus';
+      if (produto.has_commission === false) {
+        tipo = 'Sem comissão';
+      } else if (produto.bonus_type) {
+        if (beneficio && beneficio.benefit_types.name === 'produto_gratuito') {
+          const unidadesPagas = Math.max(0, produtoSel.quantity - 1);
+          tipo = produto.bonus_type === 'percentual' 
+            ? `Bonus: ${produto.bonus_value}% (${unidadesPagas} unid. pagas)` 
+            : `Bonus: R$ ${produto.bonus_value} (${unidadesPagas} unid. pagas)`;
+        } else if (beneficio && beneficio.benefit_types.name === 'produto_desconto') {
+          tipo = produto.bonus_type === 'percentual' 
+            ? `Bonus: ${produto.bonus_value}% (${produtoSel.quantity} unid. com desconto)` 
+            : `Bonus: R$ ${produto.bonus_value} (${produtoSel.quantity} unid.)`;
+        } else {
+          tipo = produto.bonus_type === 'percentual' 
+            ? `Bonus: ${produto.bonus_value}% (${produtoSel.quantity} unid.)` 
+            : `Bonus: R$ ${produto.bonus_value} (${produtoSel.quantity} unid.)`;
         }
       }
-      const valorComissao = calcularComissaoItem(produto, precoFinal, taxaPadrao);
-      total += valorComissao;
-          let tipo = 'Sem bonus';
-    if (produto.has_commission === false) tipo = 'Sem comissão';
-    else if (produto.bonus_type) tipo = produto.bonus_type === 'percentual' ? `Bonus: ${produto.bonus_value}%` : `Bonus: R$ ${produto.bonus_value}`;
-    resumo.push({descricao: `Produto: ${produto.name} (${tipo})`, valor: valorComissao});
+      resumo.push({descricao: `Produto: ${produto.name} (${tipo})`, valor: valorComissaoProduto});
     });
     setResumoComissao(resumo);
     setTotalComissao(total);
@@ -390,6 +528,7 @@ export function FinalizarAtendimentoForm({
           throw new Error(`Serviço não encontrado: ${servicoId}`);
         }
         const beneficio = getBeneficioServico(servicoId);
+        const isServicoGratuito = beneficio && beneficio.benefit_types.name === 'servico_gratuito';
         const precoFinal = calcularPrecoComBeneficio(servico.price, beneficio);
         return {
           appointment_id: agendamento.id,
@@ -398,7 +537,9 @@ export function FinalizarAtendimentoForm({
           service_price: precoFinal, // Preço com benefício aplicado
           service_duration: servico.duration,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Adicionar flag is_gratuito como propriedade adicional (não será salva no banco)
+          is_gratuito: isServicoGratuito
         };
       });
       const produtosSelecionados = values.produtos.map(produto => {
@@ -407,15 +548,24 @@ export function FinalizarAtendimentoForm({
           throw new Error(`Produto não encontrado: ${produto.id}`);
         }
         const beneficio = getBeneficioProduto(produto.id);
-        const precoUnitarioFinal = calcularPrecoComBeneficio(produtoInfo.price, beneficio);
+        const isProdutoGratuito = beneficio && beneficio.benefit_types.name === 'produto_gratuito';
+        
+        // Para produtos gratuitos, armazenamos o preço unitário original
+        // Para produtos com desconto, armazenamos o preço com desconto aplicado
+        const precoUnitarioFinal = isProdutoGratuito 
+          ? produtoInfo.price 
+          : calcularPrecoComBeneficio(produtoInfo.price, beneficio);
+        
         return {
           appointment_id: agendamento.id,
           product_id: produto.id,
           product_name: produtoInfo.name,
-          product_price: precoUnitarioFinal, // Preço unitário com benefício aplicado
+          product_price: precoUnitarioFinal, // Preço unitário (benefício será aplicado no backend)
           quantity: produto.quantity,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Adicionar flag is_gratuito como propriedade adicional (não será salva no banco)
+          is_gratuito: isProdutoGratuito
         };
       });
       const totalDuration = servicosSelecionados.reduce((sum, servico) => {
@@ -470,13 +620,13 @@ export function FinalizarAtendimentoForm({
           if (beneficio) {
             const produtoInfo = produtos.find(p => p.id === produto.id) as Produto | undefined;
             const original_price = produtoInfo.price;
-            const final_price = calcularPrecoComBeneficio(produtoInfo.price, beneficio);
-            const discount_applied = original_price - final_price;
+            const final_price = calcularPrecoProdutoComBeneficio(produtoInfo.price, produto.quantity, beneficio);
+            const discount_applied = (original_price * produto.quantity) - final_price;
             await supabase.from('subscription_benefits_usage').insert({
               client_subscription_id,
               appointment_id,
               subscription_plan_benefit_id: beneficio.id,
-              original_price,
+              original_price: original_price * produto.quantity,
               final_price,
               discount_applied,
               created_at: new Date().toISOString()
@@ -678,9 +828,8 @@ export function FinalizarAtendimentoForm({
                               onCheckedChange={(checked) => {
                                 const current = field.value || [];
                                 if (checked) {
-                                  // Se for produto gratuito, sempre adiciona com quantidade 1
-                                  const quantidade = isGratuito ? 1 : 1;
-                                  field.onChange([...current, { id: produto.id, quantity: quantidade }]);
+                                  // Adiciona com quantidade 1 para qualquer produto
+                                  field.onChange([...current, { id: produto.id, quantity: 1 }]);
                                 } else {
                                   field.onChange(current.filter(p => p.id !== produto.id));
                                 }
@@ -696,7 +845,7 @@ export function FinalizarAtendimentoForm({
                                 {temBeneficio && (
                                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                     <Gift className="w-3 h-3 mr-1" />
-                                    {isGratuito ? 'Grátis (1 unidade)' : `${beneficio?.discount_percentage}% OFF`}
+                                    {isGratuito ? '1ª unidade grátis' : `${beneficio?.discount_percentage}% OFF`}
                                   </Badge>
                                 )}
                               </div>
@@ -704,7 +853,9 @@ export function FinalizarAtendimentoForm({
                                 {temBeneficio ? (
                                   <>
                                     <span className="line-through text-muted-foreground">R$ {produto.price.toFixed(2)}</span>
-                                    <span className="text-green-600 font-medium">R$ {precoUnitarioFinal.toFixed(2)}</span>
+                                    <span className="text-green-600 font-medium">
+                                      {isGratuito ? '1ª grátis, demais R$ ' + produto.price.toFixed(2) : `R$ ${precoUnitarioFinal.toFixed(2)}`}
+                                    </span>
                                   </>
                                 ) : (
                                   <span>R$ {produto.price.toFixed(2)}</span>
@@ -720,19 +871,7 @@ export function FinalizarAtendimentoForm({
                                   <QuantitySelector
                                     value={field.value.find(p => p.id === produto.id)?.quantity || 1}
                                     onChange={(quantidade) => {
-                                      // Se for produto gratuito, força quantidade 1
-                                      if (isGratuito) {
-                                        const current = field.value || [];
-                                        field.onChange(current.map(p => 
-                                          p.id === produto.id 
-                                            ? { ...p, quantity: 1 } 
-                                            : p
-                                        ));
-                                        calcularTotal();
-                                        return;
-                                      }
-                                      
-                                      // Para produtos com desconto ou sem benefício, valida normalmente
+                                      // Validação de estoque para todos os produtos
                                       if (quantidade > produto.stock) return;
                                       
                                       const current = field.value || [];
@@ -744,8 +883,7 @@ export function FinalizarAtendimentoForm({
                                       calcularTotal();
                                     }}
                                     min={1}
-                                    max={isGratuito ? 1 : produto.stock}
-                                    disabled={isGratuito}
+                                    max={produto.stock}
                                   />
                                 </div>
                               )}
@@ -891,4 +1029,4 @@ export function FinalizarAtendimentoForm({
       </DialogContent>
     </Dialog>
   );
-} 
+}

@@ -37,6 +37,7 @@ export interface ServicoAgendamento {
   service_name: string;
   service_price: number;
   service_duration: number;
+  is_gratuito?: boolean; // Flag para identificar serviços gratuitos
   created_at: string;
   updated_at: string;
 }
@@ -48,6 +49,7 @@ export interface ProdutoAgendamento {
   product_name: string;
   product_price: number;
   quantity: number;
+  is_gratuito?: boolean; // Flag para identificar produtos gratuitos
   created_at: string;
   updated_at: string;
 }

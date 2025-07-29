@@ -8,8 +8,12 @@ import { logError } from "@/utils/logger";
 import { useBarberShopContext } from "@/contexts/BarberShopContext";
 
 type Agendamento = Database['public']['Tables']['appointments']['Row'];
-type ServicoAgendamento = Database['public']['Tables']['appointment_services']['Row'];
-type ProdutoAgendamento = Database['public']['Tables']['appointment_products']['Row'];
+type ServicoAgendamento = Database['public']['Tables']['appointment_services']['Row'] & {
+  is_gratuito?: boolean; // Flag para identificar serviços gratuitos
+};
+type ProdutoAgendamento = Database['public']['Tables']['appointment_products']['Row'] & {
+  is_gratuito?: boolean; // Flag para identificar produtos gratuitos
+};
 
 interface CreateAgendamentoData {
   date: string;
@@ -91,6 +95,101 @@ function calcularComissaoItem(
   // Calcular comissão adicional
   if (servico.commission_extra_type === 'percentual' && servico.commission_extra_value) {
     comissaoAdicional = valorFinal * (servico.commission_extra_value / 100);
+  } else if (servico.commission_extra_type === 'fixo' && servico.commission_extra_value) {
+    comissaoAdicional = servico.commission_extra_value;
+  }
+
+  return comissaoPrincipal + comissaoAdicional;
+}
+
+// Função específica para calcular comissão de produtos com regras corretas
+function calcularComissaoProdutoBackend(
+  produto: ProdutoComComissao,
+  quantidade: number,
+  precoUnitarioOriginal: number,
+  precoUnitarioFinal: number, // Preço após benefícios
+  taxaPadraoBarbeiro: number,
+  isProdutoGratuito: boolean = false // Flag para identificar produtos gratuitos
+): number {
+  // Se não tem comissão, retorna 0
+  if (produto.has_commission === false) {
+    return 0;
+  }
+
+  let comissaoTotal = 0;
+
+  if (isProdutoGratuito) {
+    // Para produtos gratuitos: comissão apenas nas unidades pagas (após a primeira)
+    const unidadesPagas = Math.max(0, quantidade - 1);
+    
+    if (unidadesPagas > 0) {
+      if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+        // Comissão percentual sobre o valor das unidades pagas
+        comissaoTotal = (precoUnitarioOriginal * unidadesPagas) * (produto.bonus_value / 100);
+      } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+        // Comissão fixa por unidade paga
+        comissaoTotal = produto.bonus_value * unidadesPagas;
+      }
+    }
+  }
+  // Para produtos com desconto: comissão sobre o valor residual de todas as unidades
+  else if (precoUnitarioFinal < precoUnitarioOriginal) {
+    if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+      // Comissão percentual sobre o valor com desconto de todas as unidades
+      comissaoTotal = (precoUnitarioFinal * quantidade) * (produto.bonus_value / 100);
+    } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+      // Comissão fixa por unidade
+      comissaoTotal = produto.bonus_value * quantidade;
+    }
+  }
+  // Para produtos sem benefício: comissão sobre o valor total
+  else {
+    if (produto.bonus_type === 'percentual' && produto.bonus_value) {
+      // Comissão percentual sobre o valor total
+      comissaoTotal = (precoUnitarioOriginal * quantidade) * (produto.bonus_value / 100);
+    } else if (produto.bonus_type === 'fixo' && produto.bonus_value) {
+      // Comissão fixa por unidade
+      comissaoTotal = produto.bonus_value * quantidade;
+    }
+  }
+
+  return comissaoTotal;
+}
+
+// Função específica para calcular comissão de serviços com regras corretas
+function calcularComissaoServicoBackend(
+  servico: ServicoComComissao,
+  precoOriginal: number,
+  precoFinal: number, // Preço após benefícios
+  taxaPadraoBarbeiro: number,
+  isServicoGratuito: boolean = false // Flag para identificar serviços gratuitos
+): number {
+  // Se não tem comissão, retorna 0
+  if (servico.has_commission === false) {
+    return 0;
+  }
+
+  // Se o serviço é gratuito, não há comissão
+  if (isServicoGratuito) {
+    return 0;
+  }
+
+  let comissaoPrincipal = 0;
+  let comissaoAdicional = 0;
+
+  // Calcular comissão principal
+  if (servico.commission_type === 'percentual' && servico.commission_value) {
+    comissaoPrincipal = precoFinal * (servico.commission_value / 100);
+  } else if (servico.commission_type === 'fixo' && servico.commission_value) {
+    comissaoPrincipal = servico.commission_value;
+  } else {
+    // Usar taxa padrão do barbeiro
+    comissaoPrincipal = precoFinal * (taxaPadraoBarbeiro / 100);
+  }
+
+  // Calcular comissão adicional
+  if (servico.commission_extra_type === 'percentual' && servico.commission_extra_value) {
+    comissaoAdicional = precoFinal * (servico.commission_extra_value / 100);
   } else if (servico.commission_extra_type === 'fixo' && servico.commission_extra_value) {
     comissaoAdicional = servico.commission_extra_value;
   }
@@ -433,12 +532,16 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         if (appointment.servicos.length > 0) {
           const { error: servicesError } = await supabase
             .from('appointment_services')
-            .insert(appointment.servicos.map(servico => ({
-              ...servico,
-              appointment_id: appointment.id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })));
+            .insert(appointment.servicos.map(servico => {
+              // Remover a propriedade is_gratuito antes de salvar no banco
+              const { is_gratuito, ...servicoParaSalvar } = servico;
+              return {
+                ...servicoParaSalvar,
+                appointment_id: appointment.id,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+            }));
 
           if (servicesError) {
             logError(servicesError, '❌ Erro ao inserir serviços:');
@@ -450,12 +553,16 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         if (appointment.produtos.length > 0) {
           const { error: productsError } = await supabase
             .from('appointment_products')
-            .insert(appointment.produtos.map(produto => ({
-              ...produto,
-              appointment_id: appointment.id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })));
+            .insert(appointment.produtos.map(produto => {
+              // Remover a propriedade is_gratuito antes de salvar no banco
+              const { is_gratuito, ...produtoParaSalvar } = produto;
+              return {
+                ...produtoParaSalvar,
+                appointment_id: appointment.id,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+            }));
 
           if (productsError) {
             logError(productsError, '❌ Erro ao inserir produtos:');
@@ -506,8 +613,21 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         const diffMinutos = Math.max(1, Math.round(diffMs / 60000)); // Garante pelo menos 1 minuto
 
         const totalServiceAmount = appointment.servicos.reduce((sum, service) => sum + service.service_price, 0);
-        const totalProductsAmount = appointment.produtos.reduce((sum, produto) => 
-          sum + (produto.product_price * produto.quantity), 0);
+        
+        // Calcular valor real dos produtos considerando benefícios
+        const totalProductsAmount = appointment.produtos.reduce((sum, produto) => {
+          const isProdutoGratuito = produto.is_gratuito === true;
+          
+          if (isProdutoGratuito) {
+            // Para produtos gratuitos: primeira unidade gratuita, demais pelo preço original
+            const unidadesPagas = Math.max(0, produto.quantity - 1);
+            return sum + (produto.product_price * unidadesPagas);
+          } else {
+            // Para produtos com desconto ou sem benefício, usar o preço que já vem com benefício aplicado
+            return sum + (produto.product_price * produto.quantity);
+          }
+        }, 0);
+        
         const finalPrice = totalServiceAmount + totalProductsAmount;
 
         // 6. Atualizamos o agendamento com os valores finais
@@ -576,10 +696,13 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         for (const servicoAgendamento of appointment.servicos) {
           const servicoInfo = servicosComComissao?.find(s => s.id === servicoAgendamento.service_id);
           if (servicoInfo) {
-            const comissaoServico = calcularComissaoItem(
+            const isServicoGratuito = servicoAgendamento.is_gratuito === true;
+            const comissaoServico = calcularComissaoServicoBackend(
               servicoInfo,
-              servicoAgendamento.service_price, // Valor final após benefícios
-              commissionRate
+              servicoInfo.price, // Preço original do serviço
+              servicoAgendamento.service_price, // Preço final após benefícios
+              commissionRate,
+              isServicoGratuito
             );
             totalComissao += comissaoServico;
           }
@@ -589,13 +712,32 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         for (const produtoAgendamento of appointment.produtos) {
           const produtoInfo = produtosComComissao?.find(p => p.id === produtoAgendamento.product_id);
           if (produtoInfo) {
-            const valorTotalProduto = produtoAgendamento.product_price * produtoAgendamento.quantity;
-            const comissaoProduto = calcularComissaoItem(
-              produtoInfo,
-              valorTotalProduto, // Valor final após benefícios
-              commissionRate
-            );
-            totalComissao += comissaoProduto;
+            // Usar a flag is_gratuito enviada pelo frontend
+            const isProdutoGratuito = produtoAgendamento.is_gratuito === true;
+            
+            if (isProdutoGratuito) {
+              // Para produtos gratuitos, usar o preço original do produto para cálculo de comissão
+              const comissaoProduto = calcularComissaoProdutoBackend(
+                produtoInfo,
+                produtoAgendamento.quantity,
+                produtoInfo.price, // Preço original do produto
+                0, // Preço final (gratuito)
+                commissionRate,
+                true // isProdutoGratuito
+              );
+              totalComissao += comissaoProduto;
+            } else {
+              // Para produtos com preço, usar o preço que já vem com benefício aplicado
+              const comissaoProduto = calcularComissaoProdutoBackend(
+                produtoInfo,
+                produtoAgendamento.quantity,
+                produtoInfo.price, // Preço original do produto
+                produtoAgendamento.product_price, // Preço final após benefícios
+                commissionRate,
+                false // isProdutoGratuito
+              );
+              totalComissao += comissaoProduto;
+            }
           }
         }
 
