@@ -66,7 +66,7 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
   };
 
   const handleAtendido = (agendamento: Agendamento) => {
-    if (agendamento.status !== "confirmado") {
+    if (agendamento.status !== "confirmado" && agendamento.status !== "atendido") {
       toast.error("Por favor, confirme o agendamento antes de finalizar o atendimento.");
       return;
     }
@@ -149,7 +149,20 @@ export function AgendamentosTable({ agendamentos, isLoading }: AgendamentosTable
                             size="icon"
                             onClick={() => handleAtendido(agendamento)}
                             className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
-                            title="Cliente atendido"
+                            title="Finalizar atendimento"
+                          >
+                            <Scissors className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {agendamento.status === "atendido" && (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleAtendido(agendamento)}
+                            className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                            title="Editar atendimento"
                           >
                             <Scissors className="h-4 w-4" />
                           </Button>

@@ -742,18 +742,18 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         }
 
         // 8. Verificamos se já existe uma comissão para este agendamento
+        const { data: existingCommission, error: searchError } = await supabase
+          .from('barber_commissions')
+          .select()
+          .eq('appointment_id', appointment.id)
+          .single();
+
+        if (searchError && searchError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
+          logError(searchError, '❌ Erro ao buscar comissão existente:');
+          throw searchError;
+        }
+
         if (totalComissao > 0) {
-          const { data: existingCommission, error: searchError } = await supabase
-            .from('barber_commissions')
-            .select()
-            .eq('appointment_id', appointment.id)
-            .single();
-
-          if (searchError && searchError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
-            logError(searchError, '❌ Erro ao buscar comissão existente:');
-            throw searchError;
-          }
-
           if (existingCommission) {
             // Atualiza a comissão existente
             const { error: updateError } = await supabase
@@ -788,9 +788,33 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
               throw commissionError;
             }
           }
+        } else {
+          // Se não há comissão (totalComissao = 0), removemos o registro existente se houver
+          if (existingCommission) {
+            const { error: deleteError } = await supabase
+              .from('barber_commissions')
+              .delete()
+              .eq('id', existingCommission.id);
+
+            if (deleteError) {
+              logError(deleteError, '❌ Erro ao deletar comissão existente:');
+              throw deleteError;
+            }
+          }
         }
 
-        // 9. Lançamos a receita dos serviços
+        // 9. Removemos transações existentes para este agendamento (se houver)
+        const { error: deleteTransactionsError } = await supabase
+          .from('transactions')
+          .delete()
+          .eq('appointment_id', appointment.id);
+
+        if (deleteTransactionsError) {
+          logError(deleteTransactionsError, '❌ Erro ao deletar transações existentes:');
+          throw deleteTransactionsError;
+        }
+
+        // 10. Lançamos a receita dos serviços
         if (totalServiceAmount > 0) {
           const { error: receitaError } = await supabase
             .from('transactions')
@@ -813,7 +837,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           }
         }
 
-        // 10. Se houver produtos, lançamos a receita
+        // 11. Se houver produtos, lançamos a receita
         if (totalProductsAmount > 0) {
           const { error: produtosError } = await supabase
             .from('transactions')
