@@ -47,14 +47,14 @@ function isHorarioDisponivel(data: FormData, agendamentos: Agendamento[], servic
   // Encontra os serviços selecionados para obter a duração total
   const servicosSelecionados = servicos?.filter(s => data.servicosSelecionados?.includes(s.id));
   const duracaoTotal = servicosSelecionados?.reduce((sum, s) => sum + s.duration, 0) || 0;
-  const slotsNecessarios = Math.ceil(duracaoTotal / 30);
+  const slotsNecessarios = Math.ceil(duracaoTotal / 15);
   const horariosParaVerificar = [data.horario];
 
   // Adiciona os próximos horários se forem necessários
   for (let i = 1; i < slotsNecessarios; i++) {
     const [hora, minuto] = data.horario?.split(':').map(Number) || [0, 0];
     const proximoHorario = new Date();
-    proximoHorario.setHours(hora, minuto + (i * 30), 0, 0);
+    proximoHorario.setHours(hora, minuto + (i * 15), 0, 0);
     const proximoHorarioFormatado = `${proximoHorario.getHours().toString().padStart(2, '0')}:${proximoHorario.getMinutes().toString().padStart(2, '0')}`;
     horariosParaVerificar.push(proximoHorarioFormatado);
   }

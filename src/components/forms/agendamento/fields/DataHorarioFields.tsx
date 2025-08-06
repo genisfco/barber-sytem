@@ -147,7 +147,7 @@ export function DataHorarioFields({
           (agendamentoParaEditar ? agendamentoItem.id !== agendamentoParaEditar.id : true)
         ) {
           const slotMinutesStart = convertToMinutes(horario);
-          const slotMinutesEnd = slotMinutesStart + 30;
+          const slotMinutesEnd = slotMinutesStart + 15;
 
           const apptMinutesStart = convertToMinutes(agendamentoItem.time);
           const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
@@ -198,7 +198,7 @@ export function DataHorarioFields({
           (agendamentoParaEditar ? agendamentoItem.id !== agendamentoParaEditar.id : true)
         ) {
           const slotMinutesStart = convertToMinutes(horario);
-          const slotMinutesEnd = slotMinutesStart + 30;
+          const slotMinutesEnd = slotMinutesStart + 15;
 
           const apptMinutesStart = convertToMinutes(agendamentoItem.time);
           const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);

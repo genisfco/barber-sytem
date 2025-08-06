@@ -138,7 +138,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
           agendamentoItem.status !== 'cancelado' // Excluir agendamentos cancelados
         ) {
           const slotMinutesStart = convertToMinutes(horario);
-          const slotMinutesEnd = slotMinutesStart + 30; // Considerando slots de 30 minutos
+          const slotMinutesEnd = slotMinutesStart + 15; // Considerando slots de 15 minutos
 
           const apptMinutesStart = convertToMinutes(agendamentoItem.time);
           const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
@@ -258,7 +258,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
                             (agendamentoItem.status === 'pendente' || agendamentoItem.status === 'confirmado')
                           ) {
                             const slotMinutesStart = convertToMinutes(horario);
-                            const slotMinutesEnd = slotMinutesStart + 30;
+                            const slotMinutesEnd = slotMinutesStart + 15;
                             const apptMinutesStart = convertToMinutes(agendamentoItem.time);
                             const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);
                             const hasOverlap = (

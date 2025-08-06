@@ -345,9 +345,12 @@ const Servicos = () => {
                   {...register("duration", { valueAsNumber: true })}
                 >
                   <option value="">Selecione a duração</option>
+                  <option value="15">15 minutos</option>
                   <option value="30">30 minutos</option>
+                  <option value="45">45 minutos</option>
                   <option value="60">60 minutos</option>
-                  <option value="90">90 minutos</option>
+                  <option value="75">75 minutos</option>                  
+                  <option value="90">90 minutos</option>                  
                   <option value="120">120 minutos</option>
                 </select>
               </div>

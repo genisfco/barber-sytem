@@ -32,12 +32,12 @@ const Index = () => {
 
   const agendamentosFiltrados = agendamentosDoDia;
 
-  // Função auxiliar para obter o horário atual de agendamento (00 ou 30)
+  // Função auxiliar para obter o horário atual de agendamento (00, 15, 30, 45)
   const getHorarioAtualAgenda = () => {
     const agora = new Date();
     const horaAtual = agora.getHours();
     const minutoAtual = agora.getMinutes();
-    const intervaloAtual = minutoAtual < 30 ? '00' : '30';
+    const intervaloAtual = minutoAtual < 15 ? '00' : minutoAtual < 30 ? '15' : minutoAtual < 45 ? '30' : '45'; 
     return `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
   };
 
@@ -162,18 +162,17 @@ const Index = () => {
   const getBarbeiroStatus = (barbeiroId: string) => {
     const agora = new Date();
     
-    // Determinar o intervalo atual de 30 minutos
+    // Determinar o intervalo atual de 15 minutos
     const horaAtual = agora.getHours();
     const minutoAtual = agora.getMinutes();
     
-    // Determinar o horário de agendamento atual (arredondando para 00 ou 30 mais próximo)
-    // Se minutos < 30, estamos no intervalo XX:00, senão estamos no intervalo XX:30
-    const intervaloAtual = minutoAtual < 30 ? '00' : '30';
+    // Determinar o horário de agendamento atual (arredondando para 00, 15, 30, 45 mais próximo)
+    const intervaloAtual = minutoAtual < 15 ? '00' : minutoAtual < 30 ? '15' : minutoAtual < 45 ? '30' : '45';
     const horarioAtualAgenda = `${horaAtual.toString().padStart(2, '0')}:${intervaloAtual}`;
     
     // Calcular próximo horário de agenda
-    const proximaHora = minutoAtual < 30 ? horaAtual : (horaAtual + 1) % 24;
-    const proximoIntervalo = minutoAtual < 30 ? '30' : '00';
+    const proximaHora = minutoAtual < 15 ? horaAtual : (horaAtual + 1) % 24;
+    const proximoIntervalo = minutoAtual < 15 ? '15' : minutoAtual < 30 ? '30' : minutoAtual < 45 ? '45' : '00';
     const proximoHorarioAgenda = `${proximaHora.toString().padStart(2, '0')}:${proximoIntervalo}`;
     
     // Filtrar todos os agendamentos do barbeiro para hoje
@@ -199,11 +198,17 @@ const Index = () => {
           const horarioAgendamento = a.time.substring(0, 5);
           
           // Verificar se é um horário futuro
-          if (minutoAtual < 30) {
-            // Se estamos no intervalo XX:00-XX:29
+          if (minutoAtual < 15) {
+            // Se estamos no intervalo XX:00-XX:14
+            return (horarioAgendamento > horarioAtualAgenda);
+          } else if (minutoAtual < 30) {
+            // Se estamos no intervalo XX:15-XX:29
+            return (horarioAgendamento > horarioAtualAgenda);
+          } else if (minutoAtual < 45) {
+            // Se estamos no intervalo XX:30-XX:44
             return (horarioAgendamento > horarioAtualAgenda);
           } else {
-            // Se estamos no intervalo XX:30-XX:59
+            // Se estamos no intervalo XX:45-XX:59
             return (horarioAgendamento > horarioAtualAgenda);
           }
         })

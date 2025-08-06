@@ -273,7 +273,7 @@ export function IndisponivelForm({ barbeiroId, barbeiroName, onOpenChange }: Ind
         agendamentoItem.status !== 'cancelado'
       ) {
         const slotMinutesStart = convertToMinutes(horario);
-        const slotMinutesEnd = slotMinutesStart + 30; // Assuming 30-minute slots
+        const slotMinutesEnd = slotMinutesStart + 15; // Assuming 15-minute slots
 
         const apptMinutesStart = convertToMinutes(agendamentoItem.time);
         const apptMinutesEnd = apptMinutesStart + (agendamentoItem.total_duration || 0);

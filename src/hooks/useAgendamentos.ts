@@ -411,7 +411,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
         if (agendamento.status === 'cancelado') {
           // Usar a duração total já armazenada no agendamento
           const duracaoTotal = currentAppointment.total_duration || 0;
-          const slotsNecessarios = Math.ceil(duracaoTotal / 30);
+          const slotsNecessarios = Math.ceil(duracaoTotal / 15);
 
           // Se precisar de mais de um slot, atualiza todos os slots relacionados
           if (slotsNecessarios > 1) {
@@ -420,7 +420,7 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
 
             // Adiciona os próximos horários se forem necessários
             for (let i = 1; i < slotsNecessarios; i++) {
-              const proximoMinuto = minuto + (i * 30);
+              const proximoMinuto = minuto + (i * 15);
               const proximaHora = hora + Math.floor(proximoMinuto / 60);
               const minutoFinal = proximoMinuto % 60;
               
