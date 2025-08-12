@@ -199,9 +199,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
   if (isBarbeariaFechada) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4">
-        <h2 className="text-xl font-semibold">
-          {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </h2>
+        
         <p className="text-red-600 font-medium text-center">
           Agendamento Indisponível.<br />
           Barbearia fechada para o dia selecionado.
@@ -212,10 +210,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
 
   if (horariosDisponiveis.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
-        <h2 className="text-xl font-semibold">
-          {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </h2>
+      <div className="flex flex-col items-center justify-center h-full space-y-4">        
         <p className="text-red-600 font-medium text-center">
           Agendamento Indisponível.<br />
           Barbearia sem horário definido de funcionamento para o dia selecionado.
@@ -225,12 +220,7 @@ export function AgendamentoGrid({ barberShopId, date, agendamentos, isLoading, o
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-4">
-        <h2 className="text-xl font-semibold">
-          {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </h2>
-      </div>
+    <div className="space-y-6">    
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {barbers?.filter(barbeiro => barbeiro.active).map((barbeiro) => {

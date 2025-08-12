@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAgendamentos } from "@/hooks/useAgendamentos";
-import { AgendamentosHeader } from "@/components/agendamentos/AgendamentosHeader";
+//import { AgendamentosHeader } from "@/components/agendamentos/AgendamentosHeader";
 import { AgendamentoCalendar } from "@/components/agendamentos/AgendamentoCalendar";
 import { AgendamentoGrid } from "@/components/agendamentos/AgendamentoGrid";
 import { AgendamentosTable } from "@/components/agendamentos/AgendamentosTable";
@@ -25,7 +25,7 @@ const Agendamentos = () => {
   
   return (
     <div className="p-3 sm:p-6 space-y-6">
-      <AgendamentosHeader />
+      {/* <AgendamentosHeader /> */}
 
       <div className="grid md:grid-cols-[360px,1fr] gap-3 sm:gap-6">
         <div className="w-full max-w-full">

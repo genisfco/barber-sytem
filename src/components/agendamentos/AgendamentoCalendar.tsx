@@ -35,19 +35,24 @@ export function AgendamentoCalendar({ date, onDateSelect }: AgendamentoCalendarP
     disponibilizarBarbearia.mutate({ data: date });
   };
 
-  const dataFormatada = format(date, "dd 'de' MMMM", { locale: ptBR });  
+  const dataFormatada = format(date, "EEEE, dd 'de' MMMM", { locale: ptBR });  
 
   return (
     <Card>
       <CardHeader>
-        {/* <CardTitle>Calendário</CardTitle> */}
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-foreground">
+            {dataFormatada}
+          </h2>
+        </div>        
       </CardHeader>
+
       <CardContent className="space-y-4">
         <Calendar
           mode="single"
           selected={date}
           onSelect={onDateSelect}
-          className="rounded-md border"
+          className="ml-2 mr-2 mb-10 rounded-md border"
         />
         
         <div className="space-y-2">         
