@@ -27,7 +27,7 @@ import { QuantitySelector } from "@/components/ui/quantity-selector";
 import type { Servico } from "@/types/servico";
 import type { Produto } from "@/types/produto";
 
-type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
+type PaymentMethod = "Dinheiro" | "Cartão_Crédito" | "Cartão_Débito" | "PIX";
 
 const formSchema = z.object({
   servicos: z.array(z.string()).min(1, "Selecione pelo menos um serviço"),
@@ -916,8 +916,8 @@ export function FinalizarAtendimentoForm({
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                            <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                            <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                            <SelectItem value="Cartão_Crédito">Cartão_Crédito</SelectItem>
+                            <SelectItem value="Cartão_Débito">Cartão_Débito</SelectItem>
                             <SelectItem value="PIX">PIX</SelectItem>
                           </SelectContent>
                         </Select>

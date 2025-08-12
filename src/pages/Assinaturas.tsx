@@ -1989,9 +1989,9 @@ const Assinaturas = () => {
               >
                 <option value="">Selecione o método</option>
                 <option value="Dinheiro">Dinheiro</option>
-                <option value="Cartão de Crédito">Cartão de Crédito</option>
-                <option value="Cartão de Débito">Cartão de Débito</option>
-                <option value="Pix">Pix</option>                
+                <option value="Cartão_Crédito">Cartão_Crédito</option>
+                <option value="Cartão_Débito">Cartão_Débito</option>
+                <option value="PIX">PIX</option>                
               </select>
             </div>
             <div className="flex justify-end gap-2 mt-4">
@@ -2142,9 +2142,9 @@ const Assinaturas = () => {
                     <Label>Método de Pagamento</Label>
                     <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" value={pagamentoEditando.payment_method} onChange={e => setPagamentoEditando({ ...pagamentoEditando, payment_method: e.target.value })}>
                       <option value="Dinheiro">Dinheiro</option>
-                      <option value="Cartão de Crédito">Cartão de Crédito</option>
-                      <option value="Cartão de Débito">Cartão de Débito</option>
-                      <option value="Pix">Pix</option>
+                      <option value="Cartão_Crédito">Cartão_Crédito</option>
+                      <option value="Cartão_Débito">Cartão_Débito</option>
+                      <option value="PIX">PIX</option>
                     </select>
                   </div>
                   <div className="flex justify-end gap-2">
@@ -2262,9 +2262,9 @@ const Assinaturas = () => {
                   <select name="payment_method" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" required>
                     <option value="">Selecione o método</option>
                     <option value="Dinheiro">Dinheiro</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito</option>
-                    <option value="Cartão de Débito">Cartão de Débito</option>
-                    <option value="Pix">Pix</option>
+                    <option value="Cartão_Crédito">Cartão_Crédito</option>
+                    <option value="Cartão_Débito">Cartão_Débito</option>
+                    <option value="PIX">PIX</option>
                   </select>
                 </div>
                 <div className="flex gap-2 justify-end">

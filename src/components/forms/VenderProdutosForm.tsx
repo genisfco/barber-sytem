@@ -17,7 +17,7 @@ import { Loader2 } from "lucide-react";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
 import React from "react";
 
-type PaymentMethod = "Dinheiro" | "cartao_credito" | "cartao_debito" | "PIX";
+type PaymentMethod = "Dinheiro" | "Cartão_Crédito" | "Cartão_Débito" | "PIX";
 
 const formSchema = z.object({
   cliente_id: z.union([z.literal("sem_cliente"), z.string()]).optional(),
@@ -25,7 +25,7 @@ const formSchema = z.object({
     id: z.string(),
     quantity: z.number().min(1, "A quantidade deve ser maior que zero")
   })),
-  payment_method: z.enum(["Dinheiro", "cartao_credito", "cartao_debito", "PIX"], {
+  payment_method: z.enum(["Dinheiro", "Cartão_Crédito", "Cartão_Débito", "PIX"], {
     required_error: "Selecione a forma de pagamento"
   })
 });
@@ -262,8 +262,8 @@ export function VenderProdutosForm({
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                    <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                    <SelectItem value="Cartão_Crédito">Cartão_Crédito</SelectItem>
+                    <SelectItem value="Cartão_Débito">Cartão_Débito</SelectItem>
                     <SelectItem value="PIX">PIX</SelectItem>
                   </SelectContent>
                 </Select>

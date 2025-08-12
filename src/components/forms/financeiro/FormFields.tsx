@@ -33,9 +33,9 @@ import { FormValues } from "./types";
 const metodosPagamento = [
   { id: "Dinheiro", nome: "Dinheiro" },
   { id: "PIX", nome: "PIX" },
-  { id: "cartao_credito", nome: "Cartão de Crédito" },
-  { id: "cartao_debito", nome: "Cartão de Débito" },
-  { id: "outro", nome: "Outro" },
+  { id: "Cartão_Crédito", nome: "Cartão_Crédito" },
+  { id: "Cartão_Débito", nome: "Cartão_Débito" },
+  { id: "Outro", nome: "Outro" },
 ];
 
 type FormFieldsProps = {
