@@ -114,6 +114,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error("Email ou senha incorretos.");
       }
 
+      // Verificar se o usuário tem o tipo correto para acessar o sistema
+      const userType = data.session.user.user_metadata?.type_user;
+      if (userType !== 'system_barberpro') {
+        // Fazer logout do usuário inválido
+        await supabase.auth.signOut();
+        throw new Error("Ops! Usuário sem permissão para acessar o sistema. Se você é cliente, por favor, acesse o aplicativo BarberPro.");
+      }
+
       setSession(data.session);
       
       // Buscar e setar barbearia APENAS após login bem sucedido, marcando como fluxo de auth

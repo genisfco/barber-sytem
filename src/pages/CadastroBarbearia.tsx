@@ -113,6 +113,20 @@ export default function CadastroBarbearia() {
         navigate('/auth');
         return;
       }
+
+      // Verificar se o usuário tem o tipo correto para acessar o cadastro de barbearia
+      const userType = user.user_metadata?.type_user;
+      if (userType !== 'system_barberpro') {
+        // Usuário não tem permissão para acessar o cadastro de barbearia
+        await supabase.auth.signOut();
+        navigate('/auth', { 
+          state: { 
+            error: 'Ops! Usuário sem permissão para acessar o cadastro de barbearia. Se você é cliente, por favor, acesse o aplicativo BarberPro.' 
+          } 
+        });
+        return;
+      }
+
       setUser(user);
 
       const { data: barberShop, error: fetchError } = await supabase

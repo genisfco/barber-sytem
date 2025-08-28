@@ -19,6 +19,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const sessionExpired = location.state?.sessionExpired;
   const loggedOut = location.state?.loggedOut;
+  const accessError = location.state?.error;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +90,11 @@ export default function Auth() {
           {loggedOut && (
             <div className="mt-4 p-2 bg-green-100 text-green-800 rounded">
               Você saiu do sistema com sucesso.
+            </div>
+          )}
+          {accessError && (
+            <div className="mt-4 p-2 bg-red-100 text-red-800 rounded">
+              {accessError}
             </div>
           )}
         </div>

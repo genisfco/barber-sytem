@@ -61,6 +61,9 @@ const formatEmail = (value: string) => {
 };
 
 export default function CadastroUser() {
+  // Componente de cadastro de usuário para o sistema web
+  // Todos os usuários cadastrados recebem type_user: 'system_barberpro' nos metadados
+  // para controle de acesso às funcionalidades do sistema
   const { register, handleSubmit, reset, watch, setValue } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +111,11 @@ export default function CadastroUser() {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: window.location.origin + '/auth'
+          emailRedirectTo: window.location.origin + '/auth',
+          data: {
+            type_user: 'system_barberpro'
+
+          }
         }
       });
 
