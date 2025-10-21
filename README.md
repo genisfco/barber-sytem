@@ -1,69 +1,169 @@
-# Welcome to your Lovable project
+# BarberPro System - Sistema de Gestão para Barbearias
 
-## Project info
+## 📋 Sobre o Projeto
 
-**URL**: https://lovable.dev/projects/b02453f2-335b-4f8d-8410-cb97398980f5
+O **BarberPro System** é uma plataforma completa de gestão para barbearias, desenvolvida para modernizar e simplificar o gerenciamento de estabelecimentos de barbearia. O sistema oferece funcionalidades abrangentes para administração de agendamentos, clientes, barbeiros, serviços, produtos e finanças.
 
-## How can I edit this code?
+## 🌐 Acesso ao Sistema
 
-There are several ways of editing your application.
+**URL da Aplicação**: [https://barberpro-system.vercel.app/](https://barberpro-system.vercel.app/)
 
-**Use Lovable**
+## ✨ Principais Funcionalidades
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b02453f2-335b-4f8d-8410-cb97398980f5) and start prompting.
+### 🗓️ Gestão de Agendamentos
+- Sistema completo de agendamento de clientes
+- Calendário interativo para visualização de horários
+- Controle de disponibilidade por barbeiro
+- Finalização de atendimentos com registro de serviços e produtos
 
-Changes made via Lovable will be committed automatically to this repo.
+### 👥 Gestão de Pessoas
+- **Clientes**: Cadastro completo com dados pessoais e histórico
+- **Barbeiros**: Gerenciamento de equipe com controle de comissões e horários de trabalho
+- Sistema de comissões configurável por barbeiro
 
-**Use your preferred IDE**
+### 🏪 Gestão de Estabelecimento
+- **Serviços**: Catálogo de serviços oferecidos pela barbearia
+- **Produtos**: Controle de estoque e vendas de produtos
+- **Configurações**: Personalização de horários de funcionamento e dados da barbearia
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 💰 Gestão Financeira
+- Controle completo de receitas e despesas
+- Relatórios mensais e anuais detalhados
+- Sistema de assinaturas para clientes
+- Integração com PIX para pagamentos
+- Sistema de pagamentos da plataforma
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 📊 Relatórios e Análises
+- Dashboard com métricas em tempo real
+- Relatórios de desempenho por barbeiro
+- Análise financeira detalhada
+- Controle de comissões e pagamentos
 
-Follow these steps:
+### 🔐 Sistema de Autenticação
+- Login seguro com Supabase Auth
+- Controle de acesso baseado em usuários
+- Sistema de recuperação de senha
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🛠️ Tecnologias Utilizadas
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Frontend
+- **React 18** - Biblioteca para interface de usuário
+- **TypeScript** - Tipagem estática para JavaScript
+- **Vite** - Build tool e servidor de desenvolvimento
+- **React Router DOM** - Roteamento da aplicação
+- **TanStack Query** - Gerenciamento de estado do servidor
 
-# Step 3: Install the necessary dependencies.
-npm i
+### UI/UX
+- **Tailwind CSS** - Framework de CSS utilitário
+- **shadcn/ui** - Componentes de interface modernos
+- **Radix UI** - Componentes primitivos acessíveis
+- **Lucide React** - Ícones modernos
+- **React Hook Form** - Gerenciamento de formulários
+- **Zod** - Validação de schemas
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Backend e Banco de Dados
+- **Supabase** - Backend-as-a-Service
+- **PostgreSQL** - Banco de dados relacional
+- **Row Level Security (RLS)** - Segurança a nível de linha
+
+### Integrações
+- **MercadoPago** - Processamento de pagamentos
+- **Google Maps API** - Integração de mapas e geolocalização
+- **PIX** - Sistema de pagamentos instantâneos brasileiro
+
+### Ferramentas de Desenvolvimento
+- **ESLint** - Linting de código
+- **PostCSS** - Processamento de CSS
+- **Autoprefixer** - Prefixos CSS automáticos
+
+## 🚀 Como Executar o Projeto
+
+### Pré-requisitos
+- Node.js (versão 18 ou superior)
+- npm ou yarn
+
+### Instalação
+
+1. **Clone o repositório**
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd barber-sytem
+```
+
+2. **Instale as dependências**
+```bash
+npm install
+```
+
+3. **Configure as variáveis de ambiente**
+```bash
+# Crie um arquivo .env.local na raiz do projeto
+# Configure as variáveis necessárias para Supabase e outras integrações
+```
+
+4. **Execute o projeto em modo de desenvolvimento**
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+5. **Acesse a aplicação**
+```
+http://localhost:5173
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Scripts Disponíveis
 
-**Use GitHub Codespaces**
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Gera build de produção
+- `npm run preview` - Visualiza o build de produção
+- `npm run lint` - Executa o linter
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 📁 Estrutura do Projeto
 
-## What technologies are used for this project?
+```
+src/
+├── components/          # Componentes reutilizáveis
+│   ├── forms/          # Formulários específicos
+│   ├── layout/         # Componentes de layout
+│   └── ui/             # Componentes de interface
+├── contexts/           # Contextos do React
+├── hooks/              # Hooks customizados
+├── integrations/       # Integrações externas
+├── pages/              # Páginas da aplicação
+├── services/           # Serviços de API
+├── types/              # Definições de tipos TypeScript
+└── utils/              # Utilitários gerais
+```
 
-This project is built with .
+## 🔧 Configuração do Banco de Dados
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+O projeto utiliza Supabase como backend. As migrações estão localizadas em:
+```
+supabase/migrations/
+```
 
-## How can I deploy this project?
+Execute as migrações no seu projeto Supabase para configurar o banco de dados.
 
-Simply open [Lovable](https://lovable.dev/projects/b02453f2-335b-4f8d-8410-cb97398980f5) and click on Share -> Publish.
+## 📱 Responsividade
 
-## I want to use a custom domain - is that possible?
+O sistema é totalmente responsivo e funciona perfeitamente em:
+- 📱 Dispositivos móveis
+- 💻 Tablets
+- 🖥️ Desktops
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## 🤝 Contribuição
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## 📞 Suporte
+
+Para suporte e dúvidas, entre em contato através dos canais oficiais do projeto.
+
