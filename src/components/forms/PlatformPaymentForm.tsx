@@ -238,6 +238,19 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
     }).format(value);
   };
 
+  // Formata data para exibição no formato: 06/Ago/25
+  const formatDateShort = (dateStr: string) => {
+    // Adiciona o timezone local para evitar problema de UTC
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return format(date, "dd/MMM/yy", { locale: ptBR });
+  };
+
+  // Verifica se o mês selecionado está completamente em período gratuito
+  const isMonthInFreeTrial = calculationResult && 
+    calculationResult.total_amount === 0 && 
+    calculationResult.details?.totalAppointments > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -255,13 +268,18 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
               <Gift className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
                 <div className="font-semibold mb-1">🎉 Período Gratuito Ativo!</div>
-                <div className="text-sm">
-                  {freeTrialStatus.reason}
+                <div className="text-sm space-y-1">
+                  <div>{freeTrialStatus.reason}</div>
+                  {freeTrialStatus.startDate && freeTrialStatus.endDate && (
+                    <div className="font-medium">
+                      Período: {formatDateShort(freeTrialStatus.startDate)} até {formatDateShort(freeTrialStatus.endDate)}
+                    </div>
+                  )}
                   {freeTrialStatus.daysLeft && freeTrialStatus.daysLeft > 0 && (
-                    <span className="block mt-1">
+                    <div>
                       <Clock className="inline h-3 w-3 mr-1" />
                       {freeTrialStatus.daysLeft} dias restantes
-                    </span>
+                    </div>
                   )}
                 </div>
               </AlertDescription>
@@ -414,12 +432,10 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                 createPayment.isPending ||
                 createdPayment?.payment_status === 'pending' ||
                 createdPayment?.payment_status === 'paid' ||
-                calculationResult?.is_free_trial ||
-                calculationResult?.isFreeTrial ||
-                freeTrialStatus?.isFreeTrial
+                isMonthInFreeTrial
               }
               className={
-                (calculationResult?.is_free_trial || calculationResult?.isFreeTrial || freeTrialStatus?.isFreeTrial)
+                isMonthInFreeTrial
                   ? "bg-green-600 hover:bg-green-700 cursor-not-allowed opacity-70"
                   : createdPayment?.payment_status === 'paid'
                     ? "bg-green-600 hover:bg-green-700 cursor-not-allowed opacity-70"
@@ -428,7 +444,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             >
               {createPayment.isPending
                 ? "Criando..."
-                : (calculationResult?.is_free_trial || calculationResult?.isFreeTrial || freeTrialStatus?.isFreeTrial)
+                : isMonthInFreeTrial
                   ? "Período Gratuito Ativo"
                   : createdPayment?.payment_status === 'paid'
                     ? "Pagamento OK!"
