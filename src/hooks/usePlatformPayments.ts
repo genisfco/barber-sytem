@@ -179,25 +179,6 @@ export function usePlatformPayments() {
     mutationFn: async ({ month, year }: CalculatePaymentData) => {
       return await calculateBillableAppointments(month, year);
     },
-    onSuccess: (data) => {
-      if (data) {
-        let message;
-        if (data.details.freeAppointments > 0) {
-          message = `${data.details.totalAppointments} agendamentos: ${data.appointments_count} cobrados + ${data.details.freeAppointments} gratuitos. Valor: R$ ${data.total_amount.toFixed(2)}`;
-        } else if (data.appointments_count === 0) {
-          message = data.details.totalAppointments === 0 
-            ? "Nenhum agendamento encontrado no período"
-            : `${data.details.totalAppointments} agendamentos, mas todos em período gratuito`;
-        } else {
-          message = `${data.appointments_count} agendamentos atendidos. Valor: R$ ${data.total_amount.toFixed(2)}`;
-        }
-        
-        toast({
-          title: "Cálculo realizado",
-          description: message,
-        });
-      }
-    },
     onError: (error) => {
       logError(error, "Erro ao calcular pagamento:");
       toast({

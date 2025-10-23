@@ -10,7 +10,7 @@ import { usePlatformPayments } from "@/hooks/usePlatformPayments";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Calculator, QrCode, Download, Copy, Gift, Clock, Eye } from "lucide-react";
+import { Calendar, Calculator, QrCode, Download, Copy, Gift, Clock, Eye, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { gerarPixQrCode } from "@/services/pixApi";
@@ -50,11 +50,11 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const currentYear = currentDate.getFullYear();
   
   // Função para obter os 3 meses retroativos à data atual
-  const getLast3Months = () => {
+  const getLast5Months = () => {
     const months = [];
     let m = currentMonth;
     let y = currentYear;
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 5; i++) {
       m--;
       if (m === 0) {
         m = 12;
@@ -69,17 +69,17 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
     return months;
   };
 
-  // Função para obter os anos disponíveis baseados nos 3 meses retroativos
-  const getYearsForLast3Months = () => {
-    const months = getLast3Months();
+  // Função para obter os anos disponíveis baseados nos 5 meses retroativos
+  const getYearsForLast5Months = () => {
+    const months = getLast5Months();
     const yearsSet = new Set(months.map(m => m.year));
     return Array.from(yearsSet).sort((a, b) => b - a);
   };
 
-  // Estado inicial: mês e ano mais recente dos 3 meses retroativos
-  const last3Months = getLast3Months();
-  const [month, setMonth] = useState<number>(last3Months[0].value);
-  const [year, setYear] = useState<number>(last3Months[0].year);
+  // Estado inicial: mês e ano mais recente dos 5 meses retroativos
+  const last5Months = getLast5Months();
+  const [month, setMonth] = useState<number>(last5Months[0].value);
+  const [year, setYear] = useState<number>(last5Months[0].year);
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
 
   const [calculationResult, setCalculationResult] = useState<any>(null);
@@ -87,13 +87,14 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const [showQRCode, setShowQRCode] = useState(false);
   const [pixModalOpen, setPixModalOpen] = useState(false);
   const [pixData, setPixData] = useState<any>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const { calculatePayment, createPayment, updatePayment, freeTrialStatus, getExistingPayment } = usePlatformPayments();
   const { toast } = useToast();
 
   // Handler para mudança de mês
   const handleMonthChange = (newMonth: number) => {
-    const selected = last3Months.find(m => m.value === newMonth);
+    const selected = last5Months.find(m => m.value === newMonth);
     if (selected) {
       setMonth(selected.value);
       setYear(selected.year);
@@ -105,7 +106,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
   const handleYearChange = (newYear: number) => {
     setYear(newYear);
     // Ajusta o mês para o mais recente daquele ano, se necessário
-    const monthsOfYear = last3Months.filter(m => m.year === newYear);
+    const monthsOfYear = last5Months.filter(m => m.year === newYear);
     if (monthsOfYear.length > 0 && !monthsOfYear.find(m => m.value === month)) {
       setMonth(monthsOfYear[0].value);
     }
@@ -143,6 +144,8 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
 
   const handleCalculate = async () => {
     try {
+      setIsCalculating(true);
+      setCalculationResult(null);
       const result = await calculatePayment.mutateAsync({ month, year });
       if (!result || result.appointments_count === 0) {
         setCalculationResult(null);
@@ -152,6 +155,8 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
     } catch (error) {
       setCalculationResult(null);
       console.error("Erro ao calcular:", error);
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -272,7 +277,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {last3Months.map((monthOption) => (
+                  {last5Months.map((monthOption) => (
                     <SelectItem key={`${monthOption.value}-${monthOption.year}`} value={monthOption.value.toString()}>
                       {monthOption.label}
                     </SelectItem>
@@ -287,7 +292,7 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getYearsForLast3Months().map((yearOption) => (
+                  {getYearsForLast5Months().map((yearOption) => (
                     <SelectItem key={yearOption} value={yearOption.toString()}>
                       {yearOption}
                     </SelectItem>
@@ -302,11 +307,16 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
-                Cálculo do Pagamento
+                Cálculo do Pagamento {MONTHS.find(m => m.value === month)?.label} de {year}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {calculationResult ? (
+              {isCalculating ? (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                  <p className="text-sm font-medium">Calculando valores...</p>
+                </div>
+              ) : calculationResult ? (
                 (calculationResult.is_free_trial || calculationResult.isFreeTrial) ? (
                   <div className="text-center text-green-700 font-semibold py-6">
                     🎉 Você está em período gratuito!<br />
@@ -353,16 +363,12 @@ export function PlatformPaymentForm({ open, onOpenChange, onSuccess }: PlatformP
                         </div>
                         <div className="text-sm text-muted-foreground">Total a Pagar</div>
                       </div>
-                    </div>
-                    
-                    <div className="text-sm text-muted-foreground text-center">
-                      Período: {MONTHS.find(m => m.value === month)?.label} de {year}
-                    </div>
+                    </div>                   
                   </div>
                 )
               ) : (
                 <div className="text-center py-4 text-muted-foreground">
-                  Nenhum agendamento atendido neste mês.
+                  Nenhum atendimento á ser cobrado neste mês.
                 </div>
               )}
             </CardContent>
