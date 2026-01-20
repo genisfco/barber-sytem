@@ -1842,18 +1842,22 @@ const Assinaturas = () => {
                     </div>
                     <div className="flex gap-2">
                       {/* Botão para ativar manualmente a assinatura */}
-                      {assinatura.status !== 'ativa' && assinatura.status !== 'inadimplente' && (
+                      {!podeRenovar && assinatura.status !== 'ativa' && assinatura.status !== 'inadimplente' && (
                         <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'ativa' })} title="Ativar Assinatura" className="text-green-600 hover:text-green-700 hover:bg-green-100">
                           <span className="sr-only">Ativar Assinatura</span>
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'suspensa' })} title="Suspender Assinatura" disabled={assinatura.status === 'suspensa' || loadingStatus === assinatura.id + 'suspensa'}>
-                        <PauseCircle className={assinatura.status === 'suspensa' ? 'text-orange-600' : ''} />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'cancelada' })} title="Cancelar Assinatura" disabled={assinatura.status === 'cancelada' || loadingStatus === assinatura.id + 'cancelada'}>
-                        <XCircle className={assinatura.status === 'cancelada' ? 'text-red-600' : ''} />
-                      </Button>
+                      {!podeRenovar && (
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'suspensa' })} title="Suspender Assinatura" disabled={assinatura.status === 'suspensa' || loadingStatus === assinatura.id + 'suspensa'}>
+                          <PauseCircle className={assinatura.status === 'suspensa' ? 'text-orange-600' : ''} />
+                        </Button>
+                      )}
+                      {!podeRenovar && (
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmarStatus({ id: assinatura.id, status: 'cancelada' })} title="Cancelar Assinatura" disabled={assinatura.status === 'cancelada' || loadingStatus === assinatura.id + 'cancelada'}>
+                          <XCircle className={assinatura.status === 'cancelada' ? 'text-red-600' : ''} />
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
