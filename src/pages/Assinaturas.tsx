@@ -1869,7 +1869,7 @@ const Assinaturas = () => {
                         ['suspensa', 'cancelada'].includes(assinatura.status) ? 'text-red-600 font-semibold' :
                         ''
                       }>{assinatura.status}</b></p>
-                      <p>Status do Pagamento: <b className={corStatus}>{statusPagamento}</b></p>
+                      <p>Pagamento do Ciclo: <b className={corStatus}>{statusPagamento}</b></p>
                       {/* Valor restante ou total pago */}
                       {(() => {
                         if (!plano || pagamentosCicloAtual.length === 0) return null;
