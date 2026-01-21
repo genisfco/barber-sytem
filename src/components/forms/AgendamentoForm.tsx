@@ -431,9 +431,10 @@ export function AgendamentoForm({
                         </SelectContent>
                       </Select>
                       {isClienteBloqueado && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Agendamento criado no aplicativo. Cliente não pode ser alterado.
-                        </p>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          <p>Agendamento feito no aplicativo BarberPro.</p>
+                          <p>Cliente não pode ser alterado.</p>
+                        </div>
                       )}
                       <FormMessage className="text-red-500 text-sm" />
                     </FormItem>
