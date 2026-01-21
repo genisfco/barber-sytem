@@ -169,6 +169,20 @@ export function AgendamentoForm({
       }
 
       setIsSubmitting(true);
+      
+      // Se for um agendamento criado pelo app, garantir que o cliente não foi alterado
+      if (agendamentoParaEditar?.created_by_app_user === true) {
+        if (values.clienteId !== agendamentoParaEditar.client_id) {
+          toast({
+            title: "Erro ao editar",
+            description: "Não é possível alterar o cliente de um agendamento criado pelo aplicativo.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
       // Valida todos os campos
       const isValid = await form.trigger();
       
@@ -392,29 +406,39 @@ export function AgendamentoForm({
               <FormField
                 control={form.control}
                 name="clienteId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clientes?.filter(cliente => cliente.active).map((cliente) => (
-                          <SelectItem key={cliente.id} value={cliente.id}>
-                            {cliente.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-red-500 text-sm" />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const isClienteBloqueado = agendamentoParaEditar?.created_by_app_user === true;
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Cliente *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isClienteBloqueado}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={isClienteBloqueado ? "bg-muted cursor-not-allowed" : ""}>
+                            <SelectValue placeholder="Selecione um cliente" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {clientes?.filter(cliente => cliente.active).map((cliente) => (
+                            <SelectItem key={cliente.id} value={cliente.id}>
+                              {cliente.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isClienteBloqueado && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Este agendamento foi criado pelo aplicativo e o cliente não pode ser alterado.
+                        </p>
+                      )}
+                      <FormMessage className="text-red-500 text-sm" />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}

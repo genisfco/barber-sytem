@@ -16,6 +16,8 @@ export interface Agendamento {
   status: string;
   created_at: string;
   updated_at: string;
+  created_by_app_user?: boolean;
+  app_user_id?: string;
   servicos: Array<{
     service_id: string;
     service_name: string;
@@ -51,6 +53,6 @@ export interface ProdutoAgendamento {
   quantity: number;
   is_gratuito?: boolean; // Flag para identificar produtos gratuitos
   created_at: string;
-  updated_at: string;
+  updated_at: string;  
 }
 

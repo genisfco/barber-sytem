@@ -317,7 +317,9 @@ export function useAgendamentos(date?: Date, barbeiro_id?: string) {
           total_price: totalPrice,
           total_products_price: totalProductsPrice,
           final_price: finalPrice,
-          status: 'pendente'
+          status: 'pendente',
+          created_by_app_user: false,
+          app_user_id: null
         })
         .select()
         .single();

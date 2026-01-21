@@ -110,6 +110,9 @@ export interface Database {
           payment_date: string | null
           created_at: string
           updated_at: string
+          created_by_app_user?: boolean | null
+          app_user_id?: string | null
+          
         }
         Insert: {
           id?: string
@@ -131,6 +134,8 @@ export interface Database {
           payment_date?: string | null
           created_at?: string
           updated_at?: string
+          created_by_app_user?: boolean | null
+          app_user_id?: string | null
         }
         Update: {
           id?: string
@@ -152,6 +157,8 @@ export interface Database {
           payment_date?: string | null
           created_at?: string
           updated_at?: string
+          created_by_app_user?: boolean | null
+          app_user_id?: string | null
         }
       }
       appointment_services: {
