@@ -51,7 +51,7 @@ const Clientes = () => {
   const [showOnlySubscribers, setShowOnlySubscribers] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'ativos' | 'inadimplentes'>('all');
   const [appFilter, setAppFilter] = useState<'all' | 'com-app' | 'sem-app'>('all');
-  const { register, handleSubmit, reset, setValue, watch } = useForm<ClienteFormData>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ClienteFormData>({
     defaultValues: {
       active: true,
       notes: null,
@@ -231,6 +231,40 @@ const Clientes = () => {
     });
   };
 
+  const validarCPF = (cpf: string): boolean => {
+    // Remove todos os caracteres não numéricos
+    const numbers = cpf.replace(/[^\d]+/g, '');
+    
+    // Verifica se tem 11 dígitos
+    if (numbers.length !== 11) return false;
+    
+    // Verifica se todos os dígitos são iguais (ex: 111.111.111-11)
+    if (/^(\d)\1+$/.test(numbers)) return false;
+    
+    // Validação dos dígitos verificadores
+    let soma = 0;
+    let resto;
+    
+    // Validação do primeiro dígito verificador
+    for (let i = 1; i <= 9; i++) {
+      soma += parseInt(numbers.substring(i - 1, i)) * (11 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(numbers.substring(9, 10))) return false;
+    
+    // Validação do segundo dígito verificador
+    soma = 0;
+    for (let i = 1; i <= 10; i++) {
+      soma += parseInt(numbers.substring(i - 1, i)) * (12 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(numbers.substring(10, 11))) return false;
+    
+    return true;
+  };
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatName(e.target.value);
     setValue('name', formattedValue);
@@ -296,16 +330,35 @@ const Clientes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
+                  <Label htmlFor="cpf">CPF <span className="text-red-500">*</span></Label>
                   <Input
                     id="cpf"
                     placeholder="Digite o CPF do cliente"
-                    {...register("cpf")}
+                    {...register("cpf", {
+                      required: "CPF é obrigatório",
+                      validate: (value) => {
+                        const numbers = value.replace(/\D/g, '');
+                        if (numbers.length === 0) {
+                          return "CPF é obrigatório";
+                        }
+                        if (numbers.length !== 11) {
+                          return "CPF deve conter 11 dígitos";
+                        }
+                        if (!validarCPF(value)) {
+                          return "CPF inválido";
+                        }
+                        return true;
+                      }
+                    })}
                     onChange={handleCPFChange}
                     maxLength={14} // 000.000.000-00 = 14 caracteres
                     inputMode="numeric"
                     autoComplete="off"
+                    className={errors.cpf ? "border-red-500" : ""}
                   />
+                  {errors.cpf && (
+                    <span className="text-red-500 text-sm">{errors.cpf.message as string}</span>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail</Label>
