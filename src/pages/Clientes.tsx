@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X, Loader2, Pencil, Trash2, Check, Power } from "lucide-react";
+import { Plus, Search, X, Loader2, Pencil, Trash2, Check, Power, Scissors, Smartphone } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,7 @@ const Clientes = () => {
   const [subscriberDialogOpen, setSubscriberDialogOpen] = useState(false);
   const [showOnlySubscribers, setShowOnlySubscribers] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'ativos' | 'inadimplentes'>('all');
+  const [appFilter, setAppFilter] = useState<'all' | 'com-app' | 'sem-app'>('all');
   const { register, handleSubmit, reset, setValue, watch } = useForm<ClienteFormData>({
     defaultValues: {
       active: true,
@@ -155,17 +156,32 @@ const Clientes = () => {
   };
 
   const filteredClientes = clientes?.filter((cliente) => {
-    if (!searchTerm) return true;
-    const isNumber = /^\d+$/.test(searchTerm.replace(/\D/g, ''));
-    if (isNumber) {
-      // Busca por CPF (ignorando máscara)
-      const clienteCPF = (cliente.cpf || '').replace(/\D/g, '');
-      const searchCPF = searchTerm.replace(/\D/g, '');
-      return clienteCPF.includes(searchCPF);
-    } else {
-      // Busca por nome
-      return cliente.name.toLowerCase().includes(searchTerm.toLowerCase());
+    // Filtro de busca por nome ou CPF
+    if (searchTerm) {
+      const isNumber = /^\d+$/.test(searchTerm.replace(/\D/g, ''));
+      if (isNumber) {
+        // Busca por CPF (ignorando máscara)
+        const clienteCPF = (cliente.cpf || '').replace(/\D/g, '');
+        const searchCPF = searchTerm.replace(/\D/g, '');
+        if (!clienteCPF.includes(searchCPF)) return false;
+      } else {
+        // Busca por nome
+        if (!cliente.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      }
     }
+
+    // Filtro de assinantes
+    if (showOnlySubscribers) {
+      if (!clientesAssinantes.includes(cliente.id)) return false;
+      if (filterType === 'ativos' && !clientesAtivos.includes(cliente.id)) return false;
+      if (filterType === 'inadimplentes' && !clientesInadimplentes.includes(cliente.id)) return false;
+    }
+
+    // Filtro de app mobile
+    if (appFilter === 'com-app' && !cliente.app_user_id) return false;
+    if (appFilter === 'sem-app' && cliente.app_user_id) return false;
+
+    return true;
   });
 
   const formatName = (value: string) => {
@@ -403,13 +419,34 @@ const Clientes = () => {
               className="pl-8"
             />
           </div>
+          
+          {/* Filtro de App Mobile */}
+          <div className="flex gap-2">
+            <Button
+              variant={appFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAppFilter('all')}
+            >
+              Todos
+            </Button>
+            <Button
+              variant={appFilter === 'com-app' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAppFilter('com-app')}
+              className="flex items-center gap-1"
+            >
+              <Scissors className="h-6 w-6" />
+              Clientes BarberPro
+            </Button>            
+          </div>
+
           {showOnlySubscribers && (
           <div className="flex justify-end">
             <button
               className="text-sm px-8 py-5 pt-3 pb-3 rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition border border-yellow-300 font-semibold"
               onClick={handleClearFilter}
             >
-              Limpar Filtro
+              Limpar Filtro de Assinantes
             </button>
           </div>
           )}
@@ -445,6 +482,18 @@ const Clientes = () => {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-lg font-medium flex items-center gap-2">
                     {cliente.name}
+                    {cliente.app_user_id && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="cursor-pointer">
+                            <Scissors className="h-6 w-6 text-primary" /> 
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Cliente BarberPro
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </CardTitle>
                   <div className="flex items-center space-x-2">
                     <TooltipProvider>

@@ -8,4 +8,5 @@ export interface Cliente {
   cpf?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  app_user_id?: string | null;
 }

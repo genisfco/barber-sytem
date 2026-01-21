@@ -111,8 +111,7 @@ export interface Database {
           created_at: string
           updated_at: string
           created_by_app_user?: boolean | null
-          app_user_id?: string | null
-          
+          app_user_id?: string | null          
         }
         Insert: {
           id?: string
@@ -274,6 +273,7 @@ export interface Database {
           barber_shop_id: string
           created_at: string
           updated_at: string
+          app_user_id?: string | null
         }
         Insert: {
           id?: string
@@ -285,6 +285,7 @@ export interface Database {
           barber_shop_id: string
           created_at?: string
           updated_at?: string
+          app_user_id?: string | null
         }
         Update: {
           id?: string
@@ -296,6 +297,7 @@ export interface Database {
           barber_shop_id?: string
           created_at?: string
           updated_at?: string
+          app_user_id?: string | null
         }
       }
       services: {
