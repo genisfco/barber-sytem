@@ -513,14 +513,31 @@ const Clientes = () => {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(cliente)}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    {cliente.app_user_id ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled
+                              className="text-gray-400 cursor-not-allowed opacity-50"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>                          
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(cliente)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
