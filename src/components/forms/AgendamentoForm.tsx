@@ -432,7 +432,7 @@ export function AgendamentoForm({
                       </Select>
                       {isClienteBloqueado && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Este agendamento foi criado pelo aplicativo e o cliente não pode ser alterado.
+                          Agendamento criado no aplicativo. Cliente não pode ser alterado.
                         </p>
                       )}
                       <FormMessage className="text-red-500 text-sm" />
