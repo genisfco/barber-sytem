@@ -38,42 +38,17 @@ const ProtectedRouteContent = ({ children }: { children: React.ReactNode }) => {
   const { toggle } = useSidebar();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
   // Hook de bloqueio financeiro
   const { blocked, pendingMonths } = useFinancialBlock();
   
   // Não exibir modal de bloqueio na página financeiro
-  const shouldShowBlockModal = blocked && location.pathname !== '/financeiro';
-
-  // Timeout de segurança para evitar travamento infinito
-  useEffect(() => {
-    if (isAuthLoading) {
-      const timeout = setTimeout(() => {
-        setLoadingTimeout(true);
-      }, 12000); // 12 segundos
-
-      return () => clearTimeout(timeout);
-    } else {
-      setLoadingTimeout(false);
-    }
-  }, [isAuthLoading]);
+  const shouldShowBlockModal = blocked && location.pathname !== '/financeiro';  
 
   // Verifica se é uma URL de confirmação de email
   const isEmailConfirmation = location.search.includes('type=recovery') || 
                             location.search.includes('type=signup');
 
-  // Se atingiu timeout ou está carregando há muito tempo, mostra erro
-  if (loadingTimeout) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2 text-red-600">Aguarde o Carregamento</h2>
-          <p className="text-gray-300 mb-4">Estamos buscando os seus dados.</p>                 
-        </div>
-      </div>
-    );
-  }
+  
 
   if (isAuthLoading) {
     return (
@@ -276,7 +251,7 @@ export function AppRoutes() {
         }
       />
             
-      {/* <Route path="*" element={<NotFound />} /> */}
+       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 } 
