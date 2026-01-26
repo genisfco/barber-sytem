@@ -137,7 +137,7 @@ export default function CadastroBarbearia() {
 
       if (fetchError && fetchError.code !== 'PGRST116') {
       } else if (barberShop) {
-        navigate('/dashboard');
+        navigate('/');
       } else {
       }
     };
