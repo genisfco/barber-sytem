@@ -79,7 +79,7 @@ export default function Auth() {
       <div className="w-full max-w-md space-y-8 p-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold">Login</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-300">
             Entre com suas credenciais para acessar o sistema
           </p>
           {sessionExpired && (
@@ -132,9 +132,9 @@ export default function Auth() {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-500" />
+                    <EyeOff className="h-4 w-4 text-gray-200" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-500" />
+                    <Eye className="h-4 w-4 text-gray-200" />
                   )}
                 </Button>
               </div>
@@ -154,7 +154,7 @@ export default function Auth() {
           </Button>
         </form>
         <div className="text-center mt-4">
-          <span className="text-sm text-gray-600">Ainda não tem Cadastro?</span>
+          <span className="text-sm text-gray-300">Ainda não tem Cadastro?</span>
           <br />
           <Link to="/cadastro-usuario" className="text-blue-600 hover:underline text-sm">
             Cadastre sua Barbearia
